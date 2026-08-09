@@ -36,7 +36,7 @@ def test_discovery_preserves_local_structural_candidate_without_live_request() -
 
 
 def test_unresolved_live_metadata_is_reportable() -> None:
-    live = KosisLiveCatalogSearch("key", opener=lambda *_: _Response()).search("물가")[0]
+    live = KosisLiveCatalogSearch("key", opener=lambda *_, **__: _Response()).search("물가")[0]
     assert has_unresolved_live_metadata([live]) is True
 
 

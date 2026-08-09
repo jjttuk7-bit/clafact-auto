@@ -25,7 +25,7 @@ class _Response:
 def test_live_catalog_search_maps_official_table_result() -> None:
     seen: list[str] = []
 
-    def opener(request: object, timeout: float) -> _Response:
+    def opener(request: object, *, timeout: float) -> _Response:
         seen.append(request.full_url)  # type: ignore[attr-defined]
         return _Response([{"ORG_ID": "101", "TBL_ID": "DT_1J22042", "TBL_NM": "소비자물가지수"}])
 
@@ -44,7 +44,7 @@ def test_live_catalog_search_returns_empty_for_missing_key() -> None:
 
 
 def test_hard_guard_rejects_live_candidate_without_coordinate_metadata() -> None:
-    candidate = KosisLiveCatalogSearch("secret", opener=lambda *_: _Response([{"ORG_ID": "101", "TBL_ID": "DT_X", "TBL_NM": "소비자물가지수"}])).search("소비자물가")[0]
+    candidate = KosisLiveCatalogSearch("secret", opener=lambda *_, **__: _Response([{"ORG_ID": "101", "TBL_ID": "DT_X", "TBL_NM": "소비자물가지수"}])).search("소비자물가")[0]
     claim = ClaimSchema(claim_id="c1", source_sentence="소비자 물가는 2.4% 올랐다.", indicator="소비자 물가", value=2.4, unit="%", parse_status="AUTO_OK")
 
     guard = apply_hard_guard(claim, candidate)

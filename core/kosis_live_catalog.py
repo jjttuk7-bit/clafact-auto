@@ -43,7 +43,7 @@ class KosisLiveCatalogSearch:
         )
         request = Request(f"{self._endpoint}?{params}", headers={"Accept": "application/json", "User-Agent": "CLAFACT-AUTO/0.1"})
         try:
-            with self._opener(request, 10) as response:
+            with self._opener(request, timeout=10) as response:
                 payload = json.loads(response.read().decode("utf-8-sig"))
         except (OSError, UnicodeDecodeError, json.JSONDecodeError):
             return []
