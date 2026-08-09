@@ -45,6 +45,7 @@ def parse_claim(
     claim = _with_explicit_comparison(claim, normalized_source)
     if claim.parse_status != "AUTO_OK":
         return claim
+    claim = _with_standard_unit(claim)
     claim = _with_explicit_decrease_sign(claim, normalized_source)
 
     missing_slots = [slot for slot in _AUTO_REQUIRED_SLOTS if getattr(claim, slot) is None]
@@ -61,6 +62,16 @@ def parse_claim(
 def _claim_id(source_sentence: str) -> str:
     digest = sha256(source_sentence.encode("utf-8")).hexdigest()[:16]
     return f"claim_{digest}"
+
+
+def _with_standard_unit(claim: ClaimSchema) -> ClaimSchema:
+    """Normalize common provider aliases to the engine's canonical unit symbols."""
+    if claim.unit is None:
+        return claim
+    normalized_unit = claim.unit.strip().casefold()
+    if normalized_unit not in {"percent", "percentage", "퍼센트"}:
+        return claim
+    return claim.model_copy(update={"unit": "%"})
 
 
 def _with_explicit_decrease_sign(claim: ClaimSchema, source_sentence: str) -> ClaimSchema:

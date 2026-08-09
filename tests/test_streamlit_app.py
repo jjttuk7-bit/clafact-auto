@@ -83,12 +83,12 @@ def test_single_claim_preserves_parse_review_route_without_downstream_calls(
 
     assert all(mock.call_count == 0 for mock in downstream_mocks)
     metrics = _metric_values(app)
-    assert metrics["파싱 상태"] == parse_status
-    assert metrics["판정"] == "UNDETERMINED"
-    assert metrics["경로"] == parse_status
-    assert any(element.label == "구조화 Claim 상세" for element in app.expander)
-    assert any(element.label == "Verdict 상세 JSON" for element in app.expander)
-    assert any(element.value == "검토 콘솔 전달 payload" for element in app.subheader)
+    assert metrics["파싱 상태"] == {"HOLD": "보류", "HUMAN_REVIEW": "사람 검토 필요"}[parse_status]
+    assert metrics["판정"] == "판정 보류"
+    assert metrics["경로"] == {"HOLD": "보류", "HUMAN_REVIEW": "사람 검토 필요"}[parse_status]
+    assert any(element.label == "구조화된 주장 상세" for element in app.expander)
+    assert any(element.label == "판정 상세 JSON" for element in app.expander)
+    assert any(element.value == "검토 콘솔 전달 데이터" for element in app.subheader)
     rendered_json = " ".join(str(element.value) for element in app.json)
     assert parse_status in rendered_json
     assert parse_reason in rendered_json
@@ -128,7 +128,7 @@ def test_streamlit_mvp_renders_and_holds_invalid_article_date() -> None:
     app.text_input[0].input("invalid-date")
     app.button[0].click()
     app.run()
-    assert any("HOLD: 기사 기준일은 YYYY-MM-DD 형식이어야 합니다." in element.value for element in app.error)
+    assert any("보류: 기사 기준일은 YYYY-MM-DD 형식이어야 합니다." in element.value for element in app.error)
 
 def test_streamlit_mvp_displays_openai_and_fallback_connection_status(monkeypatch) -> None:
     _set_provider_environment(
@@ -144,8 +144,8 @@ def test_streamlit_mvp_displays_openai_and_fallback_connection_status(monkeypatc
     assert app.subheader[0].value == "운영 연결 상태"
     assert _metric_values(app) == {
         "KOSIS API": "연결됨",
-        "OpenAI Function Calling": "연결됨",
-        "HCX fallback": "연결됨",
+        "OpenAI 함수 호출": "연결됨",
+        "HCX 예비 처리": "연결됨",
     }
     rendered_text = " ".join(
         [*(metric.label + metric.value for metric in app.metric), *(item.value for item in app.caption)]
@@ -168,7 +168,7 @@ def test_streamlit_mvp_preserves_hcx_primary_status(monkeypatch) -> None:
 
     assert _metric_values(app) == {
         "KOSIS API": "미설정",
-        "HCX Function Calling": "연결됨",
+        "HCX 함수 호출": "연결됨",
     }
 
 
@@ -207,8 +207,8 @@ def test_factory_value_error_is_not_reported_as_invalid_article_date(monkeypatch
         app.run()
 
     errors = [element.value for element in app.error]
-    assert "HOLD: ValueError" in errors
-    assert "HOLD: 기사 기준일은 YYYY-MM-DD 형식이어야 합니다." not in errors
+    assert "보류: ValueError" in errors
+    assert "보류: 기사 기준일은 YYYY-MM-DD 형식이어야 합니다." not in errors
 
 
 def test_single_claim_reuses_extractor_and_shows_actual_fallback_provider(monkeypatch) -> None:
@@ -253,7 +253,7 @@ def test_single_claim_reuses_extractor_and_shows_actual_fallback_provider(monkey
         app.run()
 
     assert factory_calls == 1
-    assert _metric_values(app)["실제 Claim Provider"] == "HCX"
+    assert _metric_values(app)["실제 주장 추출기"] == "HCX"
 
 
 @pytest.mark.parametrize(
@@ -304,7 +304,7 @@ def test_single_claim_normalizes_selected_provider_when_actual_provider_is_unava
         app.button[0].click()
         app.run()
 
-    assert _metric_values(app)["실제 Claim Provider"] == expected_label
+    assert _metric_values(app)["실제 주장 추출기"] == expected_label
 
 
 def test_streamlit_mvp_renders_batch_upload_control() -> None:

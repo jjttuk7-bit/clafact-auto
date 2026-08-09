@@ -35,6 +35,7 @@ from core.semantic_matcher import semantic_match
 from core.semantic_normalizer import normalize_concept
 from core.unit_normalizer import convert_value
 from core.verdict_engine import make_verdict
+from core.ui_labels import translate_status
 from core.claim_verification_service import VerificationTraceRecorder
 from core.verification_trace import attach_trace
 from schemas.candidate import KosisCandidateSchema
@@ -150,10 +151,10 @@ st.caption("KOSIS 공식값만 사용하며, 좌표·기사시점·후보가 불
 
 settings = Settings()
 st.subheader("운영 연결 상태")
-hcx_mode_label = "Function Calling" if settings.hcx_extraction_mode == "function_calling" else "Structured Output"
+hcx_mode_label = "함수 호출" if settings.hcx_extraction_mode == "function_calling" else "구조화 출력"
 if settings.claim_provider == "openai":
     is_openai_primary = True
-    primary_provider_label = "OpenAI Function Calling"
+    primary_provider_label = "OpenAI 함수 호출"
     selected_provider_display_label = "OpenAI"
     primary_provider_status = "연결됨" if settings.openai_api_key else "미설정"
 elif settings.claim_provider == "hcx":
@@ -170,7 +171,7 @@ connection_columns = st.columns(3 if is_openai_primary else 2)
 connection_columns[0].metric("KOSIS API", "연결됨" if settings.kosis_api_key else "미설정")
 connection_columns[1].metric(primary_provider_label, primary_provider_status)
 if is_openai_primary:
-    connection_columns[2].metric("HCX fallback", "연결됨" if settings.hcx_api_key else "미설정")
+    connection_columns[2].metric("HCX 예비 처리", "연결됨" if settings.hcx_api_key else "미설정")
 st.caption("키 값은 표시하거나 로그에 기록하지 않습니다.")
 
 sentence = st.text_area("검증할 뉴스 문장", placeholder="예: 2024년 전국 고용률은 70%였다.")
@@ -186,7 +187,7 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
             "openai": "OpenAI",
             "hcx": "HCX",
         }.get(actual_provider, selected_provider_display_label)
-        st.metric("실제 Claim Provider", actual_provider_label)
+        st.metric("실제 주장 추출기", actual_provider_label)
         claim = resolve_relative_time(claim, article_date)
         ui_trace = VerificationTraceRecorder(claim.claim_id).claim_parsed()
         requires_parse_review = claim.parse_status != "AUTO_OK"
@@ -218,8 +219,8 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
         claim_columns[0].metric("지표", claim.indicator or "미확정")
         claim_columns[1].metric("기사값", f"{claim.value or ''} {claim.unit or ''}".strip() or "미확정")
         claim_columns[2].metric("기준시점", claim.time or "미확정")
-        claim_columns[3].metric("파싱 상태", claim.parse_status)
-        with st.expander("구조화 Claim 상세"):
+        claim_columns[3].metric("파싱 상태", translate_status(claim.parse_status))
+        with st.expander("구조화된 주장 상세"):
             st.json({"claim": claim.model_dump(), "concept": concept.model_dump() if concept else None})
         if not requires_parse_review:
             st.subheader("KOSIS 후보")
@@ -235,52 +236,52 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
             ui_trace.verification_succeeded()
             verdict = growth_verdict
             evidence_cells = verdict.evidence_cells
-            st.subheader("Evidence 좌표")
+            st.subheader("근거 좌표")
             st.json([cell.model_dump() for cell in evidence_cells])
         elif not article_date:
             verdict = make_verdict(claim.claim_id, claim.value, [], None)
-            st.warning("HOLD: 기사 기준일이 없어 사후 개정값을 차단할 수 없습니다.")
+            st.warning("보류: 기사 기준일이 없어 사후 개정값을 차단할 수 없습니다.")
         elif not matches:
             ui_trace.hard_guard_held("NO_HARD_GUARD_CANDIDATE")
             verdict = make_verdict(claim.claim_id, claim.value, [], None)
             if has_unresolved_live_metadata(candidates):
-                st.warning("HOLD: KOSIS 표는 찾았지만 항목·분류 코드가 확정되지 않았습니다.")
+                st.warning("보류: KOSIS 표는 찾았지만 항목·분류 코드가 확정되지 않았습니다.")
             else:
-                st.warning("HOLD: Hard Guard를 통과한 KOSIS 후보가 없습니다.")
+                st.warning("보류: 필수 조건을 통과한 KOSIS 후보가 없습니다.")
         else:
             ui_trace.hard_guard_passed().semantic_matched(matches[0].route_status, matches[0].reason_code or "MATCH_ACCEPTED", matches[0].top1_top2_margin)
             best = matches[0]
             selected = next(item for item in candidates if item.tbl_id == best.candidate_tbl_id)
             cell = resolve_evidence_cell(claim, selected)
             evidence_cells = [cell]
-            st.subheader("Evidence 좌표")
+            st.subheader("근거 좌표")
             st.json(cell.model_dump())
             if best.route_status != "AUTO" or cell.status != "CONFIRMED":
                 verdict = make_verdict(claim.claim_id, claim.value, [], None)
-                st.warning(f"HOLD: {best.reason_code or cell.status}")
+                st.warning(f"보류: {best.reason_code or cell.status}")
             else:
                 official_value = _official_fetcher(settings).fetch(cell, article_date=article_date)
                 if official_value.status != "SUCCESS":
                     verdict = make_verdict(claim.claim_id, claim.value, [], None)
-                    st.warning(f"HOLD: {official_value.status}")
+                    st.warning(f"보류: {official_value.status}")
                 else:
                     calculated = calculate(CalculationPlan(calculation_type="DIRECT_VALUE", required_cells=[cell]), [official_value.value])
                     claim_unit_value = convert_value(calculated, cell.unit or "", claim.unit or "")
                     verdict = make_verdict(claim.claim_id, claim.value, [official_value.value], claim_unit_value, tolerance=0.01)
-                    st.success(f"{verdict.verdict}: KOSIS Snapshot 공식값 {official_value.value}")
+                    st.success(f"{translate_status(verdict.verdict)}: KOSIS 공식값 {official_value.value}")
 
         verdict = attach_trace(verdict, ui_trace.build())
         st.subheader("최종 판정")
         verdict_columns = st.columns(4)
-        verdict_columns[0].metric("판정", verdict.verdict)
-        verdict_columns[1].metric("경로", verdict.route_status)
+        verdict_columns[0].metric("판정", translate_status(verdict.verdict))
+        verdict_columns[1].metric("경로", translate_status(verdict.route_status))
         verdict_columns[2].metric("기사값", verdict.claim_value if verdict.claim_value is not None else "-")
         verdict_columns[3].metric("KOSIS 공식값", verdict.calculated_value if verdict.calculated_value is not None else "-")
         if verdict.execution_trace:
             with st.expander("3갈래 실행 추적"):
                 st.json(build_trace_summary(verdict.execution_trace))
         if verdict.route_status != "AUTO":
-            st.warning(f"HOLD 사유: {verdict.reason_code} — {verdict.explanation}")
+            st.warning(f"보류 사유: {verdict.reason_code} — {verdict.explanation}")
         if verdict.evidence_cells:
             st.subheader("KOSIS 공식 근거")
             st.dataframe(
@@ -296,15 +297,15 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
                     f"KOSIS 표 원문 열기: {evidence_cell.tbl_id}",
                     build_kosis_table_url(evidence_cell),
                 )
-        with st.expander("Verdict 상세 JSON"):
+        with st.expander("판정 상세 JSON"):
             st.json(verdict.model_dump())
         payload = build_review_payload(verdict)
-        st.subheader("검토 콘솔 전달 payload")
+        st.subheader("검토 콘솔 전달 데이터")
         st.json({"claim_id": payload.claim_id, "route_status": payload.route_status, "reason_code": payload.reason_code, "evidence_count": payload.evidence_count})
     except _InvalidArticleDateError:
-        st.error("HOLD: 기사 기준일은 YYYY-MM-DD 형식이어야 합니다.")
+        st.error("보류: 기사 기준일은 YYYY-MM-DD 형식이어야 합니다.")
     except Exception as error:
-        st.error(f"HOLD: {type(error).__name__}")
+        st.error(f"보류: {type(error).__name__}")
 st.divider()
 st.subheader("크롤링 뉴스 배치 검증")
 st.caption("기사형: article_id, published_at, body · 문장형: article_id, sentence · 선택 열: title, source_url · 업로드 파일은 저장하지 않습니다.")
