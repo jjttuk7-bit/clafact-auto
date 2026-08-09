@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import tomllib
 from pathlib import Path
 
@@ -29,3 +30,21 @@ def test_example_environment_documents_provider_defaults_without_credentials() -
         "CLAFACT_HCX_EXTRACTION_MODE=structured_output",
         "CLAFACT_LOG_LEVEL=INFO",
     ]
+
+
+def test_streamlit_app_uses_layout_keywords_supported_by_declared_minimum() -> None:
+    source = (PROJECT_ROOT / "app" / "streamlit_app.py").read_text(encoding="utf-8")
+    calls = [node for node in ast.walk(ast.parse(source)) if isinstance(node, ast.Call)]
+
+    assert not any(
+        isinstance(call.func, ast.Attribute)
+        and call.func.attr == "container"
+        and any(keyword.arg == "horizontal" for keyword in call.keywords)
+        for call in calls
+    )
+    assert not any(
+        isinstance(call.func, ast.Attribute)
+        and call.func.attr == "metric"
+        and any(keyword.arg == "border" for keyword in call.keywords)
+        for call in calls
+    )

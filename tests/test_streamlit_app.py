@@ -112,6 +112,45 @@ def test_streamlit_mvp_preserves_hcx_primary_status(monkeypatch) -> None:
     }
 
 
+def test_streamlit_mvp_marks_unsupported_claim_provider_as_configuration_error(monkeypatch) -> None:
+    _set_provider_environment(
+        monkeypatch,
+        claim_provider="local",
+        hcx_api_key="hcx-secret",
+        openai_api_key="openai-secret",
+    )
+    app = AppTest.from_file("app/streamlit_app.py", default_timeout=15)
+    app.run()
+
+    assert _metric_values(app) == {
+        "KOSIS API": "미설정",
+        "지원하지 않는 Provider": "설정 오류",
+    }
+
+
+def test_factory_value_error_is_not_reported_as_invalid_article_date(monkeypatch) -> None:
+    _set_provider_environment(
+        monkeypatch,
+        claim_provider="hcx",
+        hcx_api_key="hcx-secret",
+    )
+
+    with patch(
+        "core.claim_extractor_factory.create_claim_extractor",
+        side_effect=ValueError("CLAIM_PROVIDER_UNSUPPORTED"),
+    ):
+        app = AppTest.from_file("app/streamlit_app.py", default_timeout=15)
+        app.run()
+        app.text_area[0].input("2024년 전국 고용률은 70%였다.")
+        app.text_input[0].input("2025-06-26")
+        app.button[0].click()
+        app.run()
+
+    errors = [element.value for element in app.error]
+    assert "HOLD: ValueError" in errors
+    assert "HOLD: 기사 기준일은 YYYY-MM-DD 형식이어야 합니다." not in errors
+
+
 def test_single_claim_reuses_extractor_and_shows_actual_fallback_provider(monkeypatch) -> None:
     _set_provider_environment(
         monkeypatch,

@@ -85,6 +85,19 @@ def _cpi_growth_fetcher(settings: Settings) -> OfficialValueFetcher:
     )
 
 
+class _InvalidArticleDateError(ValueError):
+    """Raised only when the article date input is not ISO formatted."""
+
+
+def _parse_article_date(value: str) -> date | None:
+    if not value:
+        return None
+    try:
+        return date.fromisoformat(value)
+    except ValueError as error:
+        raise _InvalidArticleDateError from error
+
+
 def _verify_batch_claim(sentence: str, article_date: date, settings: Settings) -> VerdictSchema:
     """Run the same safe claim pipeline for one batch sentence."""
     claim = parse_claim(sentence, create_claim_extractor(settings))
@@ -138,15 +151,26 @@ st.caption("KOSIS 공식값만 사용하며, 좌표·기사시점·후보가 불
 settings = Settings()
 st.subheader("운영 연결 상태")
 hcx_mode_label = "Function Calling" if settings.hcx_extraction_mode == "function_calling" else "Structured Output"
-is_openai_primary = settings.claim_provider == "openai"
-primary_provider_label = "OpenAI Function Calling" if is_openai_primary else f"HCX {hcx_mode_label}"
-selected_provider_display_label = "OpenAI" if is_openai_primary else "HCX"
-primary_provider_configured = settings.openai_api_key if is_openai_primary else settings.hcx_api_key
-with st.container(horizontal=True):
-    st.metric("KOSIS API", "연결됨" if settings.kosis_api_key else "미설정", border=True)
-    st.metric(primary_provider_label, "연결됨" if primary_provider_configured else "미설정", border=True)
-    if is_openai_primary:
-        st.metric("HCX fallback", "연결됨" if settings.hcx_api_key else "미설정", border=True)
+if settings.claim_provider == "openai":
+    is_openai_primary = True
+    primary_provider_label = "OpenAI Function Calling"
+    selected_provider_display_label = "OpenAI"
+    primary_provider_status = "연결됨" if settings.openai_api_key else "미설정"
+elif settings.claim_provider == "hcx":
+    is_openai_primary = False
+    primary_provider_label = f"HCX {hcx_mode_label}"
+    selected_provider_display_label = "HCX"
+    primary_provider_status = "연결됨" if settings.hcx_api_key else "미설정"
+else:
+    is_openai_primary = False
+    primary_provider_label = "지원하지 않는 Provider"
+    selected_provider_display_label = "지원하지 않는 Provider"
+    primary_provider_status = "설정 오류"
+connection_columns = st.columns(3 if is_openai_primary else 2)
+connection_columns[0].metric("KOSIS API", "연결됨" if settings.kosis_api_key else "미설정")
+connection_columns[1].metric(primary_provider_label, primary_provider_status)
+if is_openai_primary:
+    connection_columns[2].metric("HCX fallback", "연결됨" if settings.hcx_api_key else "미설정")
 st.caption("키 값은 표시하거나 로그에 기록하지 않습니다.")
 
 sentence = st.text_area("검증할 뉴스 문장", placeholder="예: 2024년 전국 고용률은 70%였다.")
@@ -154,7 +178,7 @@ article_date_text = st.text_input("기사 기준일 (YYYY-MM-DD)", placeholder="
 
 if st.button("자동 검증 실행", type="primary") and sentence.strip():
     try:
-        article_date = date.fromisoformat(article_date_text) if article_date_text else None
+        article_date = _parse_article_date(article_date_text)
         extractor = create_claim_extractor(settings)
         claim = parse_claim(sentence, extractor)
         actual_provider = getattr(extractor, "last_provider", None)
@@ -262,7 +286,7 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
         payload = build_review_payload(verdict)
         st.subheader("검토 콘솔 전달 payload")
         st.json({"claim_id": payload.claim_id, "route_status": payload.route_status, "reason_code": payload.reason_code, "evidence_count": payload.evidence_count})
-    except ValueError:
+    except _InvalidArticleDateError:
         st.error("HOLD: 기사 기준일은 YYYY-MM-DD 형식이어야 합니다.")
     except Exception as error:
         st.error(f"HOLD: {type(error).__name__}")
