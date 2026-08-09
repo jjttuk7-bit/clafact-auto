@@ -35,7 +35,7 @@ flowchart TD
     A[크롤링 뉴스 파일 / 기사 입력] --> B[전처리<br/>인코딩·열 정규화<br/>제목·본문 정리<br/>광고·메뉴·중복 문구 제거]
     B --> C[문장 분할 · 수치 Claim 후보 추출]
     C --> D[Claim Split<br/>복합 수치 문장을 독립 Claim으로 분리]
-    D --> E[HCX Structured Output<br/>12 Semantic Slot Parsing]
+    D --> E[구조화 Claim 추출<br/>OpenAI 함수 호출 또는 HCX<br/>12 Semantic Slot Parsing]
     E --> F{파싱 상태}
     F -->|AUTO_OK| G[Semantic Standard Mapping]
     F -->|HOLD / HUMAN_REVIEW| R[검토 콘솔 전달 Payload]
@@ -51,9 +51,9 @@ flowchart TD
     O -->|아니오| K
     O -->|예| P[KOSIS Official Value Fetch<br/>API 또는 공식 Snapshot]
     P --> Q[Deterministic Calculation<br/>Python: 직접값·증감률·차이·비율]
-    Q --> S[Verdict<br/>MATCH / MISMATCH / UNDETERMINED]
+    Q --> S[최종 판정<br/>일치 / 불일치 / 판정 불가]
     K --> R
-    S --> T[근거 표시<br/>KOSIS 원문 링크·좌표·공식값·계산식]
+    S --> T[근거·판정 설명 표시<br/>KOSIS 원문 링크·좌표·공식값·계산식]
 
     classDef external fill:#eef6ff,stroke:#2677c9,color:#113a66;
     classDef safe fill:#fff4d6,stroke:#c98600,color:#6b4700;
@@ -63,14 +63,14 @@ flowchart TD
     class S,T result;
 ```
 
-전처리 단계는 기사 원문을 내부 데이터 계약으로 쓰지 않기 위해 입력 형식을 정리하고, 본문 속 광고·메뉴·중복 문구를 제거한 뒤 수치 Claim 후보 문장만 다음 단계로 전달합니다. 이후 LLM은 **Structured Output 또는 제한된 `emit_claim` Claim 제출에만** 사용되며, KOSIS 공식값 조회와 계산은 각각 KOSIS adapter와 Python 코드가 수행합니다.
-### HCX 구조화 출력과 `emit_claim`
+전처리 단계는 기사 원문을 내부 데이터 계약으로 쓰지 않기 위해 입력 형식을 정리하고, 본문 속 광고·메뉴·중복 문구를 제거한 뒤 수치 Claim 후보 문장만 다음 단계로 전달합니다. LLM은 엄격한 데이터 계약 안에서 Claim을 구조화할 때만 사용되며, KOSIS 공식값 조회와 계산은 각각 KOSIS adapter와 Python 코드가 수행합니다.
+### 구조화 Claim 추출: OpenAI / HCX
 
-기본 HCX 경로는 HCX-007의 `responseFormat` Structured Outputs를 사용합니다. 12개 Semantic Slot과 추적 메타데이터를 모두 필수 키로 요청하며, 문장에 없는 선택 값도 키를 생략하지 않고 명시적 `null`로 반환해야 합니다. 응답은 모든 키가 실제 존재하는 strict provider payload로 검증한 뒤 `ClaimSchema`로 변환합니다.
+`CLAFACT_CLAIM_PROVIDER` 설정으로 추출기를 선택합니다. OpenAI는 Responses API Strict Function Calling으로 하나의 `emit_claim`만 호출하며, 기술적 실패 시 HCX 키가 설정된 경우에만 HCX 예비 처리로 전환합니다.
 
-선택적으로 사용할 수 있는 Function Calling 경로는 정확히 한 개의 함수 `emit_claim`만 노출합니다. HCX 공식 사양상 Structured Outputs와 Function Calling은 한 요청에서 동시에 사용할 수 없으므로 두 경로는 상호 배타적이며, 동일한 Claim JSON Schema를 공유합니다. `emit_claim`은 Claim 인수를 제출하는 형식 경계일 뿐 Python 함수를 동적으로 실행하지 않습니다.
+HCX는 기본 `responseFormat` Structured Outputs 또는 선택형 `emit_claim` Function Calling을 사용합니다. 두 방식은 같은 요청에서 함께 쓰지 않지만, 어느 Provider든 동일한 12개 Semantic Slot `ClaimSchema`를 엄격히 검증해 반환합니다.
 
-KOSIS 검색, Hard Guard, Semantic Matching, Evidence Cell Resolution, 공식값 조회, 계산, Verdict는 Function Calling 도구로 노출되지 않으며 계속 Python 파이프라인이 직접 통제합니다.
+KOSIS 검색, Hard Guard, Semantic Matching, Evidence Cell Resolution, 공식값 조회, 계산, 최종 판정은 어떤 Provider에도 노출되지 않으며 계속 Python 파이프라인이 직접 통제합니다.
 
 - [HCX Structured Outputs 공식 문서](https://api.ncloud-docs.com/docs/clovastudio-chatcompletionsv3-so)
 - [HCX Function Calling 공식 문서](https://api.ncloud-docs.com/docs/clovastudio-chatcompletionsv3-fc)
@@ -129,7 +129,7 @@ Claim은 자연어 문장 자체가 아니라 아래 슬롯을 갖는 `ClaimSche
 
 ## 판정과 라우팅
 
-CLAFACT-AUTO는 “참/거짓” 두 가지로만 처리하지 않습니다. 자동화의 신뢰 조건을 결과에 반영합니다.
+CLAFACT-AUTO는 “참/거짓” 두 가지로만 처리하지 않습니다. 처리 경로와 함께 공식 근거 기반의 3분류 최종 결론을 기록합니다.
 
 | Route | 의미 | 예시 |
 | --- | --- | --- |
@@ -137,7 +137,16 @@ CLAFACT-AUTO는 “참/거짓” 두 가지로만 처리하지 않습니다. 자
 | `HOLD` | 자동 결론을 내릴 근거가 부족하거나 후보가 모호한 상태 | 기사 기준일 없음, Top-1/Top-2 margin 부족, 스냅샷 없음 |
 | `HUMAN_REVIEW` | 사람이 문맥 또는 해석을 검토해야 하는 상태 | 복수 해석 가능, parser/provider가 검토 필요로 표시 |
 
-검증 결과의 세부 Verdict는 공식값과 기사값의 관계에 따라 `SUPPORTED`, `REFUTED`, `MIXED`, `UNVERIFIABLE` 등으로 표현될 수 있습니다. 다만 route가 `HOLD` 또는 `HUMAN_REVIEW`이면 자동 Verdict를 운영상 확정하지 않습니다.
+최종 Verdict는 공식값과 Python 계산 결과를 비교한 `MATCH`(일치), `MISMATCH`(불일치), `UNDETERMINED`(판정 불가) 중 하나입니다. `HOLD` 또는 `HUMAN_REVIEW`는 근거 부족 또는 문맥 검토 필요를 뜻하는 처리 경로입니다.
+
+
+| Verdict | 사용자 화면 표시 | 의미 |
+| --- | --- | --- |
+| `MATCH` | 일치 | 기사값과 KOSIS 공식 근거 계산값의 차이가 허용 오차 이내 |
+| `MISMATCH` | 불일치 | 기사값과 KOSIS 공식 근거 계산값의 차이가 허용 오차를 초과 |
+| `UNDETERMINED` | 판정 불가 | 공식 근거·좌표·기사 시점·후보 조건이 부족해 자동 판정을 확정할 수 없음 |
+
+최종 판정 아래에는 자연어 설명을 표시합니다. OpenAI가 설정되어도 AI는 확정된 결론을 설명할 뿐 공식값, 계산값, 근거 좌표, 최종 판정을 변경할 수 없습니다. 설명 호출이 실패하면 동일한 결론을 설명하는 규칙 기반 문구를 표시합니다.
 
 ## 계산 엔진
 
@@ -182,6 +191,7 @@ clafact-auto/
 - Python 3.12 이상
 - KOSIS OpenAPI Key (API 조회를 사용할 경우)
 - HCX API Key (Structured Output 기반 Parser를 사용할 경우)
+- OpenAI API Key (OpenAI Function Calling 추출과 AI 판정 설명을 사용할 경우)
 
 API 키는 파일에 하드코딩하거나 로그에 남기지 않습니다. 프로젝트 루트의 `.env`에만 넣고, `.env`는 Git으로 추적하지 않습니다.
 
@@ -190,9 +200,13 @@ API 키는 파일에 하드코딩하거나 로그에 남기지 않습니다. 프
 KOSIS_API_KEY=your_kosis_api_key
 HCX_API_KEY=your_hcx_api_key
 CLAFACT_LOG_LEVEL=INFO
+OPENAI_API_KEY=your_openai_api_key
+CLAFACT_CLAIM_PROVIDER=openai
+CLAFACT_OPENAI_MODEL=gpt-5.6-luna
+CLAFACT_LLM_VERDICT_EXPLANATION_ENABLED=true
 ```
 
-`CLAFACT_LOG_LEVEL=INFO`는 일반적인 운영 로그 수준입니다. 디버깅 시 `DEBUG`로 바꿀 수 있지만, 어떤 수준에서도 API 키는 기록하지 않아야 합니다.
+`CLAFACT_CLAIM_PROVIDER`는 `openai` 또는 `hcx`를 사용합니다. `openai`를 선택하면 OpenAI가 Claim을 구조화하고, 기술적 실패 시 HCX 키가 설정된 경우에만 HCX 예비 처리로 전환합니다. `CLAFACT_LLM_VERDICT_EXPLANATION_ENABLED=true`이면 이미 Python/KOSIS로 확정된 결론을 AI가 설명하며, 실패 시 규칙 기반 설명으로 자동 전환합니다. `CLAFACT_LOG_LEVEL=INFO`는 일반적인 운영 로그 수준입니다. 디버깅 시 `DEBUG`로 바꿀 수 있지만, 어떤 수준에서도 API 키는 기록하지 않아야 합니다.
 
 ### 2. 설치
 
@@ -227,6 +241,11 @@ streamlit run app/streamlit_app.py
 - 선택된 Evidence 좌표와 공식값 조회 상태
 - 결정론적 계산 결과와 Verdict
 - `HOLD`/`HUMAN_REVIEW` 결과를 기존 검증 콘솔로 넘길 수 있는 adapter payload
+
+- OpenAI/HCX 연결 상태와 실제 주장 추출기
+- `일치`·`불일치`·`판정 불가` 3분류 결론 및 안전한 자연어 설명
+- KOSIS 공식 근거 표·원문 링크·3갈래 실행 추적
+- CSV/XLSX/JSON 크롤링 뉴스 배치 검증과 결과 XLSX 다운로드
 
 ## KOSIS 공식값과 Snapshot 정책
 
