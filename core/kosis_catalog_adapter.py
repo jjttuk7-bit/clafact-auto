@@ -63,3 +63,20 @@ def hydrate_candidate(
             "metadata_status": "OFFICIAL_ITEM_METADATA_READY",
         }
     )
+
+def hydrate_candidates_from_official_metadata(
+    candidates: Iterable[KosisCandidateSchema],
+    fetch_item_metadata: Callable[[str, str], Iterable[Mapping[str, object]]],
+) -> list[KosisCandidateSchema]:
+    """Refresh KOSIS item/axis metadata; leave a candidate unchanged on fetch failure."""
+    hydrated: list[KosisCandidateSchema] = []
+    for candidate in candidates:
+        try:
+            structure = normalize_item_metadata(
+                fetch_item_metadata(candidate.org_id, candidate.tbl_id),
+                table_id=candidate.tbl_id,
+            )
+            hydrated.append(hydrate_candidate(candidate, structure))
+        except (RuntimeError, TypeError, ValueError):
+            hydrated.append(candidate)
+    return hydrated

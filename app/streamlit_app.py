@@ -26,6 +26,7 @@ from core.kosis_fetcher import OfficialValueFetcher
 from core.cpi_growth_resolver import resolve_cpi_growth_plan
 from core.growth_verdict import make_cpi_growth_verdict
 from core.kosis_live_catalog import KosisLiveCatalogSearch
+from core.catalog_metadata_refresh import refresh_item_metadata
 from core.kosis_api_adapter import build_kosis_api_lookup
 from config.settings import Settings
 from core.review_handoff import build_review_payload
@@ -61,7 +62,8 @@ def _find_catalog_candidates(
         search_semantic_catalog(claim, concept, load_kosis_catalog(CATALOG_PATH)),
     )
     live_search = KosisLiveCatalogSearch(settings.kosis_api_key) if settings.kosis_api_key else None
-    return discover_catalog_candidates(claim, concept, local, live_search)
+    discovered = discover_catalog_candidates(claim, concept, local, live_search)
+    return refresh_item_metadata(discovered, settings.kosis_api_key)
 
 
 def _official_fetcher(settings: Settings) -> OfficialValueFetcher:

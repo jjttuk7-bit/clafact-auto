@@ -35,3 +35,36 @@ def test_hydrate_candidate_replaces_catalog_items_with_official_codes() -> None:
     assert hydrated.dimension_names == ['지역']
     assert hydrated.unit_names == ['%']
     assert hydrated.metadata_status == 'OFFICIAL_ITEM_METADATA_READY'
+
+def test_hydrate_candidates_uses_official_itm_metadata_before_matching() -> None:
+    from core.kosis_catalog_adapter import hydrate_candidates_from_official_metadata
+    from schemas.candidate import KosisCandidateSchema
+
+    candidate = KosisCandidateSchema(
+        org_id='101', tbl_id='DT', tbl_name='고용', core_item_ids=['OLD'],
+        core_item_names=['기존'], dimension_ids=['OLD_DIM'],
+        dimension_names=['기존분류'], unit_names=['명'],
+        metadata_status='STRUCTURAL_READY',
+    )
+
+    hydrated = hydrate_candidates_from_official_metadata(
+        [candidate],
+        lambda org_id, table_id: [
+            {'ORG_ID': org_id, 'TBL_ID': table_id, 'OBJ_ID': 'C1', 'OBJ_NM': '지역', 'ITM_ID': 'T1', 'ITM_NM': '고용률', 'UNIT_NM': '%'},
+        ],
+    )
+
+    assert hydrated[0].core_item_ids == ['T1']
+    assert hydrated[0].dimension_ids == ['C1']
+
+
+def test_hydrate_candidates_preserves_candidate_when_official_metadata_fails() -> None:
+    from core.kosis_catalog_adapter import hydrate_candidates_from_official_metadata
+    from schemas.candidate import KosisCandidateSchema
+
+    candidate = KosisCandidateSchema(org_id='101', tbl_id='DT', tbl_name='고용', metadata_status='STRUCTURAL_READY')
+    hydrated = hydrate_candidates_from_official_metadata(
+        [candidate], lambda _org_id, _table_id: (_ for _ in ()).throw(RuntimeError('unavailable'))
+    )
+
+    assert hydrated == [candidate]
