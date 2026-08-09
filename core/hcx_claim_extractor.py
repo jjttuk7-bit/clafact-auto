@@ -13,6 +13,7 @@ SYSTEM_PROMPT = (
     "You extract one Korean numerical news claim. Return JSON strictly matching the provided schema. "
     "For a single clear historical level, set calculation DIRECT_VALUE. "
     "For an explicit year-on-year or same-month-last-year percentage change, set calculation GROWTH_RATE. "
+    "For an explicit decrease, fall, decline, or 하락, return value as a negative number; an increase is positive. "
     "For a sentence containing 복수 independent indicator/value claims, set parse_status HUMAN_REVIEW; do not choose one. "
     "Use HUMAN_REVIEW only for forecast, ambiguity, or genuinely missing essential context. "
     "Populate indicator, value, unit, time, frequency, and region when stated."
