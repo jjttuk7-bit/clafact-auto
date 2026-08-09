@@ -174,3 +174,34 @@ def test_hcx_extractor_restores_month_frequency_from_structured_time(monkeypatch
     result = HcxClaimExtractor(api_key="test-key").extract("2025년 3월 취업자 수는 2858만9000명이었다.")
 
     assert result.frequency == "월"
+
+
+def test_hcx_extractor_does_not_convert_required_claim_id_to_none(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A blank model identifier is normalized by parse_claim, never hidden as None."""
+    class FakeResponse:
+        def read(self) -> bytes:
+            return json.dumps(
+                {"result": {"message": {"content": json.dumps({
+                    "claim_id": "",
+                    "source_sentence": "10월 소비자물가는 2.4% 상승했다.",
+                    "indicator": "소비자물가",
+                    "value": 2.4,
+                    "unit": "%",
+                    "time": "2025년 10월",
+                    "parse_status": "AUTO_OK",
+                })}}}
+            ).encode()
+
+        def __enter__(self) -> "FakeResponse":
+            return self
+
+        def __exit__(self, exc_type: object, exc_value: object, traceback: object) -> None:
+            return None
+
+    monkeypatch.setattr("core.hcx_claim_extractor.urlopen", lambda *args, **kwargs: FakeResponse())
+
+    extracted = HcxClaimExtractor(api_key="test-key").extract("10월 소비자물가는 2.4% 상승했다.")
+    parsed = parse_claim("10월 소비자물가는 2.4% 상승했다.", FakeStructuredExtractor(extracted))
+
+    assert extracted.claim_id == ""
+    assert parsed.claim_id.startswith("claim_")

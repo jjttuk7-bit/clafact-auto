@@ -74,7 +74,11 @@ class HcxClaimExtractor:
         content = payload["result"]["message"]["content"].strip()
         content = content.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
         claim = ClaimSchema.model_validate_json(content)
-        blank_fields = {key: None for key, value in claim.model_dump().items() if value == ""}
+        blank_fields = {
+            key: None
+            for key, value in claim.model_dump().items()
+            if value == "" and key not in {"claim_id", "source_sentence", "parse_status"}
+        }
         if claim.frequency and claim.frequency.casefold() not in {"monthly", "month", "yearly", "year", "annual", "월", "년", "분기"}:
             blank_fields["frequency"] = None
         normalized_frequency = _frequency_from_time(claim.time)

@@ -12,6 +12,7 @@ if str(PROJECT_ROOT) not in sys.path:
 import streamlit as st
 
 from core.batch_verifier import export_batch_xlsx, load_articles, verify_articles
+from core.claim_parser import parse_claim
 from core.calculator import calculate
 from core.catalog_binding import apply_catalog_binding
 from core.catalog_search import search_semantic_catalog
@@ -39,7 +40,7 @@ SNAPSHOT_PATHS = [
 
 def _verify_batch_claim(sentence: str, article_date: date, settings: Settings) -> VerdictSchema:
     """Run the same safe claim pipeline for one batch sentence."""
-    claim = HcxClaimExtractor().extract(sentence)
+    claim = parse_claim(sentence, HcxClaimExtractor())
     if claim.parse_status != "AUTO_OK":
         return make_verdict(claim.claim_id, claim.value, [], None).model_copy(
             update={
@@ -89,7 +90,7 @@ article_date_text = st.text_input("기사 기준일 (YYYY-MM-DD)", placeholder="
 if st.button("자동 검증 실행", type="primary") and sentence.strip():
     try:
         article_date = date.fromisoformat(article_date_text) if article_date_text else None
-        claim = HcxClaimExtractor().extract(sentence)
+        claim = parse_claim(sentence, HcxClaimExtractor())
         concept = normalize_concept(claim, load_standard_concepts(STANDARD_PATH))
         candidates = apply_catalog_binding(claim, concept, search_semantic_catalog(claim, concept, load_kosis_catalog(CATALOG_PATH)))
         matches = semantic_match(claim, candidates)
