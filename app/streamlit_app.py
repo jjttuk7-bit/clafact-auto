@@ -30,6 +30,7 @@ from core.catalog_metadata_refresh import refresh_item_metadata
 from core.kosis_api_adapter import build_kosis_api_lookup
 from config.settings import Settings
 from core.review_handoff import build_review_payload
+from core.trace_presentation import build_trace_summary
 from core.semantic_matcher import semantic_match
 from core.semantic_normalizer import normalize_concept
 from core.unit_normalizer import convert_value
@@ -204,6 +205,9 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
         verdict_columns[1].metric("경로", verdict.route_status)
         verdict_columns[2].metric("기사값", verdict.claim_value if verdict.claim_value is not None else "-")
         verdict_columns[3].metric("KOSIS 공식값", verdict.calculated_value if verdict.calculated_value is not None else "-")
+        if verdict.execution_trace:
+            with st.expander("3갈래 실행 추적"):
+                st.json(build_trace_summary(verdict.execution_trace))
         if verdict.route_status != "AUTO":
             st.warning(f"HOLD 사유: {verdict.reason_code} — {verdict.explanation}")
         if verdict.evidence_cells:
