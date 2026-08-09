@@ -27,7 +27,7 @@ def resolve_cpi_growth_plan(claim: ClaimSchema) -> CpiGrowthPlan | None:
     if claim.parse_status != "AUTO_OK" or claim.calculation != "GROWTH_RATE" or claim.unit != "%":
         return None
     period = _month_key(claim.time)
-    profile = _profiles().get(_normalize(claim.indicator))
+    profile = _profile_for_indicator(claim.indicator)
     if period is None or profile is None:
         return None
     current_period = f"{period[0]:04d}{period[1]:02d}"
@@ -56,6 +56,18 @@ def _cell(profile: dict[str, object], period: str) -> EvidenceCellSchema:
         canonical_key=key,
         status="CONFIRMED",
     )
+
+
+def _profile_for_indicator(indicator: str | None) -> dict[str, object] | None:
+    """Resolve approved news-label suffixes without fuzzy item matching."""
+    normalized = _normalize(indicator)
+    profiles = _profiles()
+    if normalized in profiles:
+        return profiles[normalized]
+    for suffix in ("소비자물가지수", "소비자물가", "물가지수", "물가", "가격"):
+        if normalized.endswith(suffix):
+            return profiles.get(normalized.removesuffix(suffix))
+    return None
 
 
 @lru_cache(maxsize=1)

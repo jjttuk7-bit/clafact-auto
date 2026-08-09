@@ -79,3 +79,10 @@ def test_makes_auto_verdict_from_registered_cpi_growth_plan() -> None:
 
 def test_returns_none_when_claim_has_no_registered_growth_coordinate() -> None:
     assert make_cpi_growth_verdict(_claim(indicator="가공식품"), date(2025, 11, 4), OfficialValueFetcher([])) is None
+
+
+def test_resolves_registered_cpi_item_alias_without_fuzzy_matching() -> None:
+    plan = resolve_cpi_growth_plan(_claim(indicator="배추 물가"))
+
+    assert plan is not None
+    assert plan.calculation_plan.required_cells[0].dimension_codes["C2"] == "A02A01701"
