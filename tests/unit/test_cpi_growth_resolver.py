@@ -35,6 +35,10 @@ def test_resolves_registered_cpi_item_to_current_and_prior_year_cells() -> None:
     assert plan.candidate.tbl_id == "DT_1J22112"
     assert plan.candidate.metadata_status == "REGISTERED_OFFICIAL_COORDINATE"
     assert plan.candidate.core_item_names == ["배추"]
+    assert plan.concept.status == "MATCHED"
+    assert plan.concept.canonical_name == "배추 소비자물가지수"
+    assert plan.concept.matched_alias == "배추"
+    assert plan.concept.standard_key == "cpi_detail:A02A01701"
 
 
 def test_growth_plan_uses_python_calculation_for_two_official_values() -> None:

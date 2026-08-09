@@ -24,6 +24,12 @@ def test_settings_reads_hcx_api_key_only_from_environment(monkeypatch) -> None:
     assert Settings().hcx_api_key == "test-hcx-key"
 
 
+def test_settings_reads_hcx_extraction_mode_from_environment(monkeypatch) -> None:
+    monkeypatch.setenv("CLAFACT_HCX_EXTRACTION_MODE", "function_calling")
+
+    assert Settings().hcx_extraction_mode == "function_calling"
+
+
 def test_load_environment_file_reads_missing_values_without_overwriting_os_environment(tmp_path, monkeypatch) -> None:
     environment_file = tmp_path / ".env"
     environment_file.write_text("KOSIS_API_KEY=file-key\nHCX_API_KEY=file-hcx\n", encoding="utf-8")

@@ -54,6 +54,10 @@ class PipelineTraceSchema(BaseModel):
         event = PipelineTraceEvent(stage=stage, status="PASS", output_ref=output_ref)
         return self.model_copy(update={"events": [*self.events, event]})
 
+    def skip_stage(self, stage: PipelineStageName, reason_code: str) -> "PipelineTraceSchema":
+        event = PipelineTraceEvent(stage=stage, status="SKIPPED", reason_code=reason_code)
+        return self.model_copy(update={"events": [*self.events, event]})
+
     def hold(self, stage: PipelineStageName, reason_code: str) -> "PipelineTraceSchema":
         event = PipelineTraceEvent(stage=stage, status="HOLD", reason_code=reason_code)
         return self.model_copy(update={"route_status": "HOLD", "events": [*self.events, event]})

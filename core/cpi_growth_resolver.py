@@ -11,6 +11,7 @@ from pathlib import Path
 from schemas.candidate import KosisCandidateSchema
 from schemas.claim import ClaimSchema
 from schemas.evidence import CalculationPlan, EvidenceCellSchema
+from schemas.concept import StandardConceptSchema
 
 _PROFILE_PATH = Path(__file__).resolve().parents[1] / "data" / "semantic_standard" / "cpi_detail_growth_profiles.json"
 
@@ -22,6 +23,7 @@ class CpiGrowthPlan:
     calculation_plan: CalculationPlan
     candidate: KosisCandidateSchema
     dataset_version: str
+    concept: StandardConceptSchema
 
 
 def resolve_cpi_growth_plan(claim: ClaimSchema) -> CpiGrowthPlan | None:
@@ -42,8 +44,22 @@ def resolve_cpi_growth_plan(claim: ClaimSchema) -> CpiGrowthPlan | None:
     return CpiGrowthPlan(
         calculation_plan=CalculationPlan(calculation_type="GROWTH_RATE", required_cells=cells),
         candidate=_candidate(profile),
+        concept=_concept(profile, claim.indicator),
         dataset_version=_dataset_version(),
     )
+
+def _concept(profile: dict[str, object], matched_alias: str | None) -> StandardConceptSchema:
+    """Expose the registered CPI item through the standard semantic contract."""
+    indicator = str(profile["indicator"])
+    item_code = str(dict(profile["dimension_codes"])["C2"])  # type: ignore[arg-type]
+    return StandardConceptSchema(
+        concept_id=f"CPI_DETAIL:{item_code}",
+        canonical_name=f"{indicator} 소비자물가지수",
+        standard_key=f"cpi_detail:{item_code}",
+        matched_alias=matched_alias,
+        status="MATCHED",
+    )
+
 
 
 def _candidate(profile: dict[str, object]) -> KosisCandidateSchema:

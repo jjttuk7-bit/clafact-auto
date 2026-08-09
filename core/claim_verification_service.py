@@ -53,6 +53,12 @@ class VerificationTraceRecorder:
         )
     def registered_growth_profile_matched(self) -> 'VerificationTraceRecorder':
         """Record the strict registered-profile guard used for derived CPI growth claims."""
+        self._trace = self._trace.skip_stage(
+            'SEMANTIC_MAPPING', 'REGISTERED_PROFILE_BYPASS'
+        )
+        self._trace = self._trace.skip_stage(
+            'CATALOG_SEARCH', 'REGISTERED_PROFILE_BYPASS'
+        )
         self._trace = self._trace.pass_stage(
             'HARD_GUARD', output_ref='registered_growth_profile'
         )

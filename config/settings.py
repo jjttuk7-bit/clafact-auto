@@ -30,6 +30,7 @@ class Settings:
     kosis_api_key: str | None = None
     hcx_api_key: str | None = None
     log_level: str = "INFO"
+    hcx_extraction_mode: str = "structured_output"
     dataset_version: str = "unversioned"
     preprocess_version: str = "1.0"
     claim_schema_version: str = "1.0"
@@ -46,3 +47,9 @@ class Settings:
             object.__setattr__(self, "hcx_api_key", getenv("HCX_API_KEY"))
         if self.log_level == "INFO":
             object.__setattr__(self, "log_level", getenv("CLAFACT_LOG_LEVEL", "INFO"))
+        if self.hcx_extraction_mode == "structured_output":
+            object.__setattr__(
+                self,
+                "hcx_extraction_mode",
+                getenv("CLAFACT_HCX_EXTRACTION_MODE", "structured_output").strip().casefold(),
+            )

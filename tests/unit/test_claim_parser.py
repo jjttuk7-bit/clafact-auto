@@ -44,6 +44,26 @@ def test_parse_claim_preserves_the_original_source_sentence() -> None:
     assert result.source_sentence == "2024년 고용률은 70%였다."
 
 
+def test_parse_claim_derives_explicit_year_over_year_comparison() -> None:
+    result = parse_claim(
+        "2025년 10월 배추 물가는 전년 동월 대비 34.5% 하락했다.",
+        FakeStructuredExtractor(
+            auto_claim(
+                indicator="배추 물가",
+                value=-34.5,
+                time="2025년 10월",
+                comparison=None,
+                calculation="GROWTH_RATE",
+            )
+        ),
+    )
+
+    assert result.comparison == {
+        "type": "YEAR_OVER_YEAR",
+        "reference_period": "전년 동월",
+    }
+
+
 def test_parse_claim_generates_stable_claim_id_from_source() -> None:
     extractor = FakeStructuredExtractor(auto_claim())
 

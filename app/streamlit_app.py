@@ -13,6 +13,7 @@ import streamlit as st
 
 from core.batch_verifier import export_batch_xlsx, load_articles, verify_articles
 from core.claim_parser import parse_claim
+from core.claim_extractor_factory import create_claim_extractor
 from core.claim_time_resolver import resolve_relative_time
 from core.calculator import calculate
 from core.catalog_binding import apply_catalog_binding
@@ -21,7 +22,6 @@ from core.catalog_search import search_semantic_catalog
 from core.data_loader import load_kosis_catalog, load_standard_concepts
 from core.evidence_resolver import resolve_evidence_cell
 from core.evidence_presentation import build_evidence_rows, build_kosis_table_url
-from core.hcx_claim_extractor import HcxClaimExtractor
 from core.kosis_fetcher import OfficialValueFetcher
 from core.cpi_growth_resolver import resolve_cpi_growth_plan
 from core.growth_verdict import make_cpi_growth_verdict
@@ -87,7 +87,7 @@ def _cpi_growth_fetcher(settings: Settings) -> OfficialValueFetcher:
 
 def _verify_batch_claim(sentence: str, article_date: date, settings: Settings) -> VerdictSchema:
     """Run the same safe claim pipeline for one batch sentence."""
-    claim = parse_claim(sentence, HcxClaimExtractor())
+    claim = parse_claim(sentence, create_claim_extractor(settings))
     claim = resolve_relative_time(claim, article_date)
     recorder = VerificationTraceRecorder(claim.claim_id).claim_parsed()
     if claim.parse_status != "AUTO_OK":
@@ -98,11 +98,11 @@ def _verify_batch_claim(sentence: str, article_date: date, settings: Settings) -
                 "explanation": "Claim parsing requires human review.",
             }
         )
-    recorder.concept_mapped()
     growth_verdict = make_cpi_growth_verdict(claim, article_date, _cpi_growth_fetcher(settings))
     if growth_verdict is not None:
         recorder.registered_growth_profile_matched().verification_succeeded()
         return attach_trace(growth_verdict, recorder.build())
+    recorder.concept_mapped()
     concept = normalize_concept(claim, load_standard_concepts(STANDARD_PATH))
     candidates = _find_catalog_candidates(claim, concept, settings)
     recorder.catalog_searched()
@@ -139,7 +139,8 @@ settings = Settings()
 st.subheader("운영 연결 상태")
 connection_columns = st.columns(2)
 connection_columns[0].metric("KOSIS API", "연결됨" if settings.kosis_api_key else "미설정")
-connection_columns[1].metric("HCX Structured Output", "연결됨" if settings.hcx_api_key else "미설정")
+hcx_mode_label = "Function Calling" if settings.hcx_extraction_mode == "function_calling" else "Structured Output"
+connection_columns[1].metric(f"HCX {hcx_mode_label}", "연결됨" if settings.hcx_api_key else "미설정")
 st.caption("키 값은 표시하거나 로그에 기록하지 않습니다.")
 
 sentence = st.text_area("검증할 뉴스 문장", placeholder="예: 2024년 전국 고용률은 70%였다.")
@@ -148,14 +149,17 @@ article_date_text = st.text_input("기사 기준일 (YYYY-MM-DD)", placeholder="
 if st.button("자동 검증 실행", type="primary") and sentence.strip():
     try:
         article_date = date.fromisoformat(article_date_text) if article_date_text else None
-        claim = parse_claim(sentence, HcxClaimExtractor())
+        claim = parse_claim(sentence, create_claim_extractor(settings))
         claim = resolve_relative_time(claim, article_date)
         ui_trace = VerificationTraceRecorder(claim.claim_id).claim_parsed()
         growth_plan = resolve_cpi_growth_plan(claim)
         growth_verdict = make_cpi_growth_verdict(claim, article_date, _cpi_growth_fetcher(settings)) if article_date else None
-        concept = None if growth_verdict is not None else normalize_concept(claim, load_standard_concepts(STANDARD_PATH))
+        concept = growth_plan.concept if growth_plan is not None else normalize_concept(claim, load_standard_concepts(STANDARD_PATH))
         candidates = [growth_plan.candidate] if growth_plan is not None else _find_catalog_candidates(claim, concept, settings)
-        ui_trace.concept_mapped().catalog_searched()
+        if growth_plan is not None:
+            ui_trace.registered_growth_profile_matched()
+        else:
+            ui_trace.concept_mapped().catalog_searched()
         matches = semantic_match(claim, candidates)
 
         st.subheader("기사 주장")
@@ -175,7 +179,7 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
         official_value = None
         evidence_cells = []
         if growth_verdict is not None:
-            ui_trace.registered_growth_profile_matched().verification_succeeded()
+            ui_trace.verification_succeeded()
             verdict = growth_verdict
             evidence_cells = verdict.evidence_cells
             st.subheader("Evidence 좌표")
