@@ -100,3 +100,14 @@ def test_load_articles_accepts_sentence_level_crawler_columns_with_default_date(
 def test_load_articles_requires_date_when_sentence_file_has_no_article_date() -> None:
     with pytest.raises(ValueError, match="BATCH_ARTICLE_DATE_REQUIRED"):
         load_articles("crawler.csv", b"article_id,sentence\nA00006,2024 data\n")
+
+
+def test_load_articles_accepts_cp949_semicolon_file_without_article_id() -> None:
+    articles = load_articles(
+        "crawler.csv",
+        "제목;내용\n고용;2025년 3월 취업자 수는 2858만9000명이었다.\n".encode("cp949"),
+        default_published_at=date(2025, 4, 9),
+    )
+
+    assert articles[0].article_id == "row-000001"
+    assert articles[0].body == "2025년 3월 취업자 수는 2858만9000명이었다."

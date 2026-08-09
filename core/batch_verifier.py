@@ -74,7 +74,11 @@ def load_articles(filename: str, content: bytes, *, default_published_at: date |
     """Decode an uploaded CSV, JSON, or XLSX in memory and normalize known crawler columns."""
     suffix = filename.lower().rsplit(".", 1)[-1] if "." in filename else ""
     rows = [_canonicalize_row(row) for row in _read_rows(suffix, content)]
-    if not rows or not {"article_id", "body"}.issubset(rows[0]):
+    for index, row in enumerate(rows, start=1):
+        row.setdefault("article_id", f"row-{index:06d}")
+        if "body" not in row and _optional_text(row.get("title")):
+            row["body"] = row["title"]
+    if not rows or not all(_optional_text(row.get("body")) for row in rows):
         raise ValueError("BATCH_REQUIRED_COLUMNS")
     if any(_optional_text(row.get("published_at")) is None for row in rows) and default_published_at is None:
         raise ValueError("BATCH_ARTICLE_DATE_REQUIRED")
@@ -134,7 +138,12 @@ def export_batch_xlsx(result: BatchVerificationResult) -> bytes:
 
 def _read_rows(suffix: str, content: bytes) -> list[dict[str, Any]]:
     if suffix == "csv":
-        return [dict(row) for row in csv.DictReader(io.StringIO(content.decode("utf-8-sig")))]
+        text = _decode_csv(content)
+        try:
+            dialect = csv.Sniffer().sniff(text[:4096], delimiters=",;\\t|")
+        except csv.Error:
+            dialect = csv.excel
+        return [dict(row) for row in csv.DictReader(io.StringIO(text), dialect=dialect)]
     if suffix == "json":
         payload = json.loads(content.decode("utf-8"))
         if not isinstance(payload, list) or not all(isinstance(row, dict) for row in payload):
@@ -154,11 +163,19 @@ def _read_rows(suffix: str, content: bytes) -> list[dict[str, Any]]:
 _COLUMN_ALIASES = {
     "article_id": ("article_id", "articleid", "id", "기사id", "기사_id"),
     "published_at": ("published_at", "publisheddate", "article_date", "date", "기사일", "기사날짜", "발행일"),
-    "body": ("body", "content", "sentence", "text", "본문", "문장", "기사본문"),
+    "body": ("body", "content", "sentence", "text", "본문", "문장", "기사본문", "내용", "기사내용", "뉴스본문", "claim", "claimtext"),
     "title": ("title", "headline", "제목"),
     "source_url": ("source_url", "url", "link", "원문url", "기사url"),
 }
 
+
+def _decode_csv(content: bytes) -> str:
+    for encoding in ("utf-8-sig", "cp949"):
+        try:
+            return content.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    raise ValueError("BATCH_FILE_ENCODING")
 
 def _canonicalize_row(row: dict[str, Any]) -> dict[str, Any]:
     normalized = {_normalize_header(key): value for key, value in row.items()}
