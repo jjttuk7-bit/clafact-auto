@@ -174,6 +174,11 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
         official_value = None
         evidence_cells = []
         if growth_verdict is not None:
+            if matches:
+                ui_trace.hard_guard_passed().semantic_matched(matches[0].route_status, matches[0].reason_code or "MATCH_ACCEPTED", matches[0].top1_top2_margin)
+                ui_trace.verification_succeeded()
+            else:
+                ui_trace.hard_guard_held("NO_HARD_GUARD_CANDIDATE")
             verdict = growth_verdict
             evidence_cells = verdict.evidence_cells
             st.subheader("Evidence 좌표")

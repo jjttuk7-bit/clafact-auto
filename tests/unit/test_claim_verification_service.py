@@ -26,3 +26,24 @@ def test_trace_recorder_records_hard_guard_hold_and_match_margin() -> None:
     assert trace.events[-2].status == 'HOLD'
     assert trace.events[-1].stage == 'SEMANTIC_MATCH'
     assert trace.events[-1].output_ref == 'margin=0.42'
+
+
+def test_trace_recorder_records_complete_success_path() -> None:
+    trace = (
+        VerificationTraceRecorder("c1")
+        .claim_parsed()
+        .concept_mapped()
+        .catalog_searched()
+        .hard_guard_passed()
+        .semantic_matched("AUTO", "MATCH_ACCEPTED", 1.0)
+        .verification_succeeded()
+        .build()
+    )
+
+    assert [event.stage for event in trace.events[-4:]] == [
+        "EVIDENCE_CELL",
+        "OFFICIAL_VALUE_FETCH",
+        "CALCULATION",
+        "VERDICT",
+    ]
+    assert all(event.status == "PASS" for event in trace.events[-4:])

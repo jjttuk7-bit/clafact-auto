@@ -42,3 +42,12 @@ class VerificationTraceRecorder:
         else:
             self._trace = self._trace.hold('SEMANTIC_MATCH', reason_code)
         return self
+
+    def verification_succeeded(self) -> 'VerificationTraceRecorder':
+        """Record the evidence, official fetch, calculation, and verdict success stages."""
+        return (
+            self.evidence_confirmed()
+            .official_value_fetched()
+            .calculation_completed()
+            .verdict_completed()
+        )
