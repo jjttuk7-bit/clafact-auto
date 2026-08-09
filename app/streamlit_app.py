@@ -140,6 +140,7 @@ st.subheader("운영 연결 상태")
 hcx_mode_label = "Function Calling" if settings.hcx_extraction_mode == "function_calling" else "Structured Output"
 is_openai_primary = settings.claim_provider == "openai"
 primary_provider_label = "OpenAI Function Calling" if is_openai_primary else f"HCX {hcx_mode_label}"
+selected_provider_display_label = "OpenAI" if is_openai_primary else "HCX"
 primary_provider_configured = settings.openai_api_key if is_openai_primary else settings.hcx_api_key
 with st.container(horizontal=True):
     st.metric("KOSIS API", "연결됨" if settings.kosis_api_key else "미설정", border=True)
@@ -160,7 +161,7 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
         actual_provider_label = {
             "openai": "OpenAI",
             "hcx": "HCX",
-        }.get(actual_provider, primary_provider_label)
+        }.get(actual_provider, selected_provider_display_label)
         st.metric("실제 Claim Provider", actual_provider_label)
         claim = resolve_relative_time(claim, article_date)
         ui_trace = VerificationTraceRecorder(claim.claim_id).claim_parsed()

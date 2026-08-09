@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
 from streamlit.testing.v1 import AppTest
 
 from schemas.claim import ClaimSchema
@@ -154,6 +155,58 @@ def test_single_claim_reuses_extractor_and_shows_actual_fallback_provider(monkey
 
     assert factory_calls == 1
     assert _metric_values(app)["실제 Claim Provider"] == "HCX"
+
+
+@pytest.mark.parametrize(
+    ("claim_provider", "last_provider", "expected_label"),
+    [
+        ("openai", None, "OpenAI"),
+        ("hcx", "unexpected-provider", "HCX"),
+    ],
+)
+def test_single_claim_normalizes_selected_provider_when_actual_provider_is_unavailable(
+    monkeypatch,
+    claim_provider: str,
+    last_provider: str | None,
+    expected_label: str,
+) -> None:
+    _set_provider_environment(
+        monkeypatch,
+        claim_provider=claim_provider,
+        hcx_api_key="hcx-secret",
+        openai_api_key="openai-secret",
+        hcx_extraction_mode="function_calling",
+    )
+
+    class FakeDirectExtractor:
+        def extract(self, source_sentence: str) -> ClaimSchema:
+            return ClaimSchema(
+                claim_id="temporary",
+                source_sentence=source_sentence,
+                indicator="고용률",
+                value=70,
+                unit="%",
+                time="2024",
+                parse_status="AUTO_OK",
+            )
+
+    extractor = FakeDirectExtractor()
+    if last_provider is not None:
+        extractor.last_provider = last_provider
+
+    with patch(
+        "core.claim_extractor_factory.create_claim_extractor",
+        return_value=extractor,
+    ):
+        app = AppTest.from_file("app/streamlit_app.py", default_timeout=15)
+        app.run()
+        app.text_area[0].input("2024년 전국 고용률은 70%였다.")
+        app.text_input[0].input("2025-06-26")
+        app.button[0].click()
+        app.run()
+
+    assert _metric_values(app)["실제 Claim Provider"] == expected_label
+
 
 def test_streamlit_mvp_renders_batch_upload_control() -> None:
     app = AppTest.from_file("app/streamlit_app.py")
