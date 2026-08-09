@@ -9,6 +9,16 @@ from urllib.request import Request, urlopen
 from schemas.claim import ClaimSchema
 
 
+SYSTEM_PROMPT = (
+    "You extract one Korean numerical news claim. Return JSON strictly matching the provided schema. "
+    "For a single clear historical level, set calculation DIRECT_VALUE. "
+    "For an explicit year-on-year or same-month-last-year percentage change, set calculation GROWTH_RATE. "
+    "For a sentence containing 복수 independent indicator/value claims, set parse_status HUMAN_REVIEW; do not choose one. "
+    "Use HUMAN_REVIEW only for forecast, ambiguity, or genuinely missing essential context. "
+    "Populate indicator, value, unit, time, frequency, and region when stated."
+)
+
+
 class HcxClaimExtractor:
     def __init__(self, api_key: str | None = None, model: str = "HCX-007") -> None:
         self.api_key = api_key or os.getenv("HCX_API_KEY") or _dotenv_value("HCX_API_KEY")
@@ -22,13 +32,7 @@ class HcxClaimExtractor:
             "messages": [
                 {
                     "role": "system",
-                    "content": (
-                        "You extract one Korean numerical news claim. For clear historical claims "
-                        "populate indicator, value, unit, time, frequency, region when stated, "
-                        "calculation DIRECT_VALUE, and parse_status AUTO_OK. Use HUMAN_REVIEW "
-                        "only for forecast, ambiguity, or genuinely missing essential context. "
-                        "Return JSON strictly matching the provided schema."
-                    ),
+                    "content": SYSTEM_PROMPT,
                 },
                 {"role": "user", "content": sentence},
             ],

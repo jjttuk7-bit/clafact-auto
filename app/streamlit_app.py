@@ -22,6 +22,7 @@ from core.data_loader import load_kosis_catalog, load_standard_concepts
 from core.evidence_resolver import resolve_evidence_cell
 from core.hcx_claim_extractor import HcxClaimExtractor
 from core.kosis_fetcher import OfficialValueFetcher
+from core.growth_verdict import make_cpi_growth_verdict
 from core.kosis_live_catalog import KosisLiveCatalogSearch
 from core.kosis_api_adapter import build_kosis_api_lookup
 from config.settings import Settings
@@ -43,6 +44,7 @@ SNAPSHOT_PATHS = [
     DATA_ROOT / "kosis_snapshots" / "goldset_pilot.json",
     DATA_ROOT / "kosis_snapshots" / "official_goldset_asof_v3.json",
     DATA_ROOT / "kosis_snapshots" / "official_cpi_202510.json",
+    DATA_ROOT / "kosis_snapshots" / "official_goldset_v3_news_b023.json",
 ]
 
 def _find_catalog_candidates(
@@ -60,6 +62,12 @@ def _find_catalog_candidates(
     return discover_catalog_candidates(claim, concept, local, live_search)
 
 
+def _official_fetcher(settings: Settings) -> OfficialValueFetcher:
+    """Build the read-only official-value fetcher without exposing credentials."""
+    api_lookup = build_kosis_api_lookup(settings.kosis_api_key) if settings.kosis_api_key else None
+    return OfficialValueFetcher(SNAPSHOT_PATHS, api_lookup=api_lookup, prefer_api=api_lookup is not None)
+
+
 def _verify_batch_claim(sentence: str, article_date: date, settings: Settings) -> VerdictSchema:
     """Run the same safe claim pipeline for one batch sentence."""
     claim = parse_claim(sentence, HcxClaimExtractor())
@@ -72,6 +80,9 @@ def _verify_batch_claim(sentence: str, article_date: date, settings: Settings) -
                 "explanation": "Claim parsing requires human review.",
             }
         )
+    growth_verdict = make_cpi_growth_verdict(claim, article_date, _official_fetcher(settings))
+    if growth_verdict is not None:
+        return growth_verdict
     concept = normalize_concept(claim, load_standard_concepts(STANDARD_PATH))
     candidates = _find_catalog_candidates(claim, concept, settings)
     matches = semantic_match(claim, candidates)
@@ -88,8 +99,7 @@ def _verify_batch_claim(sentence: str, article_date: date, settings: Settings) -
         return make_verdict(claim.claim_id, claim.value, [], None).model_copy(
             update={"reason_code": best.reason_code or cell.status, "explanation": "KOSIS coordinate is not confirmed.", "evidence_cells": [cell]}
         )
-    api_lookup = build_kosis_api_lookup(settings.kosis_api_key) if settings.kosis_api_key else None
-    official_value = OfficialValueFetcher(SNAPSHOT_PATHS, api_lookup=api_lookup, prefer_api=api_lookup is not None).fetch(cell, article_date=article_date)
+    official_value = _official_fetcher(settings).fetch(cell, article_date=article_date)
     if official_value.status != "SUCCESS":
         return make_verdict(claim.claim_id, claim.value, [], None).model_copy(
             update={"reason_code": official_value.status, "explanation": "Official value is unavailable.", "evidence_cells": [cell]}
@@ -117,8 +127,9 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
         article_date = date.fromisoformat(article_date_text) if article_date_text else None
         claim = parse_claim(sentence, HcxClaimExtractor())
         claim = resolve_relative_time(claim, article_date)
-        concept = normalize_concept(claim, load_standard_concepts(STANDARD_PATH))
-        candidates = _find_catalog_candidates(claim, concept, settings)
+        growth_verdict = make_cpi_growth_verdict(claim, article_date, _official_fetcher(settings)) if article_date else None
+        concept = None if growth_verdict is not None else normalize_concept(claim, load_standard_concepts(STANDARD_PATH))
+        candidates = [] if concept is None else _find_catalog_candidates(claim, concept, settings)
         matches = semantic_match(claim, candidates)
 
         st.subheader("기사 주장")
@@ -128,7 +139,7 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
         claim_columns[2].metric("기준시점", claim.time or "미확정")
         claim_columns[3].metric("파싱 상태", claim.parse_status)
         with st.expander("구조화 Claim 상세"):
-            st.json({"claim": claim.model_dump(), "concept": concept.model_dump()})
+            st.json({"claim": claim.model_dump(), "concept": concept.model_dump() if concept else None})
         st.subheader("KOSIS 후보")
         st.dataframe(
             [{"표 ID": item.tbl_id, "통계표": item.tbl_name, "단위": " | ".join(item.unit_names), "주기": item.frequency} for item in candidates],
@@ -137,7 +148,12 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
 
         official_value = None
         evidence_cells = []
-        if not article_date:
+        if growth_verdict is not None:
+            verdict = growth_verdict
+            evidence_cells = verdict.evidence_cells
+            st.subheader("Evidence 좌표")
+            st.json([cell.model_dump() for cell in evidence_cells])
+        elif not article_date:
             verdict = make_verdict(claim.claim_id, claim.value, [], None)
             st.warning("HOLD: 기사 기준일이 없어 사후 개정값을 차단할 수 없습니다.")
         elif not matches:
@@ -157,8 +173,7 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
                 verdict = make_verdict(claim.claim_id, claim.value, [], None)
                 st.warning(f"HOLD: {best.reason_code or cell.status}")
             else:
-                api_lookup = build_kosis_api_lookup(settings.kosis_api_key) if settings.kosis_api_key else None
-                official_value = OfficialValueFetcher(SNAPSHOT_PATHS, api_lookup=api_lookup, prefer_api=api_lookup is not None).fetch(cell, article_date=article_date)
+                official_value = _official_fetcher(settings).fetch(cell, article_date=article_date)
                 if official_value.status != "SUCCESS":
                     verdict = make_verdict(claim.claim_id, claim.value, [], None)
                     st.warning(f"HOLD: {official_value.status}")
