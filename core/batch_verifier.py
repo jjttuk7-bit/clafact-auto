@@ -109,7 +109,7 @@ def verify_articles(articles: Iterable[BatchArticle], verifier: Verifier) -> Bat
     claim_rows: list[BatchClaimResult] = []
     materialized = list(articles)
     for article in materialized:
-        for sentence in _numeric_claims(article.body):
+        for sentence in extract_batch_claim_sentences(article.body):
             try:
                 verdict = verifier(sentence, article.published_at)
                 claim_rows.append(_claim_row(article, sentence, verdict))
@@ -190,6 +190,21 @@ def _canonicalize_row(row: dict[str, Any]) -> dict[str, Any]:
 
 def _normalize_header(value: object) -> str:
     return str(value).strip().replace(" ", "").replace("_", "").casefold()
+
+_TRAILING_CRAWL_NOISE = re.compile(r"(?:관련 기사|AI 추천|By Taboola|댓글(?:작성)?|많이 본 뉴스)")
+_METADATA_PREFIX = re.compile(
+    r"^.*?(?:입력|등록)\s*\d{4}[.\-/]\d{1,2}[.\-/]\d{1,2}\.?(?:\s*\d{1,2}:\d{2})?"
+    r"(?:\s*(?:업데이트|수정)\s*\d{4}[.\-/]\d{1,2}[.\-/]\d{1,2}\.?(?:\s*\d{1,2}:\d{2})?)?\s*\d*\s*",
+    re.DOTALL,
+)
+
+
+def extract_batch_claim_sentences(body: str) -> list[str]:
+    """Keep only numeric sentences from the article body, excluding crawler chrome and ads."""
+    article_body = _TRAILING_CRAWL_NOISE.split(body, maxsplit=1)[0]
+    article_body = _METADATA_PREFIX.sub("", article_body, count=1)
+    sentences = [sentence.strip() for sentence in _SENTENCES.split(article_body) if sentence.strip()]
+    return [sentence for sentence in sentences if _NUMERIC.search(sentence)]
 
 def _numeric_claims(body: str) -> list[str]:
     sentences = [sentence.strip() for sentence in _SENTENCES.split(body) if sentence.strip()]

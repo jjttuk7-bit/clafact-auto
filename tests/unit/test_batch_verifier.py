@@ -126,3 +126,29 @@ def test_load_articles_accepts_article_body_crawler_headers() -> None:
         title="물가 기사",
         source_url="https://example.test/news",
     )
+
+
+def test_extract_batch_claim_sentences_keeps_thirteen_statistical_sentences_after_cleanup() -> None:
+    from core.batch_verifier import extract_batch_claim_sentences
+
+    body = '''경제 기사 제목 기자 입력 2025.11.04. 08:00 업데이트 2025.11.04. 11:11 5 지난달 소비자 물가가 2.4% 상승했고, 9월(2.1%)에 이어 2개월 연속 2%대였다.
+이같은 물가 상승률은 지난해 7월(2.6%) 이후 15개월만에 가장 높다.
+국가데이터처가 4일 발표한 자료에 따르면 물가는 1년 전보다 2.4% 올랐다.
+소비자물가는 지난 8월 1.7%를 기록했다가 9월 2.1%로 올랐다.
+가공식품 물가는 3.5% 오르며 전체 물가를 0.30%포인트 끌어올렸다.
+9월 가공식품 물가 상승률은 4.2%였고 빵(6.6%), 커피(14.7%)도 올랐다.
+외식 물가는 3.0% 상승했고 개인서비스 물가는 3.4% 올랐다.
+축산물과 수산물 물가는 5.3%, 5.9% 올랐다.
+농산물 물가는 1.1% 상승했다.
+배추(-34.5%), 무(-40.5%), 쌀(21.3%), 사과(21.6%), 달걀(6.9%)의 상승률도 달랐다.
+생활물가지수는 2.5% 올랐다.
+신선식품지수는 0.8% 하락했다.
+석유류 물가는 4.8% 상승했고 지난 2월(6.3%) 이후 가장 높았다.
+먹거리 물가는 오름세였다. 관련 기사 광고 문구 500억원 할인 댓글 2025.11.05 11:03'''
+
+    claims = extract_batch_claim_sentences(body)
+
+    assert len(claims) == 13
+    assert claims[0].startswith("지난달 소비자 물가")
+    assert all("관련 기사" not in claim for claim in claims)
+    assert all("업데이트" not in claim for claim in claims)
