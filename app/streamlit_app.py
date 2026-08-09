@@ -20,6 +20,7 @@ from core.catalog_discovery import discover_catalog_candidates, has_unresolved_l
 from core.catalog_search import search_semantic_catalog
 from core.data_loader import load_kosis_catalog, load_standard_concepts
 from core.evidence_resolver import resolve_evidence_cell
+from core.evidence_presentation import build_evidence_rows, build_kosis_table_url
 from core.hcx_claim_extractor import HcxClaimExtractor
 from core.kosis_fetcher import OfficialValueFetcher
 from core.growth_verdict import make_cpi_growth_verdict
@@ -201,6 +202,22 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
         verdict_columns[3].metric("KOSIS 공식값", verdict.calculated_value if verdict.calculated_value is not None else "-")
         if verdict.route_status != "AUTO":
             st.warning(f"HOLD 사유: {verdict.reason_code} — {verdict.explanation}")
+        if verdict.evidence_cells:
+            st.subheader("KOSIS 공식 근거")
+            st.dataframe(
+                build_evidence_rows(verdict.evidence_cells, verdict.evidence_values),
+                use_container_width=True,
+            )
+            rendered_tables: set[tuple[str, str]] = set()
+            for evidence_cell in verdict.evidence_cells:
+                table_key = (evidence_cell.org_id, evidence_cell.tbl_id)
+                if table_key in rendered_tables:
+                    continue
+                rendered_tables.add(table_key)
+                st.link_button(
+                    f"KOSIS 표 원문 열기: {evidence_cell.tbl_id}",
+                    build_kosis_table_url(evidence_cell),
+                )
         with st.expander("Verdict 상세 JSON"):
             st.json(verdict.model_dump())
         payload = build_review_payload(verdict)
