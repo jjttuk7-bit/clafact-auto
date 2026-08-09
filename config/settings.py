@@ -1,6 +1,6 @@
 """Environment-backed application settings with auditable version defaults."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from os import environ, getenv
 from pathlib import Path
 from typing import MutableMapping
@@ -23,17 +23,30 @@ def load_environment_file(path: Path, target: MutableMapping[str, str]) -> None:
             target.setdefault(key, value.strip().strip('"').strip("'"))
 
 
+def _environment_value(name: str, default: str | None = None) -> str | None:
+    """Read one setting after centrally loading missing values from .env."""
+    load_environment_file(_ENV_PATH, environ)
+    return getenv(name, default)
+
+
 @dataclass(frozen=True, slots=True)
 class Settings:
     """Configuration that never persists credentials to logs or source files."""
 
-    kosis_api_key: str | None = None
-    hcx_api_key: str | None = None
-    claim_provider: str = "hcx"
-    openai_api_key: str | None = None
-    openai_model: str = "gpt-5.6-luna"
-    log_level: str = "INFO"
-    hcx_extraction_mode: str = "structured_output"
+    kosis_api_key: str | None = field(
+        default_factory=lambda: _environment_value("KOSIS_API_KEY"), repr=False
+    )
+    hcx_api_key: str | None = field(
+        default_factory=lambda: _environment_value("HCX_API_KEY"), repr=False
+    )
+    log_level: str = field(
+        default_factory=lambda: _environment_value("CLAFACT_LOG_LEVEL", "INFO")
+    )
+    hcx_extraction_mode: str = field(
+        default_factory=lambda: _environment_value(
+            "CLAFACT_HCX_EXTRACTION_MODE", "structured_output"
+        )
+    )
     dataset_version: str = "unversioned"
     preprocess_version: str = "1.0"
     claim_schema_version: str = "1.0"
@@ -41,37 +54,24 @@ class Settings:
     kosis_catalog_version: str = "1.0"
     matching_version: str = "1.0"
     calculation_version: str = "1.0"
+    claim_provider: str = field(
+        default_factory=lambda: _environment_value("CLAFACT_CLAIM_PROVIDER", "hcx")
+    )
+    openai_api_key: str | None = field(
+        default_factory=lambda: _environment_value("OPENAI_API_KEY"), repr=False
+    )
+    openai_model: str = field(
+        default_factory=lambda: _environment_value("CLAFACT_OPENAI_MODEL", "gpt-5.6-luna")
+    )
 
     def __post_init__(self) -> None:
-        load_environment_file(_ENV_PATH, environ)
-        if self.kosis_api_key is None:
-            object.__setattr__(self, "kosis_api_key", getenv("KOSIS_API_KEY"))
-        if self.claim_provider == "hcx":
-            object.__setattr__(
-                self,
-                "claim_provider",
-                getenv("CLAFACT_CLAIM_PROVIDER", "hcx"),
-            )
         object.__setattr__(
             self,
             "claim_provider",
             self.claim_provider.strip().casefold(),
         )
-        if self.openai_api_key is None:
-            object.__setattr__(self, "openai_api_key", getenv("OPENAI_API_KEY"))
-        if self.openai_model == "gpt-5.6-luna":
-            object.__setattr__(
-                self,
-                "openai_model",
-                getenv("CLAFACT_OPENAI_MODEL", "gpt-5.6-luna"),
-            )
-        if self.hcx_api_key is None:
-            object.__setattr__(self, "hcx_api_key", getenv("HCX_API_KEY"))
-        if self.log_level == "INFO":
-            object.__setattr__(self, "log_level", getenv("CLAFACT_LOG_LEVEL", "INFO"))
-        if self.hcx_extraction_mode == "structured_output":
-            object.__setattr__(
-                self,
-                "hcx_extraction_mode",
-                getenv("CLAFACT_HCX_EXTRACTION_MODE", "structured_output").strip().casefold(),
-            )
+        object.__setattr__(
+            self,
+            "hcx_extraction_mode",
+            self.hcx_extraction_mode.strip().casefold(),
+        )
