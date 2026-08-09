@@ -54,3 +54,17 @@ def test_unified_fetcher_matches_native_kosis_c_columns() -> None:
     cell = EvidenceCellSchema(org_id="101", tbl_id="DT", itm_id="T", prd_se="M", prd_de="202405", dimension_codes={"C1":"00"}, canonical_key="key", status="CONFIRMED")
     result = OfficialValueFetcher([], api_lookup=lambda _cell: rows).fetch(cell, article_date=date(2024, 6, 2))
     assert result.status == "SUCCESS"
+
+
+def test_unified_fetcher_prefers_api_over_snapshot_when_enabled(tmp_path) -> None:
+    path = tmp_path / "official.json"
+    path.write_text(json.dumps({"org_id":"101","tbl_id":"DT","item_id":"T","records":[{"period":"202505","value":109.67,"last_changed_at":"2025-05-30"}]}), encoding="utf-8")
+    rows = [{"TBL_ID":"DT", "ITM_ID":"T", "PRD_DE":"202505", "DT":"110.01", "LST_CHN_DE":"2025-05-30"}]
+
+    result = OfficialValueFetcher([path], api_lookup=lambda _cell: rows, prefer_api=True).fetch(
+        cell(), article_date=date(2025, 6, 26)
+    )
+
+    assert result.status == "SUCCESS"
+    assert result.value == 110.01
+    assert result.source == "API"

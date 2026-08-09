@@ -43,26 +43,36 @@ def fetch_kosis_value(cell: EvidenceCellSchema, snapshot_path: Path) -> KosisVal
 class OfficialValueFetcher:
     """Prefer auditable local snapshots, then use an injected read-only KOSIS API adapter."""
 
-    def __init__(self, snapshot_paths: Iterable[Path], api_lookup: Callable[[EvidenceCellSchema], list[dict[str, Any]]] | None = None) -> None:
+    def __init__(self, snapshot_paths: Iterable[Path], api_lookup: Callable[[EvidenceCellSchema], list[dict[str, Any]]] | None = None, *, prefer_api: bool = False) -> None:
         self._snapshot_paths = list(snapshot_paths)
         self._api_lookup = api_lookup
+        self._prefer_api = prefer_api
 
     def fetch(self, cell: EvidenceCellSchema, *, article_date: date | None = None) -> KosisValue:
         as_of_unavailable = False
+        if self._prefer_api:
+            api_result = self._fetch_api(cell, article_date)
+            if api_result is not None and api_result.status in {"SUCCESS", "AS_OF_UNAVAILABLE"}:
+                return api_result
         for path in self._snapshot_paths:
             result = self._fetch_snapshot(cell, path, article_date)
             if result.status == "SUCCESS":
                 return result
             as_of_unavailable = as_of_unavailable or result.status == "AS_OF_UNAVAILABLE"
-        if self._api_lookup is not None:
-            try:
-                rows = self._api_lookup(cell)
-            except Exception:
-                return KosisValue(None, "FETCH_FAILED", "", "NONE")
-            result = self._extract_rows(cell, rows, article_date, source="API", digest="")
-            if result.status == "SUCCESS" or result.status == "AS_OF_UNAVAILABLE":
-                return result
+        if not self._prefer_api:
+            api_result = self._fetch_api(cell, article_date)
+            if api_result is not None and api_result.status in {"SUCCESS", "AS_OF_UNAVAILABLE"}:
+                return api_result
         return KosisValue(None, "AS_OF_UNAVAILABLE" if as_of_unavailable else "NO_DATA", "", "NONE")
+
+    def _fetch_api(self, cell: EvidenceCellSchema, article_date: date | None) -> KosisValue | None:
+        if self._api_lookup is None:
+            return None
+        try:
+            rows = self._api_lookup(cell)
+        except Exception:
+            return KosisValue(None, "FETCH_FAILED", "", "NONE")
+        return self._extract_rows(cell, rows, article_date, source="API", digest="")
 
     def _fetch_snapshot(self, cell: EvidenceCellSchema, path: Path, article_date: date | None) -> KosisValue:
         raw = path.read_bytes()

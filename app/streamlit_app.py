@@ -67,7 +67,7 @@ def _verify_batch_claim(sentence: str, article_date: date, settings: Settings) -
             update={"reason_code": best.reason_code or cell.status, "explanation": "KOSIS coordinate is not confirmed.", "evidence_cells": [cell]}
         )
     api_lookup = build_kosis_api_lookup(settings.kosis_api_key) if settings.kosis_api_key else None
-    official_value = OfficialValueFetcher(SNAPSHOT_PATHS, api_lookup=api_lookup).fetch(cell, article_date=article_date)
+    official_value = OfficialValueFetcher(SNAPSHOT_PATHS, api_lookup=api_lookup, prefer_api=api_lookup is not None).fetch(cell, article_date=article_date)
     if official_value.status != "SUCCESS":
         return make_verdict(claim.claim_id, claim.value, [], None).model_copy(
             update={"reason_code": official_value.status, "explanation": "Official value is unavailable.", "evidence_cells": [cell]}
@@ -133,7 +133,7 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
                 st.warning(f"HOLD: {best.reason_code or cell.status}")
             else:
                 api_lookup = build_kosis_api_lookup(settings.kosis_api_key) if settings.kosis_api_key else None
-                official_value = OfficialValueFetcher(SNAPSHOT_PATHS, api_lookup=api_lookup).fetch(cell, article_date=article_date)
+                official_value = OfficialValueFetcher(SNAPSHOT_PATHS, api_lookup=api_lookup, prefer_api=api_lookup is not None).fetch(cell, article_date=article_date)
                 if official_value.status != "SUCCESS":
                     verdict = make_verdict(claim.claim_id, claim.value, [], None)
                     st.warning(f"HOLD: {official_value.status}")

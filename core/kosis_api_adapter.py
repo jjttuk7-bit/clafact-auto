@@ -30,4 +30,6 @@ def _ordered_codes(cell: EvidenceCellSchema) -> list[str]:
         if code is None:
             break
         codes.append(code)
-    return codes
+    if codes:
+        return codes
+    return list(cell.dimension_codes.values())
