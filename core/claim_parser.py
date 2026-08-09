@@ -45,6 +45,7 @@ def parse_claim(
     claim = _with_explicit_comparison(claim, normalized_source)
     if claim.parse_status != "AUTO_OK":
         return claim
+    claim = _with_explicit_decrease_sign(claim, normalized_source)
 
     missing_slots = [slot for slot in _AUTO_REQUIRED_SLOTS if getattr(claim, slot) is None]
     if missing_slots:
@@ -60,6 +61,18 @@ def parse_claim(
 def _claim_id(source_sentence: str) -> str:
     digest = sha256(source_sentence.encode("utf-8")).hexdigest()[:16]
     return f"claim_{digest}"
+
+
+def _with_explicit_decrease_sign(claim: ClaimSchema, source_sentence: str) -> ClaimSchema:
+    """Preserve the signed meaning of an explicit percentage decrease in source text."""
+    if (
+        claim.value is None
+        or claim.value < 0
+        or (claim.unit or "").strip() != "%"
+        or not any(marker in source_sentence for marker in ("하락", "감소"))
+    ):
+        return claim
+    return claim.model_copy(update={"value": -abs(claim.value)})
 
 
 def _with_explicit_comparison(claim: ClaimSchema, source_sentence: str) -> ClaimSchema:

@@ -64,6 +64,30 @@ def test_parse_claim_derives_explicit_year_over_year_comparison() -> None:
     }
 
 
+def test_parse_claim_normalizes_explicit_percentage_decrease_to_negative() -> None:
+    result = parse_claim(
+        "2025년 10월 배추 물가는 전년 동월 대비 34.5% 하락했다.",
+        FakeStructuredExtractor(
+            auto_claim(
+                indicator="배추 물가",
+                value=34.5,
+                unit="%",
+                time="2025년 10월",
+                comparison={"기준": "전년 동월 대비", "방향": "하락"},
+            )
+        ),
+    )
+
+    assert result.value == -34.5
+
+
+@pytest.mark.parametrize(("source_sentence", "value"), [("2025년 10월 소비자물가는 2.4% 상승했다.", 2.4), ("2025년 10월 배추 물가는 -34.5% 하락했다.", -34.5)])
+def test_parse_claim_preserves_already_consistent_percentage_sign(source_sentence: str, value: float) -> None:
+    result = parse_claim(source_sentence, FakeStructuredExtractor(auto_claim(value=value, unit="%", time="2025년 10월")))
+
+    assert result.value == value
+
+
 def test_parse_claim_generates_stable_claim_id_from_source() -> None:
     extractor = FakeStructuredExtractor(auto_claim())
 
