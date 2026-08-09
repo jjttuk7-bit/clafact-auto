@@ -1,0 +1,150 @@
+{
+  "summary": {
+    "total": 20,
+    "AUTO": 13,
+    "HOLD": 7,
+    "HUMAN_REVIEW": 0
+  },
+  "results": [
+    {
+      "claim_id": "NEWS_B-023-A01",
+      "route_status": "AUTO",
+      "verdict": "MATCH",
+      "hold_category": "",
+      "gold_table_id": "DT_1J22112"
+    },
+    {
+      "claim_id": "NEWS_B-030-A01",
+      "route_status": "AUTO",
+      "verdict": "MATCH",
+      "hold_category": "",
+      "gold_table_id": "DT_1J22112"
+    },
+    {
+      "claim_id": "NEWS_B-001-A01",
+      "route_status": "AUTO",
+      "verdict": "MATCH",
+      "hold_category": "",
+      "gold_table_id": "DT_1J22003 + DT_1J22042"
+    },
+    {
+      "claim_id": "NEWS_B-002-A01",
+      "route_status": "HOLD",
+      "verdict": "UNDETERMINED",
+      "hold_category": "KOSIS_API_OR_MEMBER_CODE_UNLINKED",
+      "gold_table_id": ""
+    },
+    {
+      "claim_id": "KOSIS_SEED-016-A01",
+      "route_status": "AUTO",
+      "verdict": "MATCH",
+      "hold_category": "",
+      "gold_table_id": "DT_1DA7E06S_NEW"
+    },
+    {
+      "claim_id": "NEWS_B-027-A01",
+      "route_status": "AUTO",
+      "verdict": "MATCH",
+      "hold_category": "",
+      "gold_table_id": "DT_1ES3B31J"
+    },
+    {
+      "claim_id": "NEWS_B-005-A01",
+      "route_status": "HOLD",
+      "verdict": "UNDETERMINED",
+      "hold_category": "INPUT_METADATA_INSUFFICIENT",
+      "gold_table_id": ""
+    },
+    {
+      "claim_id": "NEWS_B-007-A01",
+      "route_status": "AUTO",
+      "verdict": "MATCH",
+      "hold_category": "",
+      "gold_table_id": "DT_1DA7102S"
+    },
+    {
+      "claim_id": "KOSIS_SEED-020-A01",
+      "route_status": "HOLD",
+      "verdict": "UNDETERMINED",
+      "hold_category": "EVIDENCE_CELL_UNRESOLVED",
+      "gold_table_id": ""
+    },
+    {
+      "claim_id": "KOSIS_SEED-018-A01",
+      "route_status": "HOLD",
+      "verdict": "UNDETERMINED",
+      "hold_category": "EVIDENCE_CELL_UNRESOLVED",
+      "gold_table_id": ""
+    },
+    {
+      "claim_id": "KOSIS_SEED-003-A01",
+      "route_status": "HOLD",
+      "verdict": "UNDETERMINED",
+      "hold_category": "ARTICLE_TIME_OFFICIAL_VALUE_UNAVAILABLE",
+      "gold_table_id": "DT_1B8000G"
+    },
+    {
+      "claim_id": "KOSIS_SEED-005-A01",
+      "route_status": "HOLD",
+      "verdict": "UNDETERMINED",
+      "hold_category": "KOSIS_API_OR_MEMBER_CODE_UNLINKED",
+      "gold_table_id": "DT_1B8000G"
+    },
+    {
+      "claim_id": "KOSIS_SEED-002-A01",
+      "route_status": "AUTO",
+      "verdict": "MATCH",
+      "hold_category": "",
+      "gold_table_id": "DT_1ES4I001S"
+    },
+    {
+      "claim_id": "KOSIS_SEED-006-A01",
+      "route_status": "AUTO",
+      "verdict": "MATCH",
+      "hold_category": "",
+      "gold_table_id": "DT_1YL20651E"
+    },
+    {
+      "claim_id": "KOSIS_SEED-019-A01",
+      "route_status": "AUTO",
+      "verdict": "MATCH",
+      "hold_category": "",
+      "gold_table_id": "DT_1FA7001 + DT_1FA7009"
+    },
+    {
+      "claim_id": "NEWS_B-016-A01",
+      "route_status": "AUTO",
+      "verdict": "MATCH",
+      "hold_category": "",
+      "gold_table_id": "DT_1ZB7024"
+    },
+    {
+      "claim_id": "NEWS_B-003-A01",
+      "route_status": "AUTO",
+      "verdict": "MATCH",
+      "hold_category": "",
+      "gold_table_id": "DT_1B8000G"
+    },
+    {
+      "claim_id": "NEWS_B-006-A01",
+      "route_status": "AUTO",
+      "verdict": "MATCH",
+      "hold_category": "",
+      "gold_table_id": "DT_1J22042"
+    },
+    {
+      "claim_id": "NEWS_B-008-A01",
+      "route_status": "HOLD",
+      "verdict": "UNDETERMINED",
+      "hold_category": "EVIDENCE_CELL_UNRESOLVED",
+      "gold_table_id": ""
+    },
+    {
+      "claim_id": "NEWS_B-012-A01",
+      "route_status": "AUTO",
+      "verdict": "MATCH",
+      "hold_category": "",
+      "gold_table_id": "DT_1DA7028S"
+    }
+  ]
+}
