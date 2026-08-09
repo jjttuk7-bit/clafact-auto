@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import json
 import socket
+import traceback
 from io import BytesIO
 from typing import Any
 from urllib.error import HTTPError, URLError
@@ -113,6 +114,40 @@ def test_parse_accepts_one_emit_claim_function_call_with_json_arguments() -> Non
     assert claim.indicator == "고용률"
     assert claim.dimension is None
     assert claim.parse_status == "AUTO_OK"
+
+
+def test_parse_ignores_reasoning_item_when_one_emit_claim_call_exists() -> None:
+    payload = _response()
+    payload["output"].insert(
+        0,
+        {"type": "reasoning", "id": "reasoning-1", "summary": []},
+    )
+
+    claim = parse_openai_emit_claim_response(payload)
+
+    assert claim.indicator == "고용률"
+
+
+def test_parse_rejects_reasoning_item_without_function_call() -> None:
+    payload = {
+        "output": [{"type": "reasoning", "id": "reasoning-1", "summary": []}]
+    }
+
+    with pytest.raises(OpenAIContractError, match="ONE_EMIT_CLAIM_CALL_REQUIRED"):
+        parse_openai_emit_claim_response(payload)
+
+
+def test_parse_rejects_reasoning_item_with_multiple_function_calls() -> None:
+    payload = _response()
+    payload["output"].insert(
+        0,
+        {"type": "reasoning", "id": "reasoning-1", "summary": []},
+    )
+    payload["output"].append(copy.deepcopy(payload["output"][1]))
+
+    with pytest.raises(OpenAIContractError, match="ONE_EMIT_CLAIM_CALL_REQUIRED"):
+        parse_openai_emit_claim_response(payload)
+
 
 
 def test_parse_accepts_valid_hold_payload() -> None:
@@ -233,7 +268,7 @@ def test_authentication_http_errors_are_typed(status: int) -> None:
         ).extract("문장")
 
 
-@pytest.mark.parametrize("status", [429, 500, 503])
+@pytest.mark.parametrize("status", [408, 409, 429, 500, 503])
 def test_retryable_http_errors_are_transient(status: int) -> None:
     error = HTTPError(
         "https://api.openai.com/v1/responses",
@@ -310,6 +345,67 @@ def test_transport_error_messages_do_not_expose_secrets_or_provider_payload(fail
     message = str(caught.value)
     assert "test-secret" not in message
     assert "provider-secret-payload" not in message
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [
+        HTTPError(
+            "https://api.openai.com/v1/responses",
+            401,
+            "provider-secret-sentinel",
+            None,
+            BytesIO(b'{"error":"provider-secret-sentinel"}'),
+        ),
+        URLError("provider-secret-sentinel"),
+        TimeoutError("provider-secret-sentinel"),
+    ],
+)
+def test_transport_exceptions_do_not_chain_or_render_provider_details(failure: Exception) -> None:
+    with pytest.raises(OpenAIClaimExtractorError) as caught:
+        OpenAIFunctionClaimExtractor(
+            api_key="test-secret",
+            transport=lambda *_args, **_kwargs: (_ for _ in ()).throw(failure),
+        ).extract("문장")
+
+    rendered = "".join(traceback.format_exception(caught.type, caught.value, caught.tb))
+    assert caught.value.__cause__ is None
+    assert "provider-secret-sentinel" not in rendered
+
+
+def test_malformed_response_json_does_not_chain_or_render_provider_details() -> None:
+    class MalformedResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return b'{"provider":"provider-secret-sentinel"'
+
+    with pytest.raises(OpenAIContractError) as caught:
+        OpenAIFunctionClaimExtractor(
+            api_key="test-secret",
+            transport=lambda *_args, **_kwargs: MalformedResponse(),
+        ).extract("문장")
+
+    rendered = "".join(traceback.format_exception(caught.type, caught.value, caught.tb))
+    assert caught.value.__cause__ is None
+    assert "provider-secret-sentinel" not in rendered
+
+
+def test_malformed_function_arguments_do_not_chain_provider_validation_details() -> None:
+    payload = _response()
+    payload["output"][0]["arguments"] = '{"private":"provider-secret-sentinel"}'
+
+    with pytest.raises(OpenAIContractError) as caught:
+        parse_openai_emit_claim_response(payload)
+
+    rendered = "".join(traceback.format_exception(caught.type, caught.value, caught.tb))
+    assert caught.value.__cause__ is None
+    assert "provider-secret-sentinel" not in rendered
+
 
 
 def test_contract_error_does_not_expose_full_provider_payload() -> None:

@@ -74,15 +74,19 @@ def parse_openai_emit_claim_response(payload: object) -> ClaimSchema:
         raise OpenAIContractError("ONE_EMIT_CLAIM_CALL_REQUIRED")
 
     output = payload.get("output")
-    if not isinstance(output, list) or len(output) != 1:
+    if not isinstance(output, list):
         raise OpenAIContractError("ONE_EMIT_CLAIM_CALL_REQUIRED")
 
-    function_call = output[0]
-    if (
-        not isinstance(function_call, dict)
-        or function_call.get("type") != "function_call"
-        or function_call.get("name") != EMIT_CLAIM_FUNCTION_NAME
-    ):
+    function_calls = [
+        item
+        for item in output
+        if isinstance(item, dict) and item.get("type") == "function_call"
+    ]
+    if len(function_calls) != 1:
+        raise OpenAIContractError("ONE_EMIT_CLAIM_CALL_REQUIRED")
+
+    function_call = function_calls[0]
+    if function_call.get("name") != EMIT_CLAIM_FUNCTION_NAME:
         raise OpenAIContractError("ONE_EMIT_CLAIM_CALL_REQUIRED")
 
     arguments_json = function_call.get("arguments")
@@ -92,8 +96,8 @@ def parse_openai_emit_claim_response(payload: object) -> ClaimSchema:
     try:
         arguments = json.loads(arguments_json)
         return OpenAIClaimToolPayload.model_validate(arguments).to_claim()
-    except (json.JSONDecodeError, ValidationError, ValueError, TypeError) as error:
-        raise OpenAIContractError("INVALID_EMIT_CLAIM_ARGUMENTS") from error
+    except (json.JSONDecodeError, ValidationError, ValueError, TypeError):
+        raise OpenAIContractError("INVALID_EMIT_CLAIM_ARGUMENTS") from None
 
 
 class OpenAIFunctionClaimExtractor:
@@ -128,24 +132,24 @@ class OpenAIFunctionClaimExtractor:
                 response_body = response.read()
         except HTTPError as error:
             self._raise_http_error(error)
-        except (TimeoutError, socket.timeout, URLError, ConnectionError) as error:
-            raise OpenAITransientError("OPENAI_TRANSIENT_FAILURE") from error
+        except (TimeoutError, socket.timeout, URLError, ConnectionError):
+            raise OpenAITransientError("OPENAI_TRANSIENT_FAILURE") from None
 
         try:
             payload = json.loads(response_body)
-        except (json.JSONDecodeError, TypeError, UnicodeDecodeError) as error:
-            raise OpenAIContractError("INVALID_OPENAI_RESPONSE_JSON") from error
+        except (json.JSONDecodeError, TypeError, UnicodeDecodeError):
+            raise OpenAIContractError("INVALID_OPENAI_RESPONSE_JSON") from None
         return parse_openai_emit_claim_response(payload)
 
     @staticmethod
     def _raise_http_error(error: HTTPError) -> None:
         if error.code in {401, 403}:
-            raise OpenAIAuthenticationError("OPENAI_AUTHENTICATION_FAILED") from error
-        if error.code == 429 or error.code >= 500:
-            raise OpenAITransientError("OPENAI_TRANSIENT_FAILURE") from error
+            raise OpenAIAuthenticationError("OPENAI_AUTHENTICATION_FAILED") from None
+        if error.code in {408, 409, 429} or error.code >= 500:
+            raise OpenAITransientError("OPENAI_TRANSIENT_FAILURE") from None
         if 400 <= error.code < 500:
-            raise OpenAIClaimExtractorError("OPENAI_REQUEST_REJECTED") from error
-        raise OpenAIClaimExtractorError("OPENAI_HTTP_FAILURE") from error
+            raise OpenAIClaimExtractorError("OPENAI_REQUEST_REJECTED") from None
+        raise OpenAIClaimExtractorError("OPENAI_HTTP_FAILURE") from None
 
 
 def _dotenv_value(name: str) -> str | None:
