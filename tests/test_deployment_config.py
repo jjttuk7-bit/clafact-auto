@@ -48,3 +48,14 @@ def test_streamlit_app_uses_layout_keywords_supported_by_declared_minimum() -> N
         and any(keyword.arg == "border" for keyword in call.keywords)
         for call in calls
     )
+    assert not any(
+        isinstance(call.func, ast.Attribute)
+        and call.func.attr == "dataframe"
+        and any(
+            keyword.arg == "width"
+            and isinstance(keyword.value, ast.Constant)
+            and isinstance(keyword.value.value, str)
+            for keyword in call.keywords
+        )
+        for call in calls
+    )

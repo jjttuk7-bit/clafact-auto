@@ -31,6 +31,7 @@ OPENAI_CLAIM_INSTRUCTIONS = (
 )
 
 Transport = Callable[..., Any]
+_OPENAI_API_KEY_OMITTED = object()
 
 
 class OpenAIClaimExtractorError(RuntimeError):
@@ -105,11 +106,15 @@ class OpenAIFunctionClaimExtractor:
 
     def __init__(
         self,
-        api_key: str | None = None,
+        api_key: str | None | object = _OPENAI_API_KEY_OMITTED,
         model: str = "gpt-5.6-luna",
         transport: Transport | None = None,
     ) -> None:
-        self.api_key = api_key or os.getenv("OPENAI_API_KEY") or _dotenv_value("OPENAI_API_KEY")
+        if api_key is _OPENAI_API_KEY_OMITTED:
+            self.api_key: str | None = os.getenv("OPENAI_API_KEY") or _dotenv_value("OPENAI_API_KEY")
+        else:
+            assert api_key is None or isinstance(api_key, str)
+            self.api_key = api_key
         self.model = model
         self._transport = transport or urlopen
 

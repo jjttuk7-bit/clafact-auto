@@ -189,15 +189,29 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
         st.metric("실제 Claim Provider", actual_provider_label)
         claim = resolve_relative_time(claim, article_date)
         ui_trace = VerificationTraceRecorder(claim.claim_id).claim_parsed()
-        growth_plan = resolve_cpi_growth_plan(claim)
-        growth_verdict = make_cpi_growth_verdict(claim, article_date, _cpi_growth_fetcher(settings)) if article_date else None
-        concept = growth_plan.concept if growth_plan is not None else normalize_concept(claim, load_standard_concepts(STANDARD_PATH))
-        candidates = [growth_plan.candidate] if growth_plan is not None else _find_catalog_candidates(claim, concept, settings)
-        if growth_plan is not None:
-            ui_trace.registered_growth_profile_matched()
+        requires_parse_review = claim.parse_status != "AUTO_OK"
+        if requires_parse_review:
+            growth_verdict = None
+            concept = None
+            candidates = []
+            matches = []
+            verdict = make_verdict(claim.claim_id, claim.value, [], None).model_copy(
+                update={
+                    "route_status": claim.parse_status,
+                    "reason_code": claim.parse_reason or "CLAIM_PARSE_UNCERTAIN",
+                    "explanation": "Claim parsing requires human review.",
+                }
+            )
         else:
-            ui_trace.concept_mapped().catalog_searched()
-        matches = semantic_match(claim, candidates)
+            growth_plan = resolve_cpi_growth_plan(claim)
+            growth_verdict = make_cpi_growth_verdict(claim, article_date, _cpi_growth_fetcher(settings)) if article_date else None
+            concept = growth_plan.concept if growth_plan is not None else normalize_concept(claim, load_standard_concepts(STANDARD_PATH))
+            candidates = [growth_plan.candidate] if growth_plan is not None else _find_catalog_candidates(claim, concept, settings)
+            if growth_plan is not None:
+                ui_trace.registered_growth_profile_matched()
+            else:
+                ui_trace.concept_mapped().catalog_searched()
+            matches = semantic_match(claim, candidates)
 
         st.subheader("기사 주장")
         claim_columns = st.columns(4)
@@ -207,15 +221,17 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
         claim_columns[3].metric("파싱 상태", claim.parse_status)
         with st.expander("구조화 Claim 상세"):
             st.json({"claim": claim.model_dump(), "concept": concept.model_dump() if concept else None})
-        st.subheader("KOSIS 후보")
-        st.dataframe(
-            [{"표 ID": item.tbl_id, "통계표": item.tbl_name, "단위": " | ".join(item.unit_names), "주기": item.frequency} for item in candidates],
-            width="stretch",
-        )
+        if not requires_parse_review:
+            st.subheader("KOSIS 후보")
+            st.dataframe(
+                [{"표 ID": item.tbl_id, "통계표": item.tbl_name, "단위": " | ".join(item.unit_names), "주기": item.frequency} for item in candidates]
+            )
 
         official_value = None
         evidence_cells = []
-        if growth_verdict is not None:
+        if requires_parse_review:
+            pass
+        elif growth_verdict is not None:
             ui_trace.verification_succeeded()
             verdict = growth_verdict
             evidence_cells = verdict.evidence_cells
@@ -268,8 +284,7 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
         if verdict.evidence_cells:
             st.subheader("KOSIS 공식 근거")
             st.dataframe(
-                build_evidence_rows(verdict.evidence_cells, verdict.evidence_values),
-                width="stretch",
+                build_evidence_rows(verdict.evidence_cells, verdict.evidence_values)
             )
             rendered_tables: set[tuple[str, str]] = set()
             for evidence_cell in verdict.evidence_cells:
@@ -310,7 +325,7 @@ if st.button("배치 검증 실행", type="primary", disabled=uploaded_file is N
         columns[1].metric("일치", match_count)
         columns[2].metric("불일치", mismatch_count)
         columns[3].metric("검토 필요", review_count)
-        st.dataframe(batch_rows, width="stretch")
+        st.dataframe(batch_rows)
         st.download_button(
             "결과 XLSX 다운로드",
             data=export_batch_xlsx(batch_result),

@@ -6,7 +6,7 @@ from core.claim_extractor_factory import create_claim_extractor
 from core.fallback_claim_extractor import FallbackClaimExtractor
 from core.hcx_claim_extractor import HcxClaimExtractor
 from core.hcx_function_claim_extractor import HcxFunctionClaimExtractor
-from core.openai_function_claim_extractor import OpenAIFunctionClaimExtractor
+from core.openai_function_claim_extractor import OpenAIConfigurationError, OpenAIFunctionClaimExtractor
 
 
 @pytest.fixture(autouse=True)
@@ -55,6 +55,18 @@ def test_factory_selects_openai_without_fallback_when_hcx_key_is_absent(monkeypa
     assert isinstance(extractor, OpenAIFunctionClaimExtractor)
     assert extractor.api_key == "openai-key"
     assert extractor.model == "gpt-test"
+
+
+def test_factory_does_not_reintroduce_ambient_openai_key(monkeypatch) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "ambient-secret")
+    extractor = create_claim_extractor(
+        Settings(claim_provider="openai", openai_api_key=None, hcx_api_key=None)
+    )
+
+    assert isinstance(extractor, OpenAIFunctionClaimExtractor)
+    assert extractor.api_key is None
+    with pytest.raises(OpenAIConfigurationError, match="OPENAI_API_KEY_NOT_CONFIGURED"):
+        extractor.extract("문장")
 
 
 def test_factory_wraps_openai_with_structured_hcx_fallback() -> None:

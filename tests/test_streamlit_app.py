@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import subprocess
 import sys
+from contextlib import ExitStack
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from streamlit.testing.v1 import AppTest
@@ -33,6 +34,65 @@ def _set_provider_environment(
 
 def _metric_values(app: AppTest) -> dict[str, str]:
     return {metric.label: metric.value for metric in app.metric}
+
+@pytest.mark.parametrize(
+    ("parse_status", "parse_reason"),
+    [("HOLD", "SOURCE_CONTEXT_UNCLEAR"), ("HUMAN_REVIEW", "MULTIPLE_PLAUSIBLE_INTERPRETATIONS")],
+)
+def test_single_claim_preserves_parse_review_route_without_downstream_calls(
+    monkeypatch, parse_status: str, parse_reason: str,
+) -> None:
+    _set_provider_environment(monkeypatch, claim_provider="openai", openai_api_key="openai-secret")
+
+    class FakeExtractor:
+        last_provider = "openai"
+
+        def extract(self, source_sentence: str) -> ClaimSchema:
+            return ClaimSchema(
+                claim_id="review-claim", source_sentence=source_sentence,
+                indicator="고용률", value=70, unit="%", time="2024", frequency="YEAR",
+                region="전국", population="15세 이상 인구", dimension={"sex": "전체"},
+                comparison={"basis": "전년"}, calculation="DIRECT_VALUE",
+                condition={"seasonal_adjustment": "원계열"}, source_hint="KOSIS",
+                parse_status=parse_status, parse_reason=parse_reason,
+            )
+
+    downstream_targets = (
+        "core.cpi_growth_resolver.resolve_cpi_growth_plan",
+        "core.growth_verdict.make_cpi_growth_verdict",
+        "core.semantic_normalizer.normalize_concept",
+        "core.catalog_search.search_semantic_catalog",
+        "core.catalog_binding.apply_catalog_binding",
+        "core.catalog_discovery.discover_catalog_candidates",
+        "core.semantic_matcher.semantic_match",
+        "core.kosis_fetcher.OfficialValueFetcher",
+        "core.evidence_resolver.resolve_evidence_cell",
+        "core.calculator.calculate",
+    )
+    downstream_mocks: list[MagicMock] = []
+    with ExitStack() as stack:
+        stack.enter_context(patch("core.claim_extractor_factory.create_claim_extractor", return_value=FakeExtractor()))
+        for target in downstream_targets:
+            downstream_mocks.append(stack.enter_context(patch(target)))
+        app = AppTest.from_file("app/streamlit_app.py", default_timeout=15)
+        app.run()
+        app.text_area[0].input("2024년 전국 고용률은 70%였다.")
+        app.text_input[0].input("2025-06-26")
+        app.button[0].click()
+        app.run()
+
+    assert all(mock.call_count == 0 for mock in downstream_mocks)
+    metrics = _metric_values(app)
+    assert metrics["파싱 상태"] == parse_status
+    assert metrics["판정"] == "UNDETERMINED"
+    assert metrics["경로"] == parse_status
+    assert any(element.label == "구조화 Claim 상세" for element in app.expander)
+    assert any(element.label == "Verdict 상세 JSON" for element in app.expander)
+    assert any(element.value == "검토 콘솔 전달 payload" for element in app.subheader)
+    rendered_json = " ".join(str(element.value) for element in app.json)
+    assert parse_status in rendered_json
+    assert parse_reason in rendered_json
+
 
 def test_streamlit_entrypoint_imports_core_when_only_app_directory_is_on_path() -> None:
     """Streamlit Cloud executes the app module from app/, not the repository root."""

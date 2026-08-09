@@ -227,6 +227,21 @@ def test_extractor_loads_api_key_from_dotenv(monkeypatch, tmp_path) -> None:
     assert extractor.extract("문장").parse_status == "AUTO_OK"
 
 
+@pytest.mark.parametrize("explicit_api_key", [None, ""])
+def test_explicit_missing_api_key_does_not_load_ambient_credentials(
+    monkeypatch, tmp_path, explicit_api_key: str | None,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("OPENAI_API_KEY", "ambient-secret")
+    (tmp_path / ".env").write_text("OPENAI_API_KEY=dotenv-secret\n", encoding="utf-8")
+
+    extractor = OpenAIFunctionClaimExtractor(api_key=explicit_api_key)
+
+    assert extractor.api_key == explicit_api_key
+    with pytest.raises(OpenAIConfigurationError, match="OPENAI_API_KEY_NOT_CONFIGURED"):
+        extractor.extract("문장")
+
+
 def test_extractor_posts_json_with_bearer_auth_and_twenty_second_timeout() -> None:
     captured: dict[str, object] = {}
 
