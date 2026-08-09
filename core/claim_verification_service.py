@@ -28,3 +28,17 @@ class VerificationTraceRecorder:
 
     def verdict_completed(self) -> 'VerificationTraceRecorder':
         self._trace = self._trace.pass_stage('VERDICT'); return self
+
+    def hard_guard_passed(self) -> 'VerificationTraceRecorder':
+        self._trace = self._trace.pass_stage('HARD_GUARD'); return self
+
+    def hard_guard_held(self, reason_code: str) -> 'VerificationTraceRecorder':
+        self._trace = self._trace.hold('HARD_GUARD', reason_code); return self
+
+    def semantic_matched(self, route_status: str, reason_code: str, margin: float | None) -> 'VerificationTraceRecorder':
+        output_ref = f'margin={margin}' if margin is not None else None
+        if route_status == 'AUTO':
+            self._trace = self._trace.pass_stage('SEMANTIC_MATCH', output_ref=output_ref)
+        else:
+            self._trace = self._trace.hold('SEMANTIC_MATCH', reason_code)
+        return self

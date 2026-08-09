@@ -14,3 +14,15 @@ def test_trace_recorder_records_hold_at_evidence_stage() -> None:
     assert trace.events[-1].stage == 'EVIDENCE_CELL'
     assert trace.events[-1].status == 'HOLD'
     assert trace.events[-1].reason_code == 'MEMBER_CODE_UNRESOLVED'
+from core.claim_verification_service import VerificationTraceRecorder
+
+
+def test_trace_recorder_records_hard_guard_hold_and_match_margin() -> None:
+    trace = (VerificationTraceRecorder('c1').claim_parsed()
+        .hard_guard_held('UNIT_CONFLICT')
+        .semantic_matched('AUTO', 'MATCH_ACCEPTED', 0.42)
+        .build())
+    assert trace.events[-2].stage == 'HARD_GUARD'
+    assert trace.events[-2].status == 'HOLD'
+    assert trace.events[-1].stage == 'SEMANTIC_MATCH'
+    assert trace.events[-1].output_ref == 'margin=0.42'
