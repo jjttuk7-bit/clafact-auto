@@ -37,3 +37,16 @@ def test_get_meta_normalizes_kosis_error_code_without_message(monkeypatch) -> No
 def test_get_meta_accepts_legacy_kosis_array_metadata(monkeypatch) -> None:
     monkeypatch.setattr(transport, "urlopen", lambda *_args, **_kwargs: Response(b'[{STAT_ID:"1964001",DEPT_NM:"department"}]'))
     assert transport.get_meta("secret", "101", "DT_TEST", retries=1) == [{"STAT_ID": "1964001", "DEPT_NM": "department"}]
+
+
+def test_get_meta_accepts_a_configured_timeout(monkeypatch) -> None:
+    observed: dict[str, object] = {}
+
+    def fake_urlopen(_request, *, timeout):
+        observed['timeout'] = timeout
+        return Response(b'{"items": []}')
+
+    monkeypatch.setattr(transport, 'urlopen', fake_urlopen)
+    transport.get_meta('secret', '101', 'DT_TEST', retries=1, timeout_seconds=5)
+
+    assert observed['timeout'] == 5

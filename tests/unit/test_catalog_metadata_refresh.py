@@ -9,7 +9,7 @@ def test_refresh_uses_kosis_itm_metadata_with_api_key() -> None:
     refreshed = refresh_item_metadata(
         [candidate],
         'secret',
-        metadata_fetcher=lambda api_key, org_id, table_id, *, meta_type: [
+        metadata_fetcher=lambda api_key, org_id, table_id, *, meta_type, retries, timeout_seconds: [
             {'ORG_ID': org_id, 'TBL_ID': table_id, 'OBJ_ID': 'C1', 'OBJ_NM': '지역', 'ITM_ID': 'T1', 'ITM_NM': '고용률', 'UNIT_NM': '%'},
         ],
     )

@@ -28,5 +28,7 @@ def refresh_item_metadata(
             org_id,
             table_id,
             meta_type="ITM",
+            retries=1,
+            timeout_seconds=5,
         ),
     )

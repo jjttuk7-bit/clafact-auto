@@ -13,7 +13,7 @@ _ERROR_CODE = re.compile(r'^\s*\{\s*err\s*:\s*["\'](?P<code>\d+)["\']')
 _LEGACY_KEY = re.compile(r'([\[{,]\s*)([A-Za-z_][A-Za-z0-9_]*)(\s*:)')
 
 
-def get_meta(api_key: str, org_id: str, table_id: str, *, meta_type: str = "SOURCE", obj_id: str | None = None, itm_id: str | None = None, retries: int = 3) -> dict[str, Any] | list[dict[str, Any]]:
+def get_meta(api_key: str, org_id: str, table_id: str, *, meta_type: str = "SOURCE", obj_id: str | None = None, itm_id: str | None = None, retries: int = 3, timeout_seconds: float = 20) -> dict[str, Any] | list[dict[str, Any]]:
     """Fetch KOSIS metadata without exposing API keys or raw failure responses."""
     params = {"method": "getMeta", "apiKey": api_key, "format": "json", "orgId": org_id, "tblId": table_id, "type": meta_type}
     if obj_id:
@@ -24,7 +24,7 @@ def get_meta(api_key: str, org_id: str, table_id: str, *, meta_type: str = "SOUR
     last: Exception | None = None
     for attempt in range(retries):
         try:
-            with urlopen(url, timeout=20) as response:
+            with urlopen(url, timeout=timeout_seconds) as response:
                 payload = response.read()
             decoded = _decode_kosis_payload(payload)
             if not isinstance(decoded, (dict, list)):
