@@ -98,6 +98,17 @@ def test_parse_claim_normalizes_openai_percent_unit_before_decrease_sign() -> No
     assert result.value == -34.5
 
 
+def test_parse_claim_normalizes_iso_month_to_korean_month() -> None:
+    result = parse_claim(
+        "2025년 10월 배추 물가는 전년 동월 대비 34.5% 하락했다.",
+        FakeStructuredExtractor(
+            auto_claim(value=-34.5, unit="%", time="2025-10")
+        ),
+    )
+
+    assert result.time == "2025년 10월"
+
+
 @pytest.mark.parametrize(("source_sentence", "value"), [("2025년 10월 소비자물가는 2.4% 상승했다.", 2.4), ("2025년 10월 배추 물가는 -34.5% 하락했다.", -34.5)])
 def test_parse_claim_preserves_already_consistent_percentage_sign(source_sentence: str, value: float) -> None:
     result = parse_claim(source_sentence, FakeStructuredExtractor(auto_claim(value=value, unit="%", time="2025년 10월")))

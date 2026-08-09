@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from hashlib import sha256
 from typing import Protocol
 
@@ -47,6 +48,7 @@ def parse_claim(
         return claim
     claim = _with_standard_unit(claim)
     claim = _with_explicit_decrease_sign(claim, normalized_source)
+    claim = _with_standard_month(claim)
 
     missing_slots = [slot for slot in _AUTO_REQUIRED_SLOTS if getattr(claim, slot) is None]
     if missing_slots:
@@ -72,6 +74,16 @@ def _with_standard_unit(claim: ClaimSchema) -> ClaimSchema:
     if normalized_unit not in {"percent", "percentage", "퍼센트"}:
         return claim
     return claim.model_copy(update={"unit": "%"})
+
+
+def _with_standard_month(claim: ClaimSchema) -> ClaimSchema:
+    """Normalize an unambiguous ISO month to the canonical Korean month label."""
+    if claim.time is None:
+        return claim
+    match = re.fullmatch(r"(?P<year>\d{4})-(?P<month>0[1-9]|1[0-2])", claim.time.strip())
+    if match is None:
+        return claim
+    return claim.model_copy(update={"time": f"{match['year']}년 {int(match['month'])}월"})
 
 
 def _with_explicit_decrease_sign(claim: ClaimSchema, source_sentence: str) -> ClaimSchema:
