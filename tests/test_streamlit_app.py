@@ -58,3 +58,10 @@ def test_streamlit_mvp_renders_batch_upload_control() -> None:
     app.run()
 
     assert app.file_uploader[0].label == "크롤링 뉴스 파일 업로드"
+
+
+def test_streamlit_mvp_renders_batch_default_article_date_input() -> None:
+    app = AppTest.from_file("app/streamlit_app.py")
+    app.run()
+
+    assert any(widget.label == "배치 기본 기사 기준일 (선택)" for widget in app.text_input)

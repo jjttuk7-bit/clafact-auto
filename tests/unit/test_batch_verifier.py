@@ -35,7 +35,7 @@ def _match_verdict(claim_id: str = "claim-1") -> VerdictSchema:
 
 def test_load_articles_requires_required_columns() -> None:
     with pytest.raises(ValueError, match="BATCH_REQUIRED_COLUMNS"):
-        load_articles("articles.csv", b"article_id,body\nA1,news text\n")
+        load_articles("articles.csv", b"article_id,published_at\nA1,2025-04-09\n")
 
 
 def test_load_articles_reads_csv_without_persisting_upload() -> None:
@@ -83,3 +83,20 @@ def test_export_batch_xlsx_has_claim_summary_and_review_sheets() -> None:
 
     assert payload[:2] == b"PK"
     assert load_workbook(BytesIO(payload)).sheetnames == ["Claim Results", "Article Summary", "Review Queue"]
+
+
+def test_load_articles_accepts_sentence_level_crawler_columns_with_default_date() -> None:
+    articles = load_articles(
+        "crawler.csv",
+        "article_id,sentence_id,sentence,source_type\nA00006,1,2024년 수출은 6838억 달러였다.,KOSIS\n".encode(),
+        default_published_at=date(2025, 4, 9),
+    )
+
+    assert articles[0].article_id == "A00006"
+    assert articles[0].body == "2024년 수출은 6838억 달러였다."
+    assert articles[0].published_at == date(2025, 4, 9)
+
+
+def test_load_articles_requires_date_when_sentence_file_has_no_article_date() -> None:
+    with pytest.raises(ValueError, match="BATCH_ARTICLE_DATE_REQUIRED"):
+        load_articles("crawler.csv", b"article_id,sentence\nA00006,2024 data\n")

@@ -157,11 +157,13 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
         st.error(f"HOLD: {type(error).__name__}")
 st.divider()
 st.subheader("크롤링 뉴스 배치 검증")
-st.caption("필수 열: article_id, published_at(YYYY-MM-DD), body · 선택 열: title, source_url · 업로드 파일은 저장하지 않습니다.")
+st.caption("기사형: article_id, published_at, body · 문장형: article_id, sentence · 선택 열: title, source_url · 업로드 파일은 저장하지 않습니다.")
+batch_default_date_text = st.text_input("배치 기본 기사 기준일 (선택)", placeholder="문장형 파일에 기사일이 없을 때만 입력 · 예: 2025-04-09")
 uploaded_file = st.file_uploader("크롤링 뉴스 파일 업로드", type=["csv", "xlsx", "json"])
 if st.button("배치 검증 실행", type="primary", disabled=uploaded_file is None):
     try:
-        articles = load_articles(uploaded_file.name, uploaded_file.getvalue())
+        default_published_at = date.fromisoformat(batch_default_date_text) if batch_default_date_text else None
+        articles = load_articles(uploaded_file.name, uploaded_file.getvalue(), default_published_at=default_published_at)
         batch_result = verify_articles(articles, lambda item, published_at: _verify_batch_claim(item, published_at, settings))
         batch_rows = [asdict(row) for row in batch_result.claim_rows]
         total = len(batch_rows)

@@ -70,17 +70,22 @@ class BatchVerificationResult:
 Verifier = Callable[[str, date], VerdictSchema]
 
 
-def load_articles(filename: str, content: bytes) -> list[BatchArticle]:
-    """Decode an uploaded CSV, JSON, or XLSX in memory and validate its contract."""
+def load_articles(filename: str, content: bytes, *, default_published_at: date | None = None) -> list[BatchArticle]:
+    """Decode an uploaded CSV, JSON, or XLSX in memory and normalize known crawler columns."""
     suffix = filename.lower().rsplit(".", 1)[-1] if "." in filename else ""
-    rows = _read_rows(suffix, content)
-    if not rows or not _REQUIRED_COLUMNS.issubset(rows[0]):
+    rows = [_canonicalize_row(row) for row in _read_rows(suffix, content)]
+    if not rows or not {"article_id", "body"}.issubset(rows[0]):
         raise ValueError("BATCH_REQUIRED_COLUMNS")
+    if any(_optional_text(row.get("published_at")) is None for row in rows) and default_published_at is None:
+        raise ValueError("BATCH_ARTICLE_DATE_REQUIRED")
     articles: list[BatchArticle] = []
     for index, row in enumerate(rows, start=2):
         try:
             article_id = _required_text(row, "article_id")
-            published_at = date.fromisoformat(_required_text(row, "published_at"))
+            published_value = _optional_text(row.get("published_at"))
+            published_at = date.fromisoformat(published_value) if published_value else default_published_at
+            if published_at is None:
+                raise ValueError("published_at")
             body = _required_text(row, "body")
         except (TypeError, ValueError) as error:
             raise ValueError(f"BATCH_INVALID_ROW:{index}") from error
@@ -94,7 +99,6 @@ def load_articles(filename: str, content: bytes) -> list[BatchArticle]:
             )
         )
     return articles
-
 
 def verify_articles(articles: Iterable[BatchArticle], verifier: Verifier) -> BatchVerificationResult:
     """Verify each numeric claim independently; a failed claim never aborts the batch."""
@@ -146,6 +150,29 @@ def _read_rows(suffix: str, content: bytes) -> list[dict[str, Any]]:
         return [dict(zip(headers, values, strict=False)) for values in rows[1:] if any(value is not None for value in values)]
     raise ValueError("BATCH_UNSUPPORTED_FILE")
 
+
+_COLUMN_ALIASES = {
+    "article_id": ("article_id", "articleid", "id", "기사id", "기사_id"),
+    "published_at": ("published_at", "publisheddate", "article_date", "date", "기사일", "기사날짜", "발행일"),
+    "body": ("body", "content", "sentence", "text", "본문", "문장", "기사본문"),
+    "title": ("title", "headline", "제목"),
+    "source_url": ("source_url", "url", "link", "원문url", "기사url"),
+}
+
+
+def _canonicalize_row(row: dict[str, Any]) -> dict[str, Any]:
+    normalized = {_normalize_header(key): value for key, value in row.items()}
+    result = dict(row)
+    for canonical, aliases in _COLUMN_ALIASES.items():
+        for alias in aliases:
+            if alias in normalized:
+                result[canonical] = normalized[alias]
+                break
+    return result
+
+
+def _normalize_header(value: object) -> str:
+    return str(value).strip().replace(" ", "").replace("_", "").casefold()
 
 def _numeric_claims(body: str) -> list[str]:
     sentences = [sentence.strip() for sentence in _SENTENCES.split(body) if sentence.strip()]
