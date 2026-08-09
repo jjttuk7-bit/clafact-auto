@@ -126,7 +126,15 @@ def test_hcx_extractor_returns_claim_for_supported_frequency(monkeypatch: pytest
                                     "unit": "%",
                                     "time": "2024",
                                     "frequency": "year",
+                                    "region": None,
+                                    "population": None,
+                                    "dimension": None,
+                                    "comparison": None,
+                                    "calculation": None,
+                                    "condition": None,
+                                    "source_hint": None,
                                     "parse_status": "AUTO_OK",
+                                    "parse_reason": None,
                                 }
                             )
                         }
@@ -159,7 +167,15 @@ def test_hcx_extractor_restores_month_frequency_from_structured_time(monkeypatch
                     "unit": "명",
                     "time": "2025년 3월",
                     "frequency": "월 | 분기 | 년",
+                    "region": None,
+                    "population": None,
+                    "dimension": None,
+                    "comparison": None,
+                    "calculation": None,
+                    "condition": None,
+                    "source_hint": None,
                     "parse_status": "AUTO_OK",
+                    "parse_reason": None,
                 })}}}
             ).encode()
 
@@ -188,7 +204,16 @@ def test_hcx_extractor_does_not_convert_required_claim_id_to_none(monkeypatch: p
                     "value": 2.4,
                     "unit": "%",
                     "time": "2025년 10월",
+                    "frequency": None,
+                    "region": None,
+                    "population": None,
+                    "dimension": None,
+                    "comparison": None,
+                    "calculation": None,
+                    "condition": None,
+                    "source_hint": None,
                     "parse_status": "AUTO_OK",
+                    "parse_reason": None,
                 })}}}
             ).encode()
 

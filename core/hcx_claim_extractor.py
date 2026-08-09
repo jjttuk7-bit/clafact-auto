@@ -6,7 +6,7 @@ import re
 import uuid
 from urllib.request import Request, urlopen
 
-from core.claim_output_contract import claim_output_json_schema
+from core.claim_output_contract import ClaimOutputPayload, claim_output_json_schema
 from schemas.claim import ClaimSchema
 
 
@@ -38,6 +38,24 @@ def build_structured_claim_request(sentence: str) -> dict[str, object]:
     }
 
 
+def parse_structured_claim_content(content: str) -> ClaimSchema:
+    """Validate every provider key before converting to the internal Claim contract."""
+    normalized_content = content.strip()
+    normalized_content = normalized_content.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+    claim = ClaimOutputPayload.model_validate_json(normalized_content).to_claim()
+    blank_fields = {
+        key: None
+        for key, value in claim.model_dump().items()
+        if value == "" and key not in {"claim_id", "source_sentence", "parse_status"}
+    }
+    if claim.frequency and claim.frequency.casefold() not in {"monthly", "month", "yearly", "year", "annual", "월", "년", "분기"}:
+        blank_fields["frequency"] = None
+    normalized_frequency = _frequency_from_time(claim.time)
+    if (claim.frequency is None or "frequency" in blank_fields) and normalized_frequency:
+        blank_fields["frequency"] = normalized_frequency
+    return claim.model_copy(update=blank_fields)
+
+
 class HcxClaimExtractor:
     def __init__(self, api_key: str | None = None, model: str = "HCX-007") -> None:
         self.api_key = api_key or os.getenv("HCX_API_KEY") or _dotenv_value("HCX_API_KEY")
@@ -61,20 +79,7 @@ class HcxClaimExtractor:
         with urlopen(request, timeout=20) as response:
             payload = json.loads(response.read())
 
-        content = payload["result"]["message"]["content"].strip()
-        content = content.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
-        claim = ClaimSchema.model_validate_json(content)
-        blank_fields = {
-            key: None
-            for key, value in claim.model_dump().items()
-            if value == "" and key not in {"claim_id", "source_sentence", "parse_status"}
-        }
-        if claim.frequency and claim.frequency.casefold() not in {"monthly", "month", "yearly", "year", "annual", "월", "년", "분기"}:
-            blank_fields["frequency"] = None
-        normalized_frequency = _frequency_from_time(claim.time)
-        if (claim.frequency is None or "frequency" in blank_fields) and normalized_frequency:
-            blank_fields["frequency"] = normalized_frequency
-        return claim.model_copy(update=blank_fields)
+        return parse_structured_claim_content(payload["result"]["message"]["content"])
 
 
 def _dotenv_value(name: str) -> str | None:
