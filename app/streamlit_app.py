@@ -137,10 +137,15 @@ st.caption("KOSIS 공식값만 사용하며, 좌표·기사시점·후보가 불
 
 settings = Settings()
 st.subheader("운영 연결 상태")
-connection_columns = st.columns(2)
-connection_columns[0].metric("KOSIS API", "연결됨" if settings.kosis_api_key else "미설정")
 hcx_mode_label = "Function Calling" if settings.hcx_extraction_mode == "function_calling" else "Structured Output"
-connection_columns[1].metric(f"HCX {hcx_mode_label}", "연결됨" if settings.hcx_api_key else "미설정")
+is_openai_primary = settings.claim_provider == "openai"
+primary_provider_label = "OpenAI Function Calling" if is_openai_primary else f"HCX {hcx_mode_label}"
+primary_provider_configured = settings.openai_api_key if is_openai_primary else settings.hcx_api_key
+with st.container(horizontal=True):
+    st.metric("KOSIS API", "연결됨" if settings.kosis_api_key else "미설정", border=True)
+    st.metric(primary_provider_label, "연결됨" if primary_provider_configured else "미설정", border=True)
+    if is_openai_primary:
+        st.metric("HCX fallback", "연결됨" if settings.hcx_api_key else "미설정", border=True)
 st.caption("키 값은 표시하거나 로그에 기록하지 않습니다.")
 
 sentence = st.text_area("검증할 뉴스 문장", placeholder="예: 2024년 전국 고용률은 70%였다.")
@@ -149,7 +154,14 @@ article_date_text = st.text_input("기사 기준일 (YYYY-MM-DD)", placeholder="
 if st.button("자동 검증 실행", type="primary") and sentence.strip():
     try:
         article_date = date.fromisoformat(article_date_text) if article_date_text else None
-        claim = parse_claim(sentence, create_claim_extractor(settings))
+        extractor = create_claim_extractor(settings)
+        claim = parse_claim(sentence, extractor)
+        actual_provider = getattr(extractor, "last_provider", None)
+        actual_provider_label = {
+            "openai": "OpenAI",
+            "hcx": "HCX",
+        }.get(actual_provider, primary_provider_label)
+        st.metric("실제 Claim Provider", actual_provider_label)
         claim = resolve_relative_time(claim, article_date)
         ui_trace = VerificationTraceRecorder(claim.claim_id).claim_parsed()
         growth_plan = resolve_cpi_growth_plan(claim)

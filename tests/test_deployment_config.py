@@ -15,3 +15,17 @@ def test_streamlit_cloud_uses_requirements_without_poetry_lock_generation() -> N
     assert "poetry" not in configuration.get("tool", {})
     assert "streamlit>=1.40" in requirements
     assert "pydantic>=2.0,<3.0" in requirements
+
+
+def test_example_environment_documents_provider_defaults_without_credentials() -> None:
+    lines = (PROJECT_ROOT / ".env.example").read_text(encoding="utf-8").splitlines()
+
+    assert lines == [
+        "KOSIS_API_KEY=",
+        "HCX_API_KEY=",
+        "OPENAI_API_KEY=",
+        "CLAFACT_CLAIM_PROVIDER=hcx",
+        "CLAFACT_OPENAI_MODEL=gpt-5.6-luna",
+        "CLAFACT_HCX_EXTRACTION_MODE=structured_output",
+        "CLAFACT_LOG_LEVEL=INFO",
+    ]
