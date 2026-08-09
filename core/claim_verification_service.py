@@ -13,3 +13,18 @@ class VerificationTraceRecorder:
         self._trace = self._trace.pass_stage('CATALOG_SEARCH'); return self
     def build(self) -> PipelineTraceSchema:
         return self._trace
+
+    def evidence_held(self, reason_code: str) -> 'VerificationTraceRecorder':
+        self._trace = self._trace.hold('EVIDENCE_CELL', reason_code); return self
+
+    def evidence_confirmed(self) -> 'VerificationTraceRecorder':
+        self._trace = self._trace.pass_stage('EVIDENCE_CELL'); return self
+
+    def official_value_fetched(self) -> 'VerificationTraceRecorder':
+        self._trace = self._trace.pass_stage('OFFICIAL_VALUE_FETCH'); return self
+
+    def calculation_completed(self) -> 'VerificationTraceRecorder':
+        self._trace = self._trace.pass_stage('CALCULATION'); return self
+
+    def verdict_completed(self) -> 'VerificationTraceRecorder':
+        self._trace = self._trace.pass_stage('VERDICT'); return self
