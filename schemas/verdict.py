@@ -5,6 +5,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from schemas.evidence import EvidenceCellSchema
+from schemas.pipeline_trace import PipelineTraceSchema
 
 
 class VerdictSchema(BaseModel):
@@ -19,7 +20,10 @@ class VerdictSchema(BaseModel):
     reason_code: str
     explanation: str
     evidence_cells: list[EvidenceCellSchema] = Field(default_factory=list)
+    execution_trace: PipelineTraceSchema | None = None
     dataset_version: str
+    preprocess_version: str = "1.0"
+    claim_schema_version: str = "1.0"
     semantic_standard_version: str
     kosis_catalog_version: str
     matching_version: str

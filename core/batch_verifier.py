@@ -15,7 +15,7 @@ from typing import Any
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill
 
-from core.claim_splitter import split_complex_claim
+from core.article_preprocessor import preprocess_article
 from schemas.verdict import VerdictSchema
 
 _REQUIRED_COLUMNS = {"article_id", "published_at", "body"}
@@ -200,15 +200,8 @@ _METADATA_PREFIX = re.compile(
 
 
 def extract_batch_claim_sentences(body: str) -> list[str]:
-    """Keep only numeric sentences from the article body, excluding crawler chrome and ads."""
-    article_body = _TRAILING_CRAWL_NOISE.split(body, maxsplit=1)[0]
-    article_body = _METADATA_PREFIX.sub("", article_body, count=1)
-    sentences = [sentence.strip() for sentence in _SENTENCES.split(article_body) if sentence.strip()]
-    return [sentence for sentence in sentences if _NUMERIC.search(sentence)]
-
-def _numeric_claims(body: str) -> list[str]:
-    sentences = [sentence.strip() for sentence in _SENTENCES.split(body) if sentence.strip()]
-    return [claim for sentence in sentences if _NUMERIC.search(sentence) for claim in split_complex_claim(sentence)]
+    """Keep only traceable numerical candidates after deterministic preprocessing."""
+    return preprocess_article(body).claim_candidates
 
 
 def _claim_row(article: BatchArticle, sentence: str, verdict: VerdictSchema) -> BatchClaimResult:
