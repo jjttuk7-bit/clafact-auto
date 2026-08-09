@@ -38,8 +38,8 @@ def semantic_match(
 
 
 def _score(claim: ClaimSchema, candidate: KosisCandidateSchema) -> float:
-    indicator = claim.indicator or ""
-    labels = [candidate.tbl_name, *candidate.core_item_names]
+    indicator = _normalize(claim.indicator or "")
+    labels = [_normalize(label) for label in [candidate.tbl_name, *candidate.core_item_names]]
     label_score = max((SequenceMatcher(None, indicator, label).ratio() for label in labels), default=0.0)
     compatibility = 0.0
     if claim.unit and any(compatible_units(claim.unit, unit) for unit in candidate.unit_names):
@@ -55,3 +55,7 @@ def _route(score: float, margin: float, minimum_score: float, min_margin: float)
     if margin < min_margin:
         return "HOLD", "AMBIGUOUS_MARGIN"
     return "AUTO", "MATCH_ACCEPTED"
+
+
+def _normalize(value: str) -> str:
+    return "".join(value.split()).casefold()

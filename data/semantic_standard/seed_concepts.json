@@ -45,7 +45,9 @@
     "standard_key": "year_on_year_cpi_rate",
     "aliases": [
       "물가 상승률",
-      "전년동월비"
+      "전년동월비",
+      "소비자물가",
+      "소비자 물가"
     ],
     "canonical_name": "전년동월비(%)",
     "concept_id": "C000006"

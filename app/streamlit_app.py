@@ -13,6 +13,7 @@ import streamlit as st
 
 from core.batch_verifier import export_batch_xlsx, load_articles, verify_articles
 from core.claim_parser import parse_claim
+from core.claim_time_resolver import resolve_relative_time
 from core.calculator import calculate
 from core.catalog_binding import apply_catalog_binding
 from core.catalog_search import search_semantic_catalog
@@ -36,11 +37,13 @@ CATALOG_PATH = DATA_ROOT / "kosis_catalog" / "catalog_350.json"
 SNAPSHOT_PATHS = [
     DATA_ROOT / "kosis_snapshots" / "goldset_pilot.json",
     DATA_ROOT / "kosis_snapshots" / "official_goldset_asof_v3.json",
+    DATA_ROOT / "kosis_snapshots" / "official_cpi_202510.json",
 ]
 
 def _verify_batch_claim(sentence: str, article_date: date, settings: Settings) -> VerdictSchema:
     """Run the same safe claim pipeline for one batch sentence."""
     claim = parse_claim(sentence, HcxClaimExtractor())
+    claim = resolve_relative_time(claim, article_date)
     if claim.parse_status != "AUTO_OK":
         return make_verdict(claim.claim_id, claim.value, [], None).model_copy(
             update={
@@ -91,6 +94,7 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
     try:
         article_date = date.fromisoformat(article_date_text) if article_date_text else None
         claim = parse_claim(sentence, HcxClaimExtractor())
+        claim = resolve_relative_time(claim, article_date)
         concept = normalize_concept(claim, load_standard_concepts(STANDARD_PATH))
         candidates = apply_catalog_binding(claim, concept, search_semantic_catalog(claim, concept, load_kosis_catalog(CATALOG_PATH)))
         matches = semantic_match(claim, candidates)

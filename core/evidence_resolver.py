@@ -18,15 +18,20 @@ _DATA_ROOT = Path(__file__).resolve().parents[1] / "data" / "kosis_catalog"
 
 def resolve_evidence_cell(claim: ClaimSchema, candidate: KosisCandidateSchema) -> EvidenceCellSchema:
     """Confirm an evidence cell only from catalog metadata or registered official coordinates."""
+    dimensions, coordinate_resolved = _resolve_dimensions(claim, candidate)
+    if not coordinate_resolved:
+        registered_dimensions = _registered_dimensions(candidate.tbl_id, candidate.dimension_ids)
+        if registered_dimensions is not None:
+            dimensions, coordinate_resolved = registered_dimensions, True
     indicator = _normalize(claim.indicator)
     matches = [
         (item_id, item_name)
         for item_id, item_name in zip(candidate.core_item_ids, candidate.core_item_names)
         if _normalize(item_name) == indicator or _normalize(item_name) in indicator
     ]
-    status = "CONFIRMED" if len(matches) == 1 and claim.time and claim.unit else "AMBIGUOUS" if len(matches) > 1 else "UNRESOLVED"
-    item_id = matches[0][0] if len(matches) == 1 else "UNRESOLVED"
-    dimensions, coordinate_resolved = _resolve_dimensions(claim, candidate)
+    registered_item_id = _registered_item_id(candidate.tbl_id, dimensions) if coordinate_resolved else None
+    status = "CONFIRMED" if (len(matches) == 1 or registered_item_id is not None) and claim.time and claim.unit else "AMBIGUOUS" if len(matches) > 1 else "UNRESOLVED"
+    item_id = matches[0][0] if len(matches) == 1 else registered_item_id or "UNRESOLVED"
     if not coordinate_resolved:
         status = "UNRESOLVED"
     unit = next((value for value in candidate.unit_names if claim.unit and compatible_units(claim.unit, value)), None)
@@ -134,6 +139,30 @@ def _coordinate_registry() -> tuple[dict[str, object], ...]:
     payload = json.loads(source.read_text(encoding="utf-8"))
     return tuple(row for row in payload if isinstance(row, dict))
 
+
+def _registered_dimensions(table_id: str, dimension_ids: list[str]) -> dict[str, str] | None:
+    """Use dimensions only when one registered official profile matches the table shape."""
+    profiles = {
+        tuple(sorted((str(key), str(value)) for key, value in row.get("dimension_members", {}).items()))
+        for row in _coordinate_registry()
+        if row.get("tbl_id") == table_id
+        and isinstance(row.get("dimension_members"), dict)
+        and set(row["dimension_members"]) == set(dimension_ids)
+    }
+    if len(profiles) != 1:
+        return None
+    return dict(next(iter(profiles)))
+
+def _registered_item_id(table_id: str, dimensions: dict[str, str]) -> str | None:
+    """Use an item only when one explicit official coordinate exactly matches dimensions."""
+    item_ids = {
+        row.get("itm_id")
+        for row in _coordinate_registry()
+        if row.get("tbl_id") == table_id
+        and row.get("dimension_members") == dimensions
+        and isinstance(row.get("itm_id"), str)
+    }
+    return next(iter(item_ids)) if len(item_ids) == 1 else None
 
 def _registered_coordinate(table_id: str, item_id: str, dimensions: dict[str, str]) -> tuple[str, str] | None:
     for row in _coordinate_registry():

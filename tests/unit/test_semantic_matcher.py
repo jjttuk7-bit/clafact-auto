@@ -45,3 +45,12 @@ def test_semantic_match_rewards_convertible_units() -> None:
         [candidate("A", "가구수", unit_names=["천가구"])],
     )
     assert result[0].semantic_score == 1.0
+
+
+def test_semantic_match_normalizes_korean_whitespace_before_scoring() -> None:
+    result = semantic_match(
+        claim(indicator="소비자 물가", unit="%", time="2025년 10월", frequency="월"),
+        [candidate("DT_1J22042", "월별 소비자물가 등락률", frequency="월", start_period="2020", end_period="2025")],
+    )
+
+    assert result[0].route_status == "AUTO"

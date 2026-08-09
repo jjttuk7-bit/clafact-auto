@@ -122,3 +122,31 @@ def test_resolve_evidence_cell_uses_claim_frequency_for_multi_frequency_table() 
     )
 
     assert cell.prd_se == "월"
+
+
+def test_resolve_evidence_cell_uses_registered_cpi_year_on_year_coordinate() -> None:
+    cell = resolve_evidence_cell(
+        claim(
+            indicator="소비자 물가",
+            unit="%",
+            time="2025년 10월",
+            frequency="월",
+            region=None,
+        ),
+        candidate(
+            tbl_id="DT_1J22042",
+            tbl_name="월별 소비자물가 등락률",
+            core_item_ids=["T02", "T03", "T04"],
+            core_item_names=["전월비", "전년동월비(%)", "전년누계비(%)"],
+            dimension_ids=["I"],
+            dimension_names=["지수종류"],
+            dimension_members={"I": ["총지수", "생활물가지수"]},
+            unit_names=["%"],
+            frequency="월",
+        ),
+    )
+
+    assert cell.status == "CONFIRMED"
+    assert cell.itm_id == "T03"
+    assert cell.dimension_members == {"I": "총지수"}
+    assert cell.canonical_key == "ORG=101|TBL=DT_1J22042|ITM=T03|OBJ=I|MEMBER=총지수|PRD_SE=월|PRD_DE=2025-10"

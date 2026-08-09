@@ -1,3 +1,4 @@
 [
-  {"tbl_id":"DT_1DA7028S","itm_id":"T30","dimension_members":{"B":"\uACC4","J":"\uACC4"},"obj_id":"B","member_code":"\uACC4"}
+  {"tbl_id":"DT_1DA7028S","itm_id":"T30","dimension_members":{"B":"계","J":"계"},"obj_id":"B","member_code":"계"},
+  {"tbl_id":"DT_1J22042","itm_id":"T03","dimension_members":{"I":"총지수"},"obj_id":"I","member_code":"총지수"}
 ]

@@ -1,4 +1,5 @@
 [
-  {"tbl_id":"DT_1DA7028S","dimension_id":"B","member_code":"0","member_name":"\uACC4"},
-  {"tbl_id":"DT_1DA7028S","dimension_id":"J","member_code":"00","member_name":"\uACC4"}
+  {"tbl_id":"DT_1DA7028S","dimension_id":"B","member_code":"0","member_name":"계"},
+  {"tbl_id":"DT_1DA7028S","dimension_id":"J","member_code":"00","member_name":"계"},
+  {"tbl_id":"DT_1J22042","dimension_id":"I","member_code":"T10","member_name":"총지수"}
 ]

@@ -1,3 +1,4 @@
 [
-  {"standard_key":"employment_count","frequency":"\uC6D4","region":null,"population":null,"tbl_id":"DT_1DA7028S","evidence_profile":"national_total"}
+  {"standard_key":"employment_count","frequency":"월","region":null,"population":null,"tbl_id":"DT_1DA7028S","evidence_profile":"national_total"},
+  {"standard_key":"year_on_year_cpi_rate","frequency":"월","region":null,"population":null,"tbl_id":"DT_1J22042","evidence_profile":"national_total"}
 ]
