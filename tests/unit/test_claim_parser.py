@@ -1,8 +1,10 @@
+import json
 from dataclasses import dataclass
 
 import pytest
 
 from core.claim_parser import parse_claim
+from core.hcx_claim_extractor import HcxClaimExtractor
 from schemas.claim import ClaimSchema
 
 
@@ -107,3 +109,40 @@ def test_parse_claim_rejects_non_schema_extractor_response() -> None:
 
     with pytest.raises(TypeError, match="ClaimSchema"):
         parse_claim("2024년 고용률은 70%였다.", InvalidExtractor())
+
+def test_hcx_extractor_returns_claim_for_supported_frequency(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FakeResponse:
+        def read(self) -> bytes:
+            return json.dumps(
+                {
+                    "result": {
+                        "message": {
+                            "content": json.dumps(
+                                {
+                                    "claim_id": "hcx-id",
+                                    "source_sentence": "2024년 고용률은 70%였다.",
+                                    "indicator": "고용률",
+                                    "value": 70,
+                                    "unit": "%",
+                                    "time": "2024",
+                                    "frequency": "year",
+                                    "parse_status": "AUTO_OK",
+                                }
+                            )
+                        }
+                    }
+                }
+            ).encode()
+
+        def __enter__(self) -> "FakeResponse":
+            return self
+
+        def __exit__(self, exc_type: object, exc_value: object, traceback: object) -> None:
+            return None
+
+    monkeypatch.setattr("core.hcx_claim_extractor.urlopen", lambda *args, **kwargs: FakeResponse())
+
+    result = HcxClaimExtractor(api_key="test-key").extract("2024년 고용률은 70%였다.")
+
+    assert result.frequency == "year"
+    assert result.indicator == "고용률"
