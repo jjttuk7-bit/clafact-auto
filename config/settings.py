@@ -29,6 +29,9 @@ class Settings:
 
     kosis_api_key: str | None = None
     hcx_api_key: str | None = None
+    claim_provider: str = "hcx"
+    openai_api_key: str | None = None
+    openai_model: str = "gpt-5.6-luna"
     log_level: str = "INFO"
     hcx_extraction_mode: str = "structured_output"
     dataset_version: str = "unversioned"
@@ -43,6 +46,25 @@ class Settings:
         load_environment_file(_ENV_PATH, environ)
         if self.kosis_api_key is None:
             object.__setattr__(self, "kosis_api_key", getenv("KOSIS_API_KEY"))
+        if self.claim_provider == "hcx":
+            object.__setattr__(
+                self,
+                "claim_provider",
+                getenv("CLAFACT_CLAIM_PROVIDER", "hcx"),
+            )
+        object.__setattr__(
+            self,
+            "claim_provider",
+            self.claim_provider.strip().casefold(),
+        )
+        if self.openai_api_key is None:
+            object.__setattr__(self, "openai_api_key", getenv("OPENAI_API_KEY"))
+        if self.openai_model == "gpt-5.6-luna":
+            object.__setattr__(
+                self,
+                "openai_model",
+                getenv("CLAFACT_OPENAI_MODEL", "gpt-5.6-luna"),
+            )
         if self.hcx_api_key is None:
             object.__setattr__(self, "hcx_api_key", getenv("HCX_API_KEY"))
         if self.log_level == "INFO":
