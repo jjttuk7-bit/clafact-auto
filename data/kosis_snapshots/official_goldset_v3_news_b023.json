@@ -1,0 +1,12 @@
+{
+  "snapshot_id":"official-goldset-v3-NEWS_B-023-A01", "dataset_version":"goldset-v3-final",
+  "source_artifact":"ClaFact_골든셋_정답기준확정_v3_최종확정_파일럿20건.xlsx", "claim_id":"NEWS_B-023-A01",
+  "org_id":"101", "tbl_id":"DT_1J22112", "item_id":"T", "unit":"2020=100",
+  "records":[
+    {"period":"202410","value":208.57,"dimension_codes":{"C1":"T10","C2":"A02A01701"},"last_changed_at":"2025-10-30"},{"period":"202510","value":136.62,"dimension_codes":{"C1":"T10","C2":"A02A01701"},"last_changed_at":"2025-10-30"},
+    {"period":"202410","value":169.61,"dimension_codes":{"C1":"T10","C2":"A02A01708"},"last_changed_at":"2025-10-30"},{"period":"202510","value":100.89,"dimension_codes":{"C1":"T10","C2":"A02A01708"},"last_changed_at":"2025-10-30"},
+    {"period":"202410","value":99.18,"dimension_codes":{"C1":"T10","C2":"A01A01101"},"last_changed_at":"2025-10-30"},{"period":"202510","value":120.31,"dimension_codes":{"C1":"T10","C2":"A01A01101"},"last_changed_at":"2025-10-30"},
+    {"period":"202410","value":132.95,"dimension_codes":{"C1":"T10","C2":"A03A01601"},"last_changed_at":"2025-10-30"},{"period":"202510","value":161.61,"dimension_codes":{"C1":"T10","C2":"A03A01601"},"last_changed_at":"2025-10-30"},
+    {"period":"202410","value":135.23,"dimension_codes":{"C1":"T10","C2":"A05A01405"},"last_changed_at":"2025-10-30"},{"period":"202510","value":144.62,"dimension_codes":{"C1":"T10","C2":"A05A01405"},"last_changed_at":"2025-10-30"}
+  ]
+}

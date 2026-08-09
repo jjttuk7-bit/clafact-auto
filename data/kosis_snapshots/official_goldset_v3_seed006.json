@@ -1,0 +1,8 @@
+{
+  "snapshot_id": "official-goldset-v3-KOSIS_SEED-006-A01",
+  "dataset_version": "goldset-v3-final",
+  "source_artifact": "ClaFact_골든셋_정답기준확정_v3_최종확정_파일럿20건.xlsx",
+  "claim_id": "KOSIS_SEED-006-A01",
+  "org_id": "101", "tbl_id": "DT_1YL20651E", "item_id": "T20", "unit": "명",
+  "records": [{"period": "202502", "value": 3027854, "dimension_codes": {"C1": "28"}, "as_of_verified_by_goldset": true}]
+}

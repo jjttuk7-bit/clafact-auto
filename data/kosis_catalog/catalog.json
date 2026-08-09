@@ -1,0 +1,17 @@
+[
+  {
+    "ORG_ID": "101",
+    "TBL_ID": "DT_EXAMPLE_EMPLOYMENT",
+    "TBL_NM_META": "경제활동인구조사 고용률",
+    "CORE_ITEM_IDS": "T1",
+    "CORE_ITEM_NAMES": "고용률",
+    "DIMENSION_IDS": "SEX",
+    "DIMENSION_NAMES": "성별",
+    "DIMENSION_MEMBERS_JSON": "{\"SEX\": [\"전체\"]}",
+    "UNIT_NAMES_FINAL": "%",
+    "PRD_SE_META": "Y",
+    "STRT_PRD_DE": "2020",
+    "END_PRD_DE": "2024",
+    "semantic_core_status": "SEED"
+  }
+]

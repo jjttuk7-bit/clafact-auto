@@ -1,0 +1,53 @@
+[
+  {
+    "concept_id": "C000001",
+    "canonical_name": "고용률",
+    "standard_key": "employment_rate",
+    "aliases": [
+      "고용률",
+      "취업률"
+    ]
+  },
+  {
+    "concept_id": "C000002",
+    "canonical_name": "실업률",
+    "standard_key": "unemployment_rate",
+    "aliases": [
+      "실업률"
+    ]
+  },
+  {
+    "standard_key": "unemployment_rate",
+    "aliases": [
+      "청년층 실업률"
+    ],
+    "canonical_name": "실업률",
+    "concept_id": "C000003"
+  },
+  {
+    "standard_key": "household_count",
+    "aliases": [
+      "1인 가구 수",
+      "1인가구 수"
+    ],
+    "canonical_name": "가구수",
+    "concept_id": "C000004"
+  },
+  {
+    "standard_key": "employment_count",
+    "aliases": [
+      "취업자 수"
+    ],
+    "canonical_name": "취업자",
+    "concept_id": "C000005"
+  },
+  {
+    "standard_key": "year_on_year_cpi_rate",
+    "aliases": [
+      "물가 상승률",
+      "전년동월비"
+    ],
+    "canonical_name": "전년동월비(%)",
+    "concept_id": "C000006"
+  }
+]

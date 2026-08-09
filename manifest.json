@@ -1,0 +1,17 @@
+{
+  "project": "CLAFACT-AUTO",
+  "purpose": "CODEX implementation document package",
+  "documents": [
+    "00_README.md",
+    "AGENTS.md",
+    "01_PRODUCT_REQUIREMENTS.md",
+    "02_SYSTEM_ARCHITECTURE.md",
+    "03_DATA_SCHEMAS.md",
+    "04_FUNCTION_SPECS.md",
+    "05_KOSIS_INTEGRATION.md",
+    "06_TEST_AND_GOLDSET.md",
+    "07_UI_SPEC.md",
+    "08_IMPLEMENTATION_ROADMAP.md",
+    "09_CODEX_MASTER_PROMPT.md"
+  ]
+}

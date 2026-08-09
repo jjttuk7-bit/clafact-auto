@@ -1,0 +1,17 @@
+{
+  "request_params": {
+    "orgId": "101",
+    "tblId": "DT_1J22112",
+    "type": "SOURCE"
+  },
+  "response": [
+    {
+      "STAT_ID": "1964001",
+      "DEPT_PHONE": "042-481-2533",
+      "JOSA_NM": "「소비자물가조사」",
+      "DEPT_NM": "경제동향통계심의관 물가동향과"
+    }
+  ],
+  "retrieved_at": "2026-08-08T23:16:08.620923+00:00",
+  "response_hash": "bd97591d97508510c4e87bb0b217705a1ab5ebd3491c732ae7c2878a9ae96bd0"
+}

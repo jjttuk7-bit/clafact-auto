@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "clafact-auto"
+version = "0.1.0"
+description = "Deterministic verification engine for numerical news claims against KOSIS statistics"
+requires-python = ">=3.12"
+dependencies = ["pydantic>=2.0,<3.0"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+app = ["streamlit>=1.40"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"

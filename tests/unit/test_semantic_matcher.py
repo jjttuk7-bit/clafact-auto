@@ -1,0 +1,47 @@
+from core.semantic_matcher import semantic_match
+from schemas.candidate import KosisCandidateSchema
+from schemas.claim import ClaimSchema
+
+
+def claim(**updates: object) -> ClaimSchema:
+    data: dict[str, object] = {"claim_id": "C1", "source_sentence": "2024년 고용률은 70%였다.", "indicator": "고용률", "unit": "%", "time": "2024", "frequency": "YEAR", "region": "전국", "parse_status": "AUTO_OK"}
+    data.update(updates)
+    return ClaimSchema(**data)
+
+
+def candidate(tbl_id: str, name: str, **updates: object) -> KosisCandidateSchema:
+    data: dict[str, object] = {"org_id": "101", "tbl_id": tbl_id, "tbl_name": name, "core_item_names": [name], "unit_names": ["%"], "frequency": "YEAR", "start_period": "2020", "end_period": "2024", "metadata_status": "READY"}
+    data.update(updates)
+    return KosisCandidateSchema(**data)
+
+
+def test_semantic_match_auto_routes_clear_high_score_winner() -> None:
+    result = semantic_match(claim(), [candidate("A", "고용률"), candidate("B", "소비자물가")])
+    assert result[0].candidate_tbl_id == "A"
+    assert result[0].route_status == "AUTO"
+
+
+def test_semantic_match_holds_when_top_two_margin_is_low() -> None:
+    result = semantic_match(claim(), [candidate("A", "고용률"), candidate("B", "고용률")], min_margin=0.1)
+    assert result[0].route_status == "HOLD"
+    assert result[0].reason_code == "AMBIGUOUS_MARGIN"
+    assert result[0].top1_top2_margin == 0.0
+
+
+def test_semantic_match_excludes_hard_guard_rejects_before_scoring() -> None:
+    result = semantic_match(claim(unit="명"), [candidate("A", "고용률")])
+    assert result == []
+
+
+def test_semantic_match_holds_below_score_threshold() -> None:
+    result = semantic_match(claim(), [candidate("A", "고용륩")], minimum_score=0.99)
+    assert result[0].route_status == "HOLD"
+    assert result[0].reason_code == "LOW_SEMANTIC_SCORE"
+
+
+def test_semantic_match_rewards_convertible_units() -> None:
+    result = semantic_match(
+        claim(indicator="가구수", unit="가구"),
+        [candidate("A", "가구수", unit_names=["천가구"])],
+    )
+    assert result[0].semantic_score == 1.0

@@ -1,0 +1,1 @@
+{"snapshot_id":"official-goldset-v3-NEWS_B-001-A01-yoy","dataset_version":"goldset-v3-final","source_artifact":"ClaFact_골든셋_정답기준확정_v3_최종확정_파일럿20건.xlsx","claim_id":"NEWS_B-001-A01","org_id":"101","tbl_id":"DT_1J22042","item_id":"YOY_TOTAL","unit":"%","records":[{"period":"202505","value":1.9,"as_of_verified_by_goldset":true}]}

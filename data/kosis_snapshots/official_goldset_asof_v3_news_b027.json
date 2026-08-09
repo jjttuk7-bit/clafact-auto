@@ -1,0 +1,14 @@
+{
+  "snapshot_id": "official-goldset-asof-v3-NEWS_B-027-A01",
+  "dataset_version": "goldset-v3-final",
+  "source_artifact": "ClaFact_골든셋_정답기준확정_v3_최종확정_파일럿20건.xlsx",
+  "claim_id": "NEWS_B-027-A01",
+  "org_id": "101",
+  "tbl_id": "DT_1ES3B31J",
+  "item_id": "T00",
+  "unit": "천명",
+  "records": [
+    {"period": "202402", "value": 3026.9, "last_changed_at": "2025-04-08", "dimension_codes": {"C1": "Q"}},
+    {"period": "202402", "value": 1593.8, "last_changed_at": "2025-04-08", "dimension_codes": {"C1": "872"}}
+  ]
+}
