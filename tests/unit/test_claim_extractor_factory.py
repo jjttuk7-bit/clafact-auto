@@ -1,11 +1,25 @@
 import pytest
 
+import config.settings as settings_module
 from config.settings import Settings
 from core.claim_extractor_factory import create_claim_extractor
 from core.fallback_claim_extractor import FallbackClaimExtractor
 from core.hcx_claim_extractor import HcxClaimExtractor
 from core.hcx_function_claim_extractor import HcxFunctionClaimExtractor
 from core.openai_function_claim_extractor import OpenAIFunctionClaimExtractor
+
+
+@pytest.fixture(autouse=True)
+def isolate_claim_provider_environment(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(settings_module, "_ENV_PATH", tmp_path / "missing.env")
+    for name in (
+        "CLAFACT_CLAIM_PROVIDER",
+        "CLAFACT_HCX_EXTRACTION_MODE",
+        "OPENAI_API_KEY",
+        "HCX_API_KEY",
+        "CLAFACT_OPENAI_MODEL",
+    ):
+        monkeypatch.delenv(name, raising=False)
 
 
 def test_factory_uses_structured_output_by_default() -> None:
