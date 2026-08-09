@@ -68,3 +68,17 @@ def test_unified_fetcher_prefers_api_over_snapshot_when_enabled(tmp_path) -> Non
     assert result.status == "SUCCESS"
     assert result.value == 110.01
     assert result.source == "API"
+
+
+def test_prefer_api_falls_back_to_dated_snapshot_when_api_has_no_asof_metadata(tmp_path) -> None:
+    path = tmp_path / "official.json"
+    path.write_text(json.dumps({"org_id":"101","tbl_id":"DT","item_id":"T","records":[{"period":"202505","value":109.67,"last_changed_at":"2025-05-30"}]}), encoding="utf-8")
+    api_rows = [{"TBL_ID":"DT", "ITM_ID":"T", "PRD_DE":"202505", "DT":"110.01"}]
+
+    result = OfficialValueFetcher([path], api_lookup=lambda _cell: api_rows, prefer_api=True).fetch(
+        cell(), article_date=date(2025, 6, 26)
+    )
+
+    assert result.status == "SUCCESS"
+    assert result.value == 109.67
+    assert result.source == "SNAPSHOT"

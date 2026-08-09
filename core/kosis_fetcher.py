@@ -52,8 +52,9 @@ class OfficialValueFetcher:
         as_of_unavailable = False
         if self._prefer_api:
             api_result = self._fetch_api(cell, article_date)
-            if api_result is not None and api_result.status in {"SUCCESS", "AS_OF_UNAVAILABLE"}:
+            if api_result is not None and api_result.status == "SUCCESS":
                 return api_result
+            as_of_unavailable = bool(api_result and api_result.status == "AS_OF_UNAVAILABLE")
         for path in self._snapshot_paths:
             result = self._fetch_snapshot(cell, path, article_date)
             if result.status == "SUCCESS":
