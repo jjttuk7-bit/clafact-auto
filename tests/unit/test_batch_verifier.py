@@ -111,3 +111,18 @@ def test_load_articles_accepts_cp949_semicolon_file_without_article_id() -> None
 
     assert articles[0].article_id == "row-000001"
     assert articles[0].body == "2025년 3월 취업자 수는 2858만9000명이었다."
+
+
+def test_load_articles_accepts_article_body_crawler_headers() -> None:
+    articles = load_articles(
+        "news.csv",
+        "기사제목,작성일,URL,기사 본문 전체\n물가 기사,2025-11-04,https://example.test/news,10월 소비자물가는 2.4% 상승했다.\n".encode(),
+    )
+
+    assert articles[0] == BatchArticle(
+        article_id="row-000001",
+        published_at=date(2025, 11, 4),
+        body="10월 소비자물가는 2.4% 상승했다.",
+        title="물가 기사",
+        source_url="https://example.test/news",
+    )

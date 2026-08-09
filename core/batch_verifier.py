@@ -162,9 +162,9 @@ def _read_rows(suffix: str, content: bytes) -> list[dict[str, Any]]:
 
 _COLUMN_ALIASES = {
     "article_id": ("article_id", "articleid", "id", "기사id", "기사_id"),
-    "published_at": ("published_at", "publisheddate", "article_date", "date", "기사일", "기사날짜", "발행일"),
-    "body": ("body", "content", "sentence", "text", "본문", "문장", "기사본문", "내용", "기사내용", "뉴스본문", "claim", "claimtext"),
-    "title": ("title", "headline", "제목"),
+    "published_at": ("published_at", "publisheddate", "article_date", "date", "기사일", "기사날짜", "발행일", "작성일"),
+    "body": ("body", "content", "sentence", "text", "본문", "문장", "기사본문", "기사본문전체", "내용", "기사내용", "뉴스본문", "claim", "claimtext"),
+    "title": ("title", "headline", "제목", "기사제목"),
     "source_url": ("source_url", "url", "link", "원문url", "기사url"),
 }
 
