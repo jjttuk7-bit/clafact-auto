@@ -63,7 +63,17 @@ flowchart TD
     class S,T result;
 ```
 
-전처리 단계는 기사 원문을 내부 데이터 계약으로 쓰지 않기 위해 입력 형식을 정리하고, 본문 속 광고·메뉴·중복 문구를 제거한 뒤 수치 Claim 후보 문장만 다음 단계로 전달합니다. 이후 LLM은 **Structured Output 파싱에만** 사용되며, KOSIS 공식값 조회와 계산은 각각 KOSIS adapter와 Python 코드가 수행합니다.
+전처리 단계는 기사 원문을 내부 데이터 계약으로 쓰지 않기 위해 입력 형식을 정리하고, 본문 속 광고·메뉴·중복 문구를 제거한 뒤 수치 Claim 후보 문장만 다음 단계로 전달합니다. 이후 LLM은 **Structured Output 또는 제한된 `emit_claim` Claim 제출에만** 사용되며, KOSIS 공식값 조회와 계산은 각각 KOSIS adapter와 Python 코드가 수행합니다.
+### HCX 구조화 출력과 `emit_claim`
+
+기본 HCX 경로는 HCX-007의 `responseFormat` Structured Outputs를 사용합니다. 12개 Semantic Slot과 추적 메타데이터를 모두 필수 키로 요청하며, 문장에 없는 선택 값도 키를 생략하지 않고 명시적 `null`로 반환해야 합니다. 응답은 모든 키가 실제 존재하는 strict provider payload로 검증한 뒤 `ClaimSchema`로 변환합니다.
+
+선택적으로 사용할 수 있는 Function Calling 경로는 정확히 한 개의 함수 `emit_claim`만 노출합니다. HCX 공식 사양상 Structured Outputs와 Function Calling은 한 요청에서 동시에 사용할 수 없으므로 두 경로는 상호 배타적이며, 동일한 Claim JSON Schema를 공유합니다. `emit_claim`은 Claim 인수를 제출하는 형식 경계일 뿐 Python 함수를 동적으로 실행하지 않습니다.
+
+KOSIS 검색, Hard Guard, Semantic Matching, Evidence Cell Resolution, 공식값 조회, 계산, Verdict는 Function Calling 도구로 노출되지 않으며 계속 Python 파이프라인이 직접 통제합니다.
+
+- [HCX Structured Outputs 공식 문서](https://api.ncloud-docs.com/docs/clovastudio-chatcompletionsv3-so)
+- [HCX Function Calling 공식 문서](https://api.ncloud-docs.com/docs/clovastudio-chatcompletionsv3-fc)
 
 ```text
 Article

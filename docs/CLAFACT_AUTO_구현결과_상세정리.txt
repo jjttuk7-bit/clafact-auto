@@ -1,0 +1,921 @@
+CLAFACT-AUTO 구현 결과 상세 정리
+=================================
+
+작성 기준일: 2026-08-09 (Asia/Seoul)
+대상 저장소: clafact-auto
+현재 버전: 0.1.0
+기준 브랜치: main
+기준 기능 커밋: 1f2d0c3 (test: enforce complete HCX provider payloads)
+최신 검증 결과: 220 passed in 14.86s
+
+
+0. 문서의 목적
+---------------
+
+이 문서는 CLAFACT-AUTO에서 지금까지 실제로 구현된 결과를 개발 순서에 따라 정리한 현황 문서다.
+설계만 존재하는 항목과 코드·테스트로 구현된 항목을 혼동하지 않도록 현재 저장소의 코드, 데이터,
+Git 이력, pytest 실행 결과를 기준으로 작성했다.
+
+CLAFACT-AUTO의 목적은 뉴스 기사 속 수치 Claim을 KOSIS 공식 통계와 자동 대조하는 것이다.
+이 시스템은 답을 그럴듯하게 생성하는 서비스가 아니라 다음 조건을 만족할 때만 자동 판정하는
+근거 중심 검증 엔진이다.
+
+  1) KOSIS 공식값은 LLM이 만들지 않는다.
+  2) 공식값은 KOSIS API 또는 저장된 공식 Snapshot에서만 읽는다.
+  3) 수치 계산은 Python 함수가 수행한다.
+  4) LLM은 Claim 해석을 위한 Structured Output에만 사용한다.
+  5) Hard Guard가 Semantic Score보다 먼저 실행된다.
+  6) 후보가 모호하면 Top-1을 강제로 선택하지 않고 HOLD/HUMAN_REVIEW로 보낸다.
+  7) 모든 핵심 결과에는 근거 좌표, 계산 결과, 사유 코드, 버전 정보를 남긴다.
+
+
+1. 최초 기반 구축: 프로젝트 골격과 개발 계약
+--------------------------------------------
+
+최초 구현에서는 요구사항 문서와 AGENTS.md의 절대 규칙을 코드 구조에 반영했다.
+
+구현된 디렉터리 구조:
+
+  app/       Streamlit 사용자 화면
+  core/      검증 파이프라인의 도메인 로직과 외부 연동 adapter
+  schemas/   Pydantic v2 기반 내부 데이터 계약
+  data/      의미 표준, KOSIS 카탈로그, Evidence 좌표, 공식 Snapshot
+  tests/     unit, integration, goldset 테스트
+  config/    환경변수와 로깅 설정
+  docs/      기준 문서, 실행 계획, 본 구현 결과 문서
+  logs/      런타임 로그 영역
+
+기술 기준:
+
+  - Python 3.12 이상
+  - Pydantic 2.x
+  - pytest 8.x
+  - Streamlit 1.40 이상
+  - openpyxl 3.1 이상
+  - 네트워크 호출은 adapter/transport 계층으로 분리
+  - API 키는 KOSIS_API_KEY, HCX_API_KEY 환경변수로만 관리
+  - CLAFACT_LOG_LEVEL로 로그 레벨 관리
+
+관련 핵심 파일:
+
+  AGENTS.md
+  pyproject.toml
+  requirements.txt
+  config/settings.py
+  config/logging.py
+  docs/reference/00_README.md ~ 09_CODEX_MASTER_PROMPT.md
+  docs/reference/RUNBOOK.md
+
+
+2. 데이터 계약 구현: 자유 텍스트에서 구조화 객체로 전환
+-------------------------------------------------------
+
+뉴스 문장 자체를 내부 검증 계약으로 사용하지 않도록 Pydantic 스키마를 구현했다.
+모든 스키마는 extra="forbid"를 사용하여 정의되지 않은 필드가 임의로 유입되는 것을 막는다.
+
+2.1 ClaimSchema와 12개 Semantic Slot
+
+실제 12개 의미 슬롯은 다음과 같다.
+
+  1) indicator   : 검증할 지표 또는 항목
+  2) value       : 기사에 제시된 수치
+  3) unit        : %, 명, 천명, 원, 지수 등의 단위
+  4) time        : 기준 시점 또는 기간
+  5) frequency   : 월, 분기, 연 등 통계 주기
+  6) region      : 전국, 시도 등 공간 범위
+  7) population  : 연령·산업·대상 집단 등 모집단
+  8) dimension   : 성별·연령·품목 등 KOSIS 분류 조건
+  9) comparison  : 전년 동월 대비, 전월 대비 등 비교 기준
+ 10) calculation : DIRECT_VALUE, GROWTH_RATE 등 계산 유형
+ 11) condition   : 계절조정, 원계열, 잠정/확정 등 통계 조건
+ 12) source_hint : 기사 안의 KOSIS·통계청 등 출처 단서
+
+추적과 라우팅을 위한 별도 메타 필드:
+
+  claim_id, source_sentence, parse_status, parse_reason
+
+parse_status는 AUTO_OK, HOLD, HUMAN_REVIEW 중 하나만 허용한다.
+
+2.2 나머지 핵심 계약
+
+  - StandardConceptSchema: 의미 표준 매핑 결과
+  - KosisCandidateSchema: 후보 통계표와 항목·차원·단위·주기 메타데이터
+  - HardGuardResult: 구조적 통과 여부와 reject code
+  - MatchResult: 의미 점수, Top1/Top2 margin, 경로 상태
+  - EvidenceCellSchema: org/tbl/itm/obj/member/기간/차원 코드로 구성된 증거 셀
+  - CalculationPlan: 계산 유형, 필요 Evidence Cell, 연산자, 허용 오차
+  - VerdictSchema: 기사값, 공식값, 계산값, 판정, 경로, 근거, 버전, 실행 추적
+  - PipelineTraceSchema: 단계별 PASS/HOLD/HUMAN_REVIEW/SKIPPED 기록
+
+관련 파일:
+
+  schemas/claim.py
+  schemas/concept.py
+  schemas/candidate.py
+  schemas/evidence.py
+  schemas/verdict.py
+  schemas/pipeline_trace.py
+
+
+3. Claim Extraction, Split, Structured Parsing 구현
+--------------------------------------------------
+
+3.1 복합 Claim 분리
+
+core/claim_splitter.py의 split_complex_claim()은 한 문장 안의 복수 수치 주장을 독립 Claim으로
+분리한다. 분리할 수 없는 복합 의미를 임의로 하나만 선택하지 않는다.
+
+3.2 Structured Output Parser
+
+core/claim_parser.py는 StructuredClaimExtractor Protocol을 통해 모델 구현과 핵심 로직을 분리한다.
+core/hcx_claim_extractor.py는 HCX 호출 결과를 JSON Schema에 맞춘 12 Slot 구조로 받는다.
+자유 형식 설명문은 판정 계약으로 사용하지 않는다.
+
+파싱 후 필수 조건이 충분하면 AUTO_OK, 모호하거나 필수 문맥이 빠지면 HOLD 또는
+HUMAN_REVIEW로 라우팅한다. 상대 시점은 core/claim_time_resolver.py에서 기사 기준일을 사용해
+결정론적으로 보정한다.
+
+3.3 parser 안정화
+
+HCX가 유효한 frequency를 반환한 경우 Claim이 누락되던 문제를 수정했고, 전년 동월 대비 등
+비교 문장의 방향(상승/하락 부호)이 보존되도록 보완했다.
+
+관련 파일:
+
+  core/claim_splitter.py
+  core/claim_parser.py
+  core/hcx_claim_extractor.py
+  core/structured_adapter.py
+  core/claim_time_resolver.py
+  tests/unit/test_claim_splitter.py
+  tests/unit/test_claim_parser.py
+  tests/unit/test_hcx_prompt.py
+
+
+4. 기사 전처리와 수치 Claim 후보 선별
+-------------------------------------
+
+크롤링된 기사 전체를 바로 Parser에 전달하지 않도록 결정론적 전처리를 구현했다.
+
+처리 순서:
+
+  기사 원문
+    -> 입력/등록/수정 시각 등 크롤러 메타 접두부 제거
+    -> 관련 기사, AI 추천, Taboola, 댓글, 많이 본 뉴스 이후의 꼬리 영역 제거
+    -> 문장 단위 분할
+    -> 숫자가 포함된 문장만 Claim 후보로 선택
+    -> 각 결과와 개수를 Pipeline Trace에 기록
+
+preprocess_article()의 반환값:
+
+  - clean_text
+  - sentences
+  - claim_candidates
+  - trace
+
+현재 preprocess_version 기본값은 1.0이다.
+
+관련 파일:
+
+  core/article_preprocessor.py
+  core/batch_verifier.py
+  tests/unit/test_batch_verifier.py
+  tests/unit/test_pipeline_trace.py
+
+
+5. Semantic Standard Mapping 구현
+---------------------------------
+
+Claim의 indicator를 내부 의미 표준으로 매핑하는 계층을 구현했다.
+
+주요 기능:
+
+  - seed concept와 alias 기반 정확 매핑
+  - 정규화된 문자열 비교
+  - 유사도 기반 후보 처리
+  - concept_id, canonical_name, standard_key, matched_alias, status 기록
+  - 표준 개념을 찾지 못하면 임의 생성하지 않고 unresolved 상태 반환
+  - 특정 표준 개념과 KOSIS 표를 연결하는 binding 적용
+
+관련 데이터와 파일:
+
+  data/semantic_standard/seed_concepts.json
+  data/semantic_standard/kosis_bindings.json
+  data/semantic_standard/cpi_detail_growth_profiles.json
+  core/semantic_normalizer.py
+  core/catalog_binding.py
+  tests/unit/test_semantic_normalizer.py
+  tests/unit/test_catalog_binding.py
+
+
+6. KOSIS Semantic Catalog Search 구현
+-------------------------------------
+
+6.1 로컬 카탈로그
+
+KOSIS 메타데이터 350건을 정규화한 로컬 카탈로그를 구축했다.
+
+현재 품질 검사 결과:
+
+  total_records               350
+  ready_records               342
+  encoding_suspect_table_ids  0
+  duplicate_table_ids         0
+  invalid_dimension_json      0
+  core item 보완 필요          4개 표
+
+core item 보완 필요 표 ID:
+
+  DT_1DE7112_11
+  DT_1G1B002
+  DT_1G1B022
+  DT_404Y015
+
+6.2 검색과 발견
+
+로컬 검색 외에도 KOSIS live catalog 검색 adapter를 구현했다. 로컬 후보가 없을 때 실시간 검색을
+시도할 수 있으며, 메타데이터가 완성되지 않은 live 후보는 LIVE_SEARCH_UNRESOLVED 상태로 표시해
+자동 통과시키지 않는다.
+
+6.3 공식 항목 메타데이터 보강
+
+KOSIS getMeta의 ITM 응답을 정규화하여 후보의 core_item_ids, core_item_names, unit_names를
+공식 메타데이터로 보강할 수 있게 했다. 호출 지연이 UI 전체를 멈추지 않도록 timeout과 안전한
+fallback을 추가했고, 후보 조회 시 불필요한 반복 refresh는 제거했다.
+
+관련 파일:
+
+  data/kosis_catalog/catalog_350.json
+  data/kosis_catalog/catalog.json
+  core/data_loader.py
+  core/catalog_search.py
+  core/catalog_discovery.py
+  core/kosis_live_catalog.py
+  core/kosis_catalog_adapter.py
+  core/catalog_metadata_refresh.py
+  core/catalog_quality.py
+  core/kosis_openapi_transport.py
+  tests/integration/test_catalog_350_snapshot.py
+  tests/integration/test_goldset_catalog_coverage.py
+
+
+7. Hard Guard 우선 실행 구현
+----------------------------
+
+Hard Guard는 의미 점수 계산보다 먼저 실행된다. 구조적으로 맞지 않는 후보는 점수가 높아도
+Semantic Matching 대상에 들어가지 않는다.
+
+현재 검사 항목과 대표 reject code:
+
+  - 미완성 live metadata       -> METADATA_INCOMPLETE
+  - 통계 주기 충돌              -> FREQUENCY_CONFLICT
+  - 단위 충돌                   -> UNIT_CONFLICT
+  - 연령 차원 누락              -> AGE_DIMENSION_REQUIRED
+  - 성별 차원 누락              -> SEX_DIMENSION_REQUIRED
+  - 지역 세분 수준 충돌         -> REGION_GRANULARITY_CONFLICT
+  - 통계 제공 기간 밖의 시점    -> TIME_NOT_AVAILABLE
+  - 전망·예측·예상 Claim        -> FORECAST_CLAIM
+
+Hard Guard를 통과한 후보가 하나도 없으면 자동 Verdict를 만들지 않고 HOLD한다.
+
+관련 파일:
+
+  core/hard_guard.py
+  tests/unit/test_catalog_search_and_hard_guard.py
+
+
+8. Semantic Matching과 모호성 제어 구현
+---------------------------------------
+
+Hard Guard 생존 후보만 semantic_match()가 점수화한다.
+
+현재 기본 기준:
+
+  minimum_score = 0.7
+  min_margin    = 0.1
+
+점수는 지표명/표명/항목명의 문자열 유사도에 단위와 주기 호환성을 더해 계산한다.
+결정 규칙은 다음과 같다.
+
+  - score < minimum_score       -> HOLD / LOW_SEMANTIC_SCORE
+  - Top1-Top2 margin < 0.1      -> HOLD / AMBIGUOUS_MARGIN
+  - 두 조건을 모두 통과         -> AUTO / MATCH_ACCEPTED
+  - Top1이 아닌 나머지 후보     -> HOLD / NON_TOP_CANDIDATE
+
+따라서 모호한 후보를 강제로 Top-1으로 선택하지 않는다.
+
+관련 파일:
+
+  core/semantic_matcher.py
+  core/unit_normalizer.py
+  tests/unit/test_semantic_matcher.py
+
+
+9. Evidence Cell Resolution 구현
+--------------------------------
+
+선택된 KOSIS 표를 실제 공식값 한 칸 또는 계산에 필요한 여러 칸으로 바꾸는 Evidence Resolver를
+구현했다.
+
+Evidence Cell에 보존되는 정보:
+
+  - org_id, tbl_id, itm_id
+  - obj_id, member_code
+  - dimension_members와 dimension_codes
+  - prd_se와 prd_de
+  - unit
+  - canonical_key
+  - CONFIRMED / UNRESOLVED / AMBIGUOUS 상태
+
+Goldset에서 확인된 차원명과 member code, 표별 좌표를 별도 registry에 보존하며, 좌표가 불충분하면
+그럴듯한 셀을 만들지 않고 UNRESOLVED 또는 AMBIGUOUS로 반환한다.
+
+관련 데이터와 파일:
+
+  data/kosis_catalog/evidence_coordinates_goldset.json
+  data/kosis_catalog/member_codes_goldset.json
+  core/evidence_resolver.py
+  core/member_code_mapper.py
+  core/catalog_member_code_importer.py
+  tests/unit/test_evidence_resolver.py
+  tests/unit/test_member_code_mapper.py
+
+
+10. KOSIS 공식값 조회와 기사시점 안전성
+----------------------------------------
+
+10.1 API 조회
+
+Evidence Cell이 확정된 뒤에만 KOSIS API 요청 파라미터를 만든다. KOSIS OpenAPI transport,
+HTTP client, parameter data adapter를 핵심 로직과 분리했다. 환경변수에 API 키가 있어도 좌표가
+불완전하면 아무 표의 값을 임의로 가져오지 않는다.
+
+10.2 공식 Snapshot
+
+API가 기사시점의 공표값을 재현하지 못하거나 네트워크가 불가능한 경우 저장된 공식 Snapshot을
+사용한다. 현재 data/kosis_snapshots 아래 공식 근거 파일은 16개다.
+
+Snapshot 정책:
+
+  - 공식 KOSIS 응답 또는 확인된 공식값만 저장
+  - 요청 파라미터와 응답 hash를 보존
+  - 기사 날짜 이후 발표된 값은 자동 근거로 사용하지 않음
+  - 기존 Snapshot을 덮어쓰기보다 새 버전을 추가
+  - API 조회 실패 시에도 검증 가능한 dated snapshot이 있으면 안전하게 fallback
+
+기사시점 공식값이 없으면 VALUE_UNAVAILABLE 또는 기사시점 관련 HOLD 사유로 종료한다.
+
+관련 파일:
+
+  core/kosis_fetcher.py
+  core/kosis_api_adapter.py
+  core/kosis_http_client.py
+  core/kosis_value_transport.py
+  core/kosis_openapi_transport.py
+  core/snapshot_store.py
+  core/snapshot_asof.py
+  data/kosis_snapshots/*.json
+  tests/unit/test_kosis_fetcher.py
+  tests/unit/test_official_value_fetcher.py
+  tests/unit/test_snapshot_store.py
+  tests/unit/test_snapshot_asof.py
+
+
+11. 결정론적 Calculation Engine 구현
+------------------------------------
+
+core/calculator.py에서 다음 계산을 Python 함수로 수행한다.
+
+  DIRECT_VALUE : 공식 셀 한 개의 값을 그대로 사용
+  GROWTH_RATE  : (현재값 - 기준값) / 기준값 * 100
+  DIFFERENCE   : 현재값 - 기준값
+  RATIO        : 분자 / 분모
+  MULTIPLE     : 분자 / 분모
+  SHARE        : 여러 분자 합 / 마지막 분모 * 100
+  RANK         : 첫 값보다 큰 비교값 개수를 이용한 순위
+  THRESHOLD    : 기준 이상이면 1.0, 미만이면 0.0
+
+입력 셀 개수 검증과 0으로 나누기 차단이 포함되어 있다. 계산 과정에서 LLM은 사용되지 않는다.
+
+관련 파일:
+
+  core/calculator.py
+  schemas/evidence.py
+  tests/unit/test_calculator.py
+
+
+12. Verdict Engine과 안전 라우팅 구현
+------------------------------------
+
+최종 판정 유형:
+
+  MATCH         기사값과 계산된 공식값이 허용오차 안에서 일치
+  MISMATCH      공식 근거는 확정됐지만 기사값이 허용오차 밖
+  UNDETERMINED  공식 근거·좌표·시점·계산 조건이 충분하지 않음
+
+운영 경로:
+
+  AUTO          자동 검증 조건 충족
+  HOLD          근거 부족, 후보 모호, 공식값 부재 등으로 자동 확정 중지
+  HUMAN_REVIEW  문맥 해석 등 사람의 검토가 필요
+
+Verdict에는 claim/evidence/calculated value, Evidence Cell, reason_code, explanation과 다음 버전이
+함께 저장된다.
+
+  dataset_version
+  preprocess_version
+  claim_schema_version
+  semantic_standard_version
+  kosis_catalog_version
+  matching_version
+  calculation_version
+
+관련 파일:
+
+  core/verdict_engine.py
+  schemas/verdict.py
+  tests/unit/test_verdict_engine.py
+
+
+13. 등록형 CPI 상세품목 증감률 검증 구현
+----------------------------------------
+
+일반 검색만으로 원지수 단위(예: 2020=100)와 기사 속 증감률 단위(%)를 연결하면 Hard Guard에서
+단위 충돌이 발생할 수 있다. 이를 임의 예외 처리하지 않고, 공식 좌표와 계산법이 사전에 확인된
+등록형 growth profile로 구현했다.
+
+대표 검증 문장:
+
+  "2025년 10월 배추 물가는 전년 동월 대비 34.5% 하락했다."
+
+검증 방식:
+
+  - KOSIS 표 DT_1J22112의 배추 품목 좌표 사용
+  - 2025-10 공식 지수 136.62 조회
+  - 2024-10 공식 지수 208.57 조회
+  - Python GROWTH_RATE 계산
+  - 계산 결과 약 -34.49681162199741
+  - 기사값 -34.5와 허용오차 비교
+  - 최종 MATCH / AUTO
+
+이 경로는 registered_growth_profile을 Hard Guard 통과 근거로, exact_registered_profile을
+Semantic Match 근거로 실행 추적에 남긴다. 즉 결과만 MATCH로 만들지 않고 특수 등록 경로가
+어떻게 검증됐는지 감사 가능하게 기록한다.
+
+관련 데이터와 파일:
+
+  data/semantic_standard/cpi_detail_growth_profiles.json
+  data/kosis_snapshots/official_cpi_202510.json
+  data/kosis_snapshots/metadata_DT_1J22112_source.json
+  core/cpi_growth_resolver.py
+  core/growth_execution.py
+  core/growth_verdict.py
+  tests/goldset/test_cpi_growth_e2e.py
+  tests/unit/test_cpi_growth_resolver.py
+  tests/unit/test_cpi_snapshot.py
+
+
+14. Goldset 20건과 E2E 회귀 테스트
+---------------------------------
+
+파일럿 Goldset 20건을 테스트 fixture와 라우팅 보고서로 구조화했다.
+
+현재 저장 보고서 결과:
+
+  전체            20건
+  AUTO            13건
+  HOLD             7건
+  HUMAN_REVIEW     0건
+
+AUTO 13건은 공식 좌표와 기사시점 근거가 확보된 검증 경로다. HOLD 7건은 실패를 숨긴 것이 아니라
+다음과 같은 안전 사유를 명시적으로 유지한 결과다.
+
+  - KOSIS API 또는 member code 미연결
+  - 입력 메타데이터 부족
+  - Evidence Cell 미확정
+  - 기사시점 공식값 부재
+
+검증 유형은 직접값뿐 아니라 CPI, 순위, 점유율, 다중 항목 증감률, 차이, 복수 계산, 고용 변화,
+1인 가구, 청년 실업 관련 케이스를 포함한다.
+
+관련 파일:
+
+  tests/goldset/fixtures/pilot20.json
+  tests/goldset/fixtures/pilot20_expected_routes.json
+  tests/goldset/fixtures/pilot20_snapshot_coverage.json
+  tests/goldset/test_*_e2e.py
+  data/goldset_reports/pilot20_route_report.json
+
+
+15. 크롤링 뉴스 배치 검증 구현
+--------------------------------
+
+한 문장이 아니라 크롤링된 기사 파일 전체를 업로드하는 흐름을 구현했다.
+
+지원 입력:
+
+  - CSV: UTF-8 BOM, UTF-8, CP949 처리
+  - JSON: 객체 배열
+  - XLSX: 첫 시트의 헤더와 행
+
+지원 컬럼명:
+
+  표준 컬럼    article_id, published_at, body, title, source_url
+  주요 별칭    id, date, content, sentence, text, 본문, 문장, 기사본문, 내용,
+               뉴스본문, 제목, 기사제목, url, link 등
+
+published_at이 없는 파일은 UI에서 제공한 기본 기사 기준일을 사용할 수 있다. body가 없고 title만
+있는 문장형 파일은 title을 검증 본문으로 사용할 수 있다.
+
+처리 원칙:
+
+  - 기사별 전처리 후 숫자가 있는 Claim 후보를 모두 독립 검증
+  - 한 Claim의 오류가 전체 배치를 중단하지 않음
+  - 예외 Claim은 BATCH_VERIFIER_ERROR로 HOLD
+  - 기사별 MATCH/MISMATCH/검토 필요 수 집계
+
+다운로드 XLSX 시트:
+
+  Claim Results    Claim별 기사값, 계산값, Evidence, 표 ID, 사유
+  Article Summary  기사별 Claim 수와 ALL_MATCH/NEEDS_REVIEW/MISMATCH_FOUND
+  Review Queue     AUTO가 아닌 Claim만 모은 검토 큐
+
+관련 파일:
+
+  core/batch_verifier.py
+  app/streamlit_app.py
+  tests/unit/test_batch_verifier.py
+
+
+16. 기존 CLAFACT 검토 콘솔 연동 경계
+------------------------------------
+
+기존 운영 데이터를 직접 수정하지 않도록 ReviewConsoleAdapter Protocol을 구현했다.
+HOLD 또는 HUMAN_REVIEW 결과는 다음 최소 payload로 변환할 수 있다.
+
+  claim_id
+  route_status
+  reason_code
+  evidence_count
+
+현재 구현은 adapter interface와 payload 생성까지이며, 실제 운영 콘솔에 쓰는 구체 client는
+의도적으로 분리되어 있다. 따라서 현재 코드가 기존 CLAFACT 운영 데이터를 직접 변경하지 않는다.
+
+관련 파일:
+
+  core/review_handoff.py
+  tests/unit/test_review_handoff.py
+
+
+17. Streamlit CLAFACT-AUTO MVP 구현
+---------------------------------
+
+단일 문장 검증과 크롤링 뉴스 배치 검증을 한 화면에서 실행할 수 있는 Streamlit MVP를 구현했다.
+
+단일 문장 화면 표시 항목:
+
+  - KOSIS API / HCX Structured Output 연결 상태
+  - 기사 문장과 기사 기준일
+  - 구조화 Claim과 parse_status
+  - KOSIS 후보 표
+  - Evidence 좌표
+  - 최종 MATCH/MISMATCH/UNDETERMINED와 AUTO/HOLD/HUMAN_REVIEW
+  - 기사값과 KOSIS 공식값
+  - KOSIS 공식 근거 표: 표 ID, 항목, 기간, 공식값, 단위, 좌표, 원문 URL
+  - 검토 콘솔 전달 payload
+  - 3갈래 실행 추적
+
+배치 화면 표시 항목:
+
+  - CSV/JSON/XLSX 업로드
+  - 기본 기사 기준일
+  - 배치 실행 결과 요약
+  - 결과 XLSX 다운로드
+
+보안상 화면과 로그에는 API 키 값을 표시하지 않고 연결 여부만 표시한다.
+
+관련 파일:
+
+  app/streamlit_app.py
+  tests/test_streamlit_app.py
+  tests/ui_smoke.py
+  tests/ui_inspect.py
+
+
+18. 감사 가능한 3갈래 Pipeline Trace 구현
+------------------------------------------
+
+사용자가 최종 판정뿐 아니라 전체 과정의 성공·중단 지점을 확인할 수 있도록 단계 추적을 구현했다.
+
+전체 stage 계약:
+
+  PREPROCESS
+  SENTENCE_SPLIT
+  CLAIM_CANDIDATE_SELECTION
+  CLAIM_SPLIT
+  CLAIM_PARSE
+  SEMANTIC_MAPPING
+  CATALOG_SEARCH
+  HARD_GUARD
+  SEMANTIC_MATCH
+  EVIDENCE_CELL
+  OFFICIAL_VALUE_FETCH
+  CALCULATION
+  VERDICT
+
+각 이벤트에는 stage, status, reason_code, output_ref가 저장된다.
+PASS일 때 reason_code가 null인 것은 오류가 아니라 정상이다. HOLD/HUMAN_REVIEW일 때 중단 사유를
+reason_code에 넣는다.
+
+UI의 3갈래 분류:
+
+  "무슨 통계"
+    PREPROCESS부터 SEMANTIC_MATCH까지: 어떤 통계를 선택했는지
+
+  "어떤 데이터"
+    EVIDENCE_CELL, OFFICIAL_VALUE_FETCH: 어떤 공식 셀과 값을 사용했는지
+
+  "어떻게 검증"
+    CALCULATION, VERDICT: 어떻게 계산하고 판정했는지
+
+최근 CPI 배추 증감률 성공 예시의 추적:
+
+  무슨 통계
+    CLAIM_PARSE       PASS
+    SEMANTIC_MAPPING  PASS
+    CATALOG_SEARCH    PASS
+    HARD_GUARD        PASS  output_ref=registered_growth_profile
+    SEMANTIC_MATCH    PASS  output_ref=exact_registered_profile
+
+  어떤 데이터
+    EVIDENCE_CELL         PASS
+    OFFICIAL_VALUE_FETCH  PASS
+
+  어떻게 검증
+    CALCULATION  PASS
+    VERDICT      PASS
+
+초기에는 최종 Verdict만 추적되거나 앞쪽 branch만 표시되던 문제가 있었으나, 공통 recorder를
+추가하고 batch/UI/등록형 CPI 경로에 단계 이벤트를 연결해 전체 추적이 채워지도록 수정했다.
+
+관련 파일:
+
+  schemas/pipeline_trace.py
+  core/pipeline_trace.py
+  core/verification_trace.py
+  core/claim_verification_service.py
+  core/trace_presentation.py
+  tests/unit/test_pipeline_trace.py
+  tests/unit/test_verification_trace.py
+  tests/unit/test_trace_presentation.py
+
+
+19. Streamlit Cloud 배포 안정화
+--------------------------------
+
+배포 중 확인된 문제와 해결 결과:
+
+  1) main file path 오류
+     실제 진입 파일 app/streamlit_app.py를 사용하도록 정리했다.
+
+  2) Poetry root package 설치 오류
+     clafact-auto라는 패키지 폴더가 없어서 발생하던 설치 실패를 packaging 설정으로 해결했다.
+
+  3) ModuleNotFoundError: core
+     Cloud에서 app/streamlit_app.py를 직접 실행할 때 프로젝트 루트 import가 잡히도록 bootstrap을
+     추가했다.
+
+  4) Streamlit가 자동 설치되지만 앱 dependency와 분리되던 문제
+     requirements.txt에 pydantic, openpyxl, streamlit을 명시하고 배포 테스트를 추가했다.
+
+  5) use_container_width 폐기 경고
+     최신 width 사용 방식으로 UI 코드를 정리했다.
+
+  6) .env 사용
+     로컬 .env를 읽되 이미 설정된 OS 환경변수를 덮어쓰지 않도록 했고, 키는 출력·로그하지 않는다.
+
+현재 Streamlit Cloud에서 단일 문장 검증, KOSIS 공식 근거 표시, 배치 업로드와 3갈래 추적까지
+실행되는 상태를 확인했다.
+
+
+20. 현재 테스트 상태
+--------------------
+
+2026-08-09에 다음 명령으로 전체 테스트를 다시 실행했다.
+
+  python -m pytest -q
+
+결과:
+
+  220 passed in 14.86s
+
+테스트 범위:
+
+  - ClaimSchema와 기타 Pydantic 계약
+  - 복합 Claim 분리와 12 Slot parsing
+  - 의미 표준 매핑과 catalog binding
+  - KOSIS catalog 350건 로딩·품질·Goldset 커버리지
+  - Hard Guard 선실행과 reject code
+  - Semantic Score와 Top1/Top2 margin
+  - Evidence Cell과 member code
+  - KOSIS API/HTTP/OpenAPI/value transport
+  - Snapshot 저장, 기사시점 filtering, fallback
+  - 모든 계산 유형과 입력 검증
+  - Verdict와 Review handoff
+  - 크롤링 배치 입력·전처리·XLSX 출력
+  - 파일럿 Goldset E2E
+  - Streamlit import와 Cloud 배포 dependency
+  - 3갈래 Pipeline Trace
+
+
+21. 현재 전체 파이프라인의 구현 상태
+------------------------------------
+
+다음 핵심 Pipeline의 모듈과 테스트는 모두 존재한다.
+
+  Article
+    -> 전처리
+    -> Claim Extraction
+    -> Claim Split
+    -> 12 Slot Parsing
+    -> Semantic Standard Mapping
+    -> KOSIS Semantic Catalog Search
+    -> Hard Guard
+    -> Semantic Matching
+    -> Match Candidate
+    -> Evidence Cell Resolution
+    -> KOSIS Official Value Fetch
+    -> Deterministic Calculation
+    -> Verdict
+    -> Evidence 표시 / Review handoff / Pipeline Trace
+
+다만 "파이프라인 모듈이 전부 구현됐다"는 말과 "임의의 모든 뉴스 통계 Claim을 AUTO 판정한다"는
+말은 다르다. 현재는 파이프라인 전체 골격, 핵심 안전장치, 다수 계산 유형, Goldset 20건과 등록형
+CPI 경로가 구현된 상태다. 새로운 통계표·품목·차원 조합은 정확한 공식 item/member code와
+기사시점 근거가 등록 또는 실시간 해석되어야 AUTO로 갈 수 있다.
+
+
+22. 남아 있는 주요 TODO
+-----------------------
+
+우선순위 1: 일반화된 live Evidence 좌표 해석
+
+  - KOSIS 표의 전체 차원/항목/member code를 공식 메타데이터에서 자동 조합
+  - live search 후보의 metadata_status를 CONFIRMED로 승격하는 검증 절차
+  - 등록형 profile 없이도 일반 증감률 Claim을 안전하게 두 셀로 연결
+
+우선순위 2: 카탈로그 품질 보완
+
+  - core item이 없는 4개 표의 공식 item metadata 보강
+  - catalog version과 생성 시각을 자동 산출물로 관리
+  - 신규 KOSIS 표 변경 감지와 회귀 테스트
+
+우선순위 3: 기사시점 공식값 확장
+
+  - HOLD 7건의 공식 Snapshot/member code/좌표를 실제 KOSIS 근거로 순차 보강
+  - 잠정값과 확정값, 개정 전후 값을 명시적으로 구분
+  - KOSIS API 장애·rate limit·재시도 상태를 표준 reason code로 세분화
+
+우선순위 4: Parser와 배치 운영 강화
+
+  - 다양한 언론사 HTML/크롤러 노이즈 fixture 확대
+  - 긴 기사에서 Claim 중복 제거와 문맥 연결 강화
+  - 배치 진행률, 재시도, 대용량 처리, 결과 재현 ID 추가
+
+우선순위 5: 운영 콘솔 실제 연동
+
+  - ReviewConsoleAdapter의 운영용 client 구현
+  - 인증·권한·idempotency·재전송 정책 정의
+  - 기존 CLAFACT 데이터를 직접 수정하지 않는 승인형 반영 절차 설계
+
+우선순위 6: 관측성과 품질 지표
+
+  - 단계별 HOLD 비율, 후보 수, margin 분포, API latency 집계
+  - 비밀정보를 제외한 구조화 로그와 correlation ID
+  - Goldset 확대와 MISMATCH/HUMAN_REVIEW 사례 보강
+
+
+23. 실행 방법
+-------------
+
+23.1 설치
+
+  python -m pip install -e ".[dev,app]"
+
+또는 Streamlit Cloud 호환 requirements 설치:
+
+  python -m pip install -r requirements.txt
+
+23.2 환경변수
+
+프로젝트 루트 .env 예시:
+
+  KOSIS_API_KEY=본인의_KOSIS_API_KEY
+  HCX_API_KEY=본인의_HCX_API_KEY
+  CLAFACT_LOG_LEVEL=INFO
+
+주의: 실제 키 값은 Git에 commit/push하지 않고 화면이나 로그에도 출력하지 않는다.
+
+23.3 전체 테스트
+
+  python -m pytest -q
+
+23.4 Streamlit 실행
+
+  streamlit run app/streamlit_app.py
+
+23.5 대표 수동 검증
+
+  뉴스 문장: 2025년 10월 배추 물가는 전년 동월 대비 34.5% 하락했다.
+  기사 기준일: 2025-11-04
+
+예상 결과:
+
+  parse_status     AUTO_OK
+  verdict          MATCH
+  route_status     AUTO
+  article value    -34.5
+  KOSIS calculated 약 -34.49681162199741
+  official table   DT_1J22112
+  evidence periods 2025-10, 2024-10
+  trace branches   세 갈래 모두 PASS 이벤트 표시
+
+
+24. 주요 구현 이력 요약
+-----------------------
+
+아래는 Git 이력을 기능 단위로 묶은 순서다.
+
+  1) c9de91d  핵심 검증 엔진 최초 구현
+  2) 3cbb6f0  reference 문서 폴더 정리
+  3) 7595446  상세 프로젝트 README 추가
+  4) 6437e46, d725bd1  Streamlit Cloud packaging/import 수정
+  5) 60978a7  HCX frequency parsing 수정
+  6) 697c845  Goldset route/HOLD 보고서 추가
+  7) 2fc092b, b78802b, 71828ae  연결상태·review adapter·판정 UI 구현
+  8) abf39e9  월별 취업자 Evidence Snapshot 연결
+  9) 3a0fb4a ~ 876f5c5  뉴스 배치 검증, 문장형 파일, 한국어 헤더, 노이즈 제거 구현
+ 10) be5efc5 ~ cbd2173  소비자물가, API 우선 조회, unresolved live catalog 탐색
+ 11) 6276242 ~ 24e224e  등록형 CPI 증감률과 기사시점 Snapshot fallback 구현
+ 12) 5e67764 ~ 99a3dbb  timeout 수정, KOSIS 근거 UI, 등록 후보 표시
+ 13) bb62d52, 04e0c8a  requirements 기반 Cloud 배포 보강
+ 14) 3f5a0bd, 00c5f38  Mermaid 파이프라인과 실제 12 Slot 문서 정합화
+ 15) d5a848b, 4078872  전처리/추적 계약과 안전한 .env 로딩
+ 16) 6ba94e6 ~ 045cdfa  공식 item metadata 보강과 latency/fallback 조정
+ 17) a0030ed ~ 954f8f8  3갈래 추적 요약, Verdict/단일 UI/Evidence 추적 연결
+ 18) 57fae9f ~ 53978a3  Guard·Semantic Match를 batch/UI 실행 추적에 연결
+ 19) 04042fc, 3d722e6  CPI growth 특수 경로의 전체 PASS 추적을 정확히 연결
+
+
+25. 결론
+--------
+
+CLAFACT-AUTO는 현재 "기사의 수치 문장을 구조화하고, KOSIS 후보를 안전하게 걸러서, 정확한 공식
+Evidence를 조회하고, Python으로 계산해 판정하며, 전 과정을 추적하는" Core Engine과 MVP UI를
+갖춘 상태다.
+
+현재 가장 중요한 성과는 단순 MATCH 표시가 아니라 다음 세 가지가 함께 작동한다는 점이다.
+
+  - 공식 근거가 확정된 Claim은 AUTO 판정과 KOSIS 원문 근거를 제공한다.
+  - 불확실한 Claim은 억지로 결론 내리지 않고 구체적인 reason code와 함께 HOLD한다.
+  - 성공과 중단 모두 3갈래 Pipeline Trace와 버전 정보로 재현 가능하다.
+
+다음 개발의 핵심은 파이프라인을 새로 만드는 것이 아니라, 더 많은 KOSIS 통계표에 대해 공식
+metadata와 Evidence 좌표를 자동으로 해석해 안전한 AUTO 범위를 넓히는 것이다.
+
+
+26. HCX 12슬롯 Structured Output와 emit_claim 보강
+-------------------------------------------------
+
+기존 HCX responseFormat에는 ClaimSchema의 12개 의미 슬롯 중 dimension, comparison, condition이
+명시되지 않았고, nullable 필드가 생략 가능한 형태였다. 이를 다음과 같이 보강했다.
+
+  - canonical Claim JSON Schema를 독립 모듈로 분리
+  - 12개 의미 슬롯과 메타 필드 총 16개를 모두 required 키로 지정
+  - 값이 없는 필드는 키를 생략하지 않고 명시적 null 사용
+  - 문자열: [string, null], 값: [number, null], 매핑: [object, null]
+  - dimension, comparison, condition은 문자열 값만 갖는 nullable map
+  - 추가 필드는 additionalProperties=false로 거부
+  - HCX 반환값도 strict ClaimOutputPayload로 재검증하여 누락 키를 기본값으로 숨기지 않음
+
+선택형 Function Calling 경로에는 emit_claim 한 개만 추가했다. HCX 공식 사양상 Structured Outputs와
+Function Calling은 같은 요청에서 함께 사용할 수 없으므로, 기본 Structured Output extractor와
+선택형 Function Calling extractor는 상호 배타적으로 동작하고 동일한 canonical schema를 공유한다.
+
+emit_claim은 모델이 실제 Python 함수를 선택·실행하는 dispatcher가 아니다. toolCalls의 함수형·이름·
+개수·arguments를 검증하고 ClaimSchema로 변환하는 typed return envelope이다. 잘못된 함수명, 복수
+호출, 문자열 arguments, 누락·추가 필드, 잘못된 타입은 모두 거부한다.
+
+HCX에 노출되는 함수는 emit_claim 하나뿐이다. 다음 단계는 계속 Python이 직접 통제한다.
+
+  Semantic Mapping -> Catalog Search -> Hard Guard -> Semantic Matching
+  -> Evidence Cell -> KOSIS API/Snapshot -> Calculation -> Verdict
+
+관련 파일:
+
+  core/claim_output_contract.py
+  core/hcx_claim_extractor.py
+  core/hcx_function_claim_extractor.py
+  tests/unit/test_claim_output_contract.py
+  tests/unit/test_hcx_prompt.py
+  tests/unit/test_hcx_function_claim_extractor.py
