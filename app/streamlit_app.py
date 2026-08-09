@@ -66,7 +66,7 @@ def _find_catalog_candidates(
     )
     live_search = KosisLiveCatalogSearch(settings.kosis_api_key) if settings.kosis_api_key else None
     discovered = discover_catalog_candidates(claim, concept, local, live_search)
-    return refresh_item_metadata(discovered, settings.kosis_api_key)
+    return discovered
 
 
 def _official_fetcher(settings: Settings) -> OfficialValueFetcher:
