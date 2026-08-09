@@ -2,9 +2,6 @@
 requires = ["setuptools>=69"]
 build-backend = "setuptools.build_meta"
 
-[tool.poetry]
-package-mode = false
-
 [project]
 name = "clafact-auto"
 version = "0.1.0"

@@ -156,7 +156,7 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
         st.subheader("KOSIS 후보")
         st.dataframe(
             [{"표 ID": item.tbl_id, "통계표": item.tbl_name, "단위": " | ".join(item.unit_names), "주기": item.frequency} for item in candidates],
-            use_container_width=True,
+            width="stretch",
         )
 
         official_value = None
@@ -208,7 +208,7 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
             st.subheader("KOSIS 공식 근거")
             st.dataframe(
                 build_evidence_rows(verdict.evidence_cells, verdict.evidence_values),
-                use_container_width=True,
+                width="stretch",
             )
             rendered_tables: set[tuple[str, str]] = set()
             for evidence_cell in verdict.evidence_cells:
@@ -249,7 +249,7 @@ if st.button("배치 검증 실행", type="primary", disabled=uploaded_file is N
         columns[1].metric("일치", match_count)
         columns[2].metric("불일치", mismatch_count)
         columns[3].metric("검토 필요", review_count)
-        st.dataframe(batch_rows, use_container_width=True)
+        st.dataframe(batch_rows, width="stretch")
         st.download_button(
             "결과 XLSX 다운로드",
             data=export_batch_xlsx(batch_result),
