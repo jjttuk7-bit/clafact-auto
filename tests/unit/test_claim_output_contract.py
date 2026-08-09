@@ -1,7 +1,9 @@
 from core.claim_output_contract import (
     CLAIM_OUTPUT_FIELD_NAMES,
+    EMIT_CLAIM_FUNCTION_NAME,
     SEMANTIC_SLOT_NAMES,
     claim_output_json_schema,
+    emit_claim_tool_definition,
 )
 
 
@@ -53,3 +55,12 @@ def test_claim_schema_factory_returns_an_independent_copy() -> None:
     first["required"].clear()
 
     assert claim_output_json_schema()["required"] == list(CLAIM_OUTPUT_FIELD_NAMES)
+
+
+def test_emit_claim_is_the_only_function_and_reuses_the_claim_schema() -> None:
+    tool = emit_claim_tool_definition()
+
+    assert EMIT_CLAIM_FUNCTION_NAME == "emit_claim"
+    assert tool["type"] == "function"
+    assert tool["function"]["name"] == "emit_claim"
+    assert tool["function"]["parameters"] == claim_output_json_schema()
