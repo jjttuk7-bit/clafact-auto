@@ -68,6 +68,16 @@ def _official_fetcher(settings: Settings) -> OfficialValueFetcher:
     return OfficialValueFetcher(SNAPSHOT_PATHS, api_lookup=api_lookup, prefer_api=api_lookup is not None)
 
 
+def _cpi_growth_fetcher(settings: Settings) -> OfficialValueFetcher:
+    """Use the dated official CPI detail Snapshot before an API fallback."""
+    api_lookup = build_kosis_api_lookup(settings.kosis_api_key) if settings.kosis_api_key else None
+    return OfficialValueFetcher(
+        [DATA_ROOT / "kosis_snapshots" / "official_goldset_v3_news_b023.json"],
+        api_lookup=api_lookup,
+        prefer_api=False,
+    )
+
+
 def _verify_batch_claim(sentence: str, article_date: date, settings: Settings) -> VerdictSchema:
     """Run the same safe claim pipeline for one batch sentence."""
     claim = parse_claim(sentence, HcxClaimExtractor())
@@ -80,7 +90,7 @@ def _verify_batch_claim(sentence: str, article_date: date, settings: Settings) -
                 "explanation": "Claim parsing requires human review.",
             }
         )
-    growth_verdict = make_cpi_growth_verdict(claim, article_date, _official_fetcher(settings))
+    growth_verdict = make_cpi_growth_verdict(claim, article_date, _cpi_growth_fetcher(settings))
     if growth_verdict is not None:
         return growth_verdict
     concept = normalize_concept(claim, load_standard_concepts(STANDARD_PATH))
@@ -127,7 +137,7 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
         article_date = date.fromisoformat(article_date_text) if article_date_text else None
         claim = parse_claim(sentence, HcxClaimExtractor())
         claim = resolve_relative_time(claim, article_date)
-        growth_verdict = make_cpi_growth_verdict(claim, article_date, _official_fetcher(settings)) if article_date else None
+        growth_verdict = make_cpi_growth_verdict(claim, article_date, _cpi_growth_fetcher(settings)) if article_date else None
         concept = None if growth_verdict is not None else normalize_concept(claim, load_standard_concepts(STANDARD_PATH))
         candidates = [] if concept is None else _find_catalog_candidates(claim, concept, settings)
         matches = semantic_match(claim, candidates)
