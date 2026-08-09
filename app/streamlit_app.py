@@ -1,5 +1,6 @@
 """Streamlit MVP for the safe, review-first CLAFACT-AUTO flow."""
 
+from dataclasses import asdict
 from datetime import date
 from pathlib import Path
 import sys
@@ -10,6 +11,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 import streamlit as st
 
+from core.batch_verifier import export_batch_xlsx, load_articles, verify_articles
 from core.calculator import calculate
 from core.catalog_binding import apply_catalog_binding
 from core.catalog_search import search_semantic_catalog
@@ -25,6 +27,7 @@ from core.semantic_normalizer import normalize_concept
 from core.unit_normalizer import convert_value
 from core.verdict_engine import make_verdict
 from schemas.evidence import CalculationPlan
+from schemas.verdict import VerdictSchema
 
 DATA_ROOT = Path("data")
 STANDARD_PATH = DATA_ROOT / "semantic_standard" / "seed_concepts.json"
@@ -33,6 +36,41 @@ SNAPSHOT_PATHS = [
     DATA_ROOT / "kosis_snapshots" / "goldset_pilot.json",
     DATA_ROOT / "kosis_snapshots" / "official_goldset_asof_v3.json",
 ]
+
+def _verify_batch_claim(sentence: str, article_date: date, settings: Settings) -> VerdictSchema:
+    """Run the same safe claim pipeline for one batch sentence."""
+    claim = HcxClaimExtractor().extract(sentence)
+    if claim.parse_status != "AUTO_OK":
+        return make_verdict(claim.claim_id, claim.value, [], None).model_copy(
+            update={
+                "route_status": claim.parse_status,
+                "reason_code": claim.parse_reason or "CLAIM_PARSE_UNCERTAIN",
+                "explanation": "Claim parsing requires human review.",
+            }
+        )
+    concept = normalize_concept(claim, load_standard_concepts(STANDARD_PATH))
+    candidates = apply_catalog_binding(claim, concept, search_semantic_catalog(claim, concept, load_kosis_catalog(CATALOG_PATH)))
+    matches = semantic_match(claim, candidates)
+    if not matches:
+        return make_verdict(claim.claim_id, claim.value, [], None).model_copy(
+            update={"reason_code": "NO_HARD_GUARD_CANDIDATE", "explanation": "No KOSIS candidate passed Hard Guard."}
+        )
+    best = matches[0]
+    selected = next(item for item in candidates if item.tbl_id == best.candidate_tbl_id)
+    cell = resolve_evidence_cell(claim, selected)
+    if best.route_status != "AUTO" or cell.status != "CONFIRMED":
+        return make_verdict(claim.claim_id, claim.value, [], None).model_copy(
+            update={"reason_code": best.reason_code or cell.status, "explanation": "KOSIS coordinate is not confirmed.", "evidence_cells": [cell]}
+        )
+    api_lookup = build_kosis_api_lookup(settings.kosis_api_key) if settings.kosis_api_key else None
+    official_value = OfficialValueFetcher(SNAPSHOT_PATHS, api_lookup=api_lookup).fetch(cell, article_date=article_date)
+    if official_value.status != "SUCCESS":
+        return make_verdict(claim.claim_id, claim.value, [], None).model_copy(
+            update={"reason_code": official_value.status, "explanation": "Official value is unavailable.", "evidence_cells": [cell]}
+        )
+    calculated = calculate(CalculationPlan(calculation_type="DIRECT_VALUE", required_cells=[cell]), [official_value.value])
+    claim_unit_value = convert_value(calculated, cell.unit or "", claim.unit or "")
+    return make_verdict(claim.claim_id, claim.value, [official_value.value], claim_unit_value, tolerance=0.01).model_copy(update={"evidence_cells": [cell]})
 
 st.set_page_config(page_title="CLAFACT-AUTO", layout="wide")
 st.title("CLAFACT-AUTO")
@@ -117,3 +155,32 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
         st.error("HOLD: 기사 기준일은 YYYY-MM-DD 형식이어야 합니다.")
     except Exception as error:
         st.error(f"HOLD: {type(error).__name__}")
+st.divider()
+st.subheader("크롤링 뉴스 배치 검증")
+st.caption("필수 열: article_id, published_at(YYYY-MM-DD), body · 선택 열: title, source_url · 업로드 파일은 저장하지 않습니다.")
+uploaded_file = st.file_uploader("크롤링 뉴스 파일 업로드", type=["csv", "xlsx", "json"])
+if st.button("배치 검증 실행", type="primary", disabled=uploaded_file is None):
+    try:
+        articles = load_articles(uploaded_file.name, uploaded_file.getvalue())
+        batch_result = verify_articles(articles, lambda item, published_at: _verify_batch_claim(item, published_at, settings))
+        batch_rows = [asdict(row) for row in batch_result.claim_rows]
+        total = len(batch_rows)
+        match_count = sum(row["verdict"] == "MATCH" for row in batch_rows)
+        mismatch_count = sum(row["verdict"] == "MISMATCH" for row in batch_rows)
+        review_count = total - match_count - mismatch_count
+        columns = st.columns(4)
+        columns[0].metric("검증 Claim", total)
+        columns[1].metric("일치", match_count)
+        columns[2].metric("불일치", mismatch_count)
+        columns[3].metric("검토 필요", review_count)
+        st.dataframe(batch_rows, use_container_width=True)
+        st.download_button(
+            "결과 XLSX 다운로드",
+            data=export_batch_xlsx(batch_result),
+            file_name="clafact_auto_batch_results.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+    except ValueError as error:
+        st.error(f"배치 입력 오류: {error}")
+    except Exception as error:
+        st.error(f"배치 처리 HOLD: {type(error).__name__}")

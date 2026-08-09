@@ -10,7 +10,7 @@ name = "clafact-auto"
 version = "0.1.0"
 description = "Deterministic verification engine for numerical news claims against KOSIS statistics"
 requires-python = ">=3.12"
-dependencies = ["pydantic>=2.0,<3.0"]
+dependencies = ["pydantic>=2.0,<3.0", "openpyxl>=3.1,<4.0"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]

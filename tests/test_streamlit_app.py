@@ -52,3 +52,9 @@ def test_streamlit_mvp_displays_safe_secret_connection_status() -> None:
     app.run()
 
     assert app.subheader[0].value == "운영 연결 상태"
+
+def test_streamlit_mvp_renders_batch_upload_control() -> None:
+    app = AppTest.from_file("app/streamlit_app.py")
+    app.run()
+
+    assert app.file_uploader[0].label == "크롤링 뉴스 파일 업로드"
