@@ -45,8 +45,11 @@ def test_unregistered_indicator_never_receives_a_coordinate() -> None:
     assert resolve_cpi_growth_plan(_claim(indicator="가공식품")) is None
 
 
-def test_direct_value_claim_never_receives_a_growth_plan() -> None:
-    assert resolve_cpi_growth_plan(_claim(calculation="DIRECT_VALUE")) is None
+def test_registered_cpi_detail_percent_claim_uses_growth_plan_when_extractor_labels_direct_value() -> None:
+    plan = resolve_cpi_growth_plan(_claim(calculation="DIRECT_VALUE"))
+
+    assert plan is not None
+    assert plan.calculation_plan.calculation_type == "GROWTH_RATE"
 
 
 def test_executes_growth_plan_from_two_official_snapshot_values() -> None:

@@ -24,7 +24,8 @@ class CpiGrowthPlan:
 
 def resolve_cpi_growth_plan(claim: ClaimSchema) -> CpiGrowthPlan | None:
     """Return a plan only for an exact registered monthly year-on-year CPI detail claim."""
-    if claim.parse_status != "AUTO_OK" or claim.calculation != "GROWTH_RATE" or claim.unit != "%":
+    calculation = claim.calculation.upper() if claim.calculation else None
+    if claim.parse_status != "AUTO_OK" or claim.unit != "%" or calculation not in {None, "DIRECT_VALUE", "GROWTH_RATE"}:
         return None
     period = _month_key(claim.time)
     profile = _profile_for_indicator(claim.indicator)
