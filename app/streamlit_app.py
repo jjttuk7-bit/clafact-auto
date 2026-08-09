@@ -2,6 +2,11 @@
 
 from datetime import date
 from pathlib import Path
+import sys
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 import streamlit as st
 
@@ -89,4 +94,3 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
         st.error("HOLD: 기사 기준일은 YYYY-MM-DD 형식이어야 합니다.")
     except Exception as error:
         st.error(f"HOLD: {type(error).__name__}")
-
