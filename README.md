@@ -98,20 +98,22 @@ Article
 
 Claim은 자연어 문장 자체가 아니라 아래 슬롯을 갖는 `ClaimSchema`로 처리됩니다. 이 구조는 검색, Guard, 증거 좌표 해석, 계산을 연결하는 내부 계약입니다.
 
+`claim_id`, `source_sentence`, `parse_status`, `parse_reason`은 추적·라우팅을 위한 메타데이터이며, 아래 12개가 의미 해석에 사용하는 슬롯입니다.
+
 | 슬롯 | 의미 | 예시 |
 | --- | --- | --- |
-| `subject` | 수치의 대상 집단·항목 | 15~29세 청년, 제조업, 가구 |
-| `metric` | 측정량 | 고용률, 실업자 수, 수출액 |
+| `indicator` | 검증할 지표·항목 | 고용률, 배추 물가, 수출액 |
 | `value` | 기사에 제시된 수치 | 62.7 |
 | `unit` | 단위 | %, 명, 억 원 |
 | `time` | 기준 시점·기간 | 2025년 7월, 2분기 |
-| `geography` | 공간 범위 | 전국, 서울특별시 |
+| `frequency` | 통계 주기 | 월, 분기, 연 |
+| `region` | 공간 범위 | 전국, 서울특별시 |
+| `population` | 대상 집단·모집단 | 15~29세 청년, 제조업 취업자 |
+| `dimension` | KOSIS 분류 차원·조건 | 성별, 연령, 산업, 품목 |
 | `comparison` | 비교 기준 | 전년 동월 대비, 전월 대비 |
-| `calculation_type` | 필요한 계산 유형 | 직접값, 증감률, 차이, 비율 |
-| `denominator` | 비율·구성비의 분모 | 경제활동인구, 전체 취업자 |
-| `adjustment` | 계절조정 등 통계 처리 | 계절조정, 원계열 |
-| `status` | 잠정·확정 등 공표 상태 | 잠정, 확정 |
-| `source_scope` | 출처·통계 범위 단서 | KOSIS, 국가승인통계 |
+| `calculation` | 필요한 계산 유형 | DIRECT_VALUE, GROWTH_RATE, DIFFERENCE, RATIO |
+| `condition` | 계절조정·잠정/확정 등 통계 조건 | 계절조정, 원계열, 잠정 |
+| `source_hint` | 기사 속 출처·통계 범위 단서 | KOSIS, 국가승인통계 |
 
 실제 스키마와 세부 계약은 [docs/reference/03_DATA_SCHEMAS.md](docs/reference/03_DATA_SCHEMAS.md)에 정리되어 있습니다.
 
