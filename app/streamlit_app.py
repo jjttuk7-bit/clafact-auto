@@ -182,12 +182,14 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
             verdict = make_verdict(claim.claim_id, claim.value, [], None)
             st.warning("HOLD: 기사 기준일이 없어 사후 개정값을 차단할 수 없습니다.")
         elif not matches:
+            ui_trace.hard_guard_held("NO_HARD_GUARD_CANDIDATE")
             verdict = make_verdict(claim.claim_id, claim.value, [], None)
             if has_unresolved_live_metadata(candidates):
                 st.warning("HOLD: KOSIS 표는 찾았지만 항목·분류 코드가 확정되지 않았습니다.")
             else:
                 st.warning("HOLD: Hard Guard를 통과한 KOSIS 후보가 없습니다.")
         else:
+            ui_trace.hard_guard_passed().semantic_matched(matches[0].route_status, matches[0].reason_code or "MATCH_ACCEPTED", matches[0].top1_top2_margin)
             best = matches[0]
             selected = next(item for item in candidates if item.tbl_id == best.candidate_tbl_id)
             cell = resolve_evidence_cell(claim, selected)
