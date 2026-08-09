@@ -54,8 +54,14 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
         candidates = search_semantic_catalog(claim, concept, load_kosis_catalog(CATALOG_PATH))
         matches = semantic_match(claim, candidates)
 
-        st.subheader(f"파싱 상태: {claim.parse_status}")
-        st.json({"claim": claim.model_dump(), "concept": concept.model_dump()})
+        st.subheader("기사 주장")
+        claim_columns = st.columns(4)
+        claim_columns[0].metric("지표", claim.indicator or "미확정")
+        claim_columns[1].metric("기사값", f"{claim.value or ''} {claim.unit or ''}".strip() or "미확정")
+        claim_columns[2].metric("기준시점", claim.time or "미확정")
+        claim_columns[3].metric("파싱 상태", claim.parse_status)
+        with st.expander("구조화 Claim 상세"):
+            st.json({"claim": claim.model_dump(), "concept": concept.model_dump()})
         st.subheader("KOSIS 후보")
         st.dataframe(
             [{"표 ID": item.tbl_id, "통계표": item.tbl_name, "단위": " | ".join(item.unit_names), "주기": item.frequency} for item in candidates],
@@ -91,8 +97,16 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
                     verdict = make_verdict(claim.claim_id, claim.value, [official_value.value], calculated, tolerance=0.01)
                     st.success(f"{verdict.verdict}: KOSIS Snapshot 공식값 {official_value.value}")
 
-        st.subheader("Verdict")
-        st.json(verdict.model_dump())
+        st.subheader("최종 판정")
+        verdict_columns = st.columns(4)
+        verdict_columns[0].metric("판정", verdict.verdict)
+        verdict_columns[1].metric("경로", verdict.route_status)
+        verdict_columns[2].metric("기사값", verdict.claim_value if verdict.claim_value is not None else "-")
+        verdict_columns[3].metric("KOSIS 공식값", verdict.calculated_value if verdict.calculated_value is not None else "-")
+        if verdict.route_status != "AUTO":
+            st.warning(f"HOLD 사유: {verdict.reason_code} — {verdict.explanation}")
+        with st.expander("Verdict 상세 JSON"):
+            st.json(verdict.model_dump())
         payload = build_review_payload(verdict)
         st.subheader("검토 콘솔 전달 payload")
         st.json({"claim_id": payload.claim_id, "route_status": payload.route_status, "reason_code": payload.reason_code, "evidence_count": payload.evidence_count})
