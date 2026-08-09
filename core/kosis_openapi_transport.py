@@ -13,9 +13,13 @@ _ERROR_CODE = re.compile(r'^\s*\{\s*err\s*:\s*["\'](?P<code>\d+)["\']')
 _LEGACY_KEY = re.compile(r'([\[{,]\s*)([A-Za-z_][A-Za-z0-9_]*)(\s*:)')
 
 
-def get_meta(api_key: str, org_id: str, table_id: str, *, meta_type: str = "SOURCE", retries: int = 3) -> dict[str, Any] | list[dict[str, Any]]:
+def get_meta(api_key: str, org_id: str, table_id: str, *, meta_type: str = "SOURCE", obj_id: str | None = None, itm_id: str | None = None, retries: int = 3) -> dict[str, Any] | list[dict[str, Any]]:
     """Fetch KOSIS metadata without exposing API keys or raw failure responses."""
     params = {"method": "getMeta", "apiKey": api_key, "format": "json", "orgId": org_id, "tblId": table_id, "type": meta_type}
+    if obj_id:
+        params["objId"] = obj_id
+    if itm_id:
+        params["itmId"] = itm_id
     url = "https://kosis.kr/openapi/statisticsData.do?" + urlencode(params)
     last: Exception | None = None
     for attempt in range(retries):
