@@ -36,6 +36,7 @@ from core.semantic_normalizer import normalize_concept
 from core.unit_normalizer import convert_value
 from core.verdict_engine import make_verdict
 from core.ui_labels import translate_status
+from core.verdict_explainer import explain_verdict
 from core.claim_verification_service import VerificationTraceRecorder
 from core.verification_trace import attach_trace
 from schemas.candidate import KosisCandidateSchema
@@ -277,6 +278,18 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
         verdict_columns[1].metric("경로", translate_status(verdict.route_status))
         verdict_columns[2].metric("기사값", verdict.claim_value if verdict.claim_value is not None else "-")
         verdict_columns[3].metric("KOSIS 공식값", verdict.calculated_value if verdict.calculated_value is not None else "-")
+        verdict_explanation = explain_verdict(
+            verdict,
+            api_key=settings.openai_api_key if settings.llm_verdict_explanation_enabled else None,
+            model=settings.openai_model,
+        )
+        st.subheader("판정 설명")
+        explanation_source = "AI 자연어 설명" if verdict_explanation.source == "LLM" else "규칙 기반 설명"
+        st.caption(f"설명 방식: {explanation_source}")
+        st.write(verdict_explanation.summary)
+        st.write(verdict_explanation.detail)
+        if verdict_explanation.next_action:
+            st.info(f"다음 확인: {verdict_explanation.next_action}")
         if verdict.execution_trace:
             with st.expander("3갈래 실행 추적"):
                 st.json(build_trace_summary(verdict.execution_trace))

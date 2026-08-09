@@ -64,6 +64,13 @@ class Settings:
         default_factory=lambda: _environment_value("CLAFACT_OPENAI_MODEL", "gpt-5.6-luna")
     )
 
+    llm_verdict_explanation_enabled: bool = field(
+        default_factory=lambda: _environment_value(
+            "CLAFACT_LLM_VERDICT_EXPLANATION_ENABLED", "true"
+        ).strip().casefold()
+        in {"1", "true", "yes", "on"}
+    )
+
     def __post_init__(self) -> None:
         object.__setattr__(
             self,

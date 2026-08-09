@@ -30,6 +30,7 @@ def _set_provider_environment(
     monkeypatch.setenv("HCX_API_KEY", hcx_api_key)
     monkeypatch.setenv("OPENAI_API_KEY", openai_api_key)
     monkeypatch.setenv("CLAFACT_HCX_EXTRACTION_MODE", hcx_extraction_mode)
+    monkeypatch.setenv("CLAFACT_LLM_VERDICT_EXPLANATION_ENABLED", "false")
 
 
 def _metric_values(app: AppTest) -> dict[str, str]:
