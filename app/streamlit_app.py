@@ -16,11 +16,13 @@ from core.claim_parser import parse_claim
 from core.claim_time_resolver import resolve_relative_time
 from core.calculator import calculate
 from core.catalog_binding import apply_catalog_binding
+from core.catalog_discovery import discover_catalog_candidates, has_unresolved_live_metadata
 from core.catalog_search import search_semantic_catalog
 from core.data_loader import load_kosis_catalog, load_standard_concepts
 from core.evidence_resolver import resolve_evidence_cell
 from core.hcx_claim_extractor import HcxClaimExtractor
 from core.kosis_fetcher import OfficialValueFetcher
+from core.kosis_live_catalog import KosisLiveCatalogSearch
 from core.kosis_api_adapter import build_kosis_api_lookup
 from config.settings import Settings
 from core.review_handoff import build_review_payload
@@ -28,6 +30,9 @@ from core.semantic_matcher import semantic_match
 from core.semantic_normalizer import normalize_concept
 from core.unit_normalizer import convert_value
 from core.verdict_engine import make_verdict
+from schemas.candidate import KosisCandidateSchema
+from schemas.claim import ClaimSchema
+from schemas.concept import StandardConceptSchema
 from schemas.evidence import CalculationPlan
 from schemas.verdict import VerdictSchema
 
@@ -39,6 +44,21 @@ SNAPSHOT_PATHS = [
     DATA_ROOT / "kosis_snapshots" / "official_goldset_asof_v3.json",
     DATA_ROOT / "kosis_snapshots" / "official_cpi_202510.json",
 ]
+
+def _find_catalog_candidates(
+    claim: ClaimSchema,
+    concept: StandardConceptSchema,
+    settings: Settings,
+) -> list[KosisCandidateSchema]:
+    """Prefer registered structural metadata; search KOSIS only for missing tables."""
+    local = apply_catalog_binding(
+        claim,
+        concept,
+        search_semantic_catalog(claim, concept, load_kosis_catalog(CATALOG_PATH)),
+    )
+    live_search = KosisLiveCatalogSearch(settings.kosis_api_key) if settings.kosis_api_key else None
+    return discover_catalog_candidates(claim, concept, local, live_search)
+
 
 def _verify_batch_claim(sentence: str, article_date: date, settings: Settings) -> VerdictSchema:
     """Run the same safe claim pipeline for one batch sentence."""
@@ -53,11 +73,13 @@ def _verify_batch_claim(sentence: str, article_date: date, settings: Settings) -
             }
         )
     concept = normalize_concept(claim, load_standard_concepts(STANDARD_PATH))
-    candidates = apply_catalog_binding(claim, concept, search_semantic_catalog(claim, concept, load_kosis_catalog(CATALOG_PATH)))
+    candidates = _find_catalog_candidates(claim, concept, settings)
     matches = semantic_match(claim, candidates)
     if not matches:
+        reason = "LIVE_CATALOG_METADATA_UNRESOLVED" if has_unresolved_live_metadata(candidates) else "NO_HARD_GUARD_CANDIDATE"
+        explanation = "KOSIS table was found, but official item and dimension codes are not yet resolved." if reason == "LIVE_CATALOG_METADATA_UNRESOLVED" else "No KOSIS candidate passed Hard Guard."
         return make_verdict(claim.claim_id, claim.value, [], None).model_copy(
-            update={"reason_code": "NO_HARD_GUARD_CANDIDATE", "explanation": "No KOSIS candidate passed Hard Guard."}
+            update={"reason_code": reason, "explanation": explanation}
         )
     best = matches[0]
     selected = next(item for item in candidates if item.tbl_id == best.candidate_tbl_id)
@@ -96,7 +118,7 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
         claim = parse_claim(sentence, HcxClaimExtractor())
         claim = resolve_relative_time(claim, article_date)
         concept = normalize_concept(claim, load_standard_concepts(STANDARD_PATH))
-        candidates = apply_catalog_binding(claim, concept, search_semantic_catalog(claim, concept, load_kosis_catalog(CATALOG_PATH)))
+        candidates = _find_catalog_candidates(claim, concept, settings)
         matches = semantic_match(claim, candidates)
 
         st.subheader("기사 주장")
@@ -120,7 +142,10 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
             st.warning("HOLD: 기사 기준일이 없어 사후 개정값을 차단할 수 없습니다.")
         elif not matches:
             verdict = make_verdict(claim.claim_id, claim.value, [], None)
-            st.warning("HOLD: Hard Guard를 통과한 KOSIS 후보가 없습니다.")
+            if has_unresolved_live_metadata(candidates):
+                st.warning("HOLD: KOSIS 표는 찾았지만 항목·분류 코드가 확정되지 않았습니다.")
+            else:
+                st.warning("HOLD: Hard Guard를 통과한 KOSIS 후보가 없습니다.")
         else:
             best = matches[0]
             selected = next(item for item in candidates if item.tbl_id == best.candidate_tbl_id)

@@ -12,6 +12,8 @@ from core.unit_normalizer import compatible_units
 def apply_hard_guard(claim: ClaimSchema, candidate: KosisCandidateSchema) -> HardGuardResult:
     """Reject candidates with non-negotiable slot conflicts."""
     reject_codes: list[str] = []
+    if candidate.metadata_status == "LIVE_SEARCH_UNRESOLVED":
+        reject_codes.append("METADATA_INCOMPLETE")
     if _frequency_conflict(claim, candidate):
         reject_codes.append("FREQUENCY_CONFLICT")
     if _unit_conflict(claim, candidate):
