@@ -37,3 +37,8 @@ def test_make_verdict_carries_pipeline_trace_versions() -> None:
     assert result.kosis_catalog_version == "catalog-5"
     assert result.matching_version == "matching-6"
     assert result.calculation_version == "calculation-7"
+
+def test_make_verdict_always_records_verdict_stage() -> None:
+    result = make_verdict('C1', 70.0, [70.0], 70.0)
+    assert result.execution_trace is not None
+    assert result.execution_trace.events[-1].stage == 'VERDICT'

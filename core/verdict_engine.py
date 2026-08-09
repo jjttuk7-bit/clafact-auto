@@ -24,7 +24,7 @@ def make_verdict(
         claim_id=claim_id,
         preprocess_version="1.0",
         claim_schema_version="1.0",
-    )
+    ).pass_stage("VERDICT")
     return VerdictSchema(
         claim_id=claim_id,
         claim_value=claim_value,
@@ -41,5 +41,5 @@ def make_verdict(
         kosis_catalog_version=versions.kosis_catalog_version,
         matching_version=versions.matching_version,
         calculation_version=versions.calculation_version,
-        execution_trace=trace,
+        execution_trace=versions,
     )
