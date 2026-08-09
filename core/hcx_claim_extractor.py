@@ -6,6 +6,7 @@ import re
 import uuid
 from urllib.request import Request, urlopen
 
+from core.claim_output_contract import claim_output_json_schema
 from schemas.claim import ClaimSchema
 
 
@@ -20,6 +21,23 @@ SYSTEM_PROMPT = (
 )
 
 
+def build_structured_claim_request(sentence: str) -> dict[str, object]:
+    """Build an HCX Structured Outputs request for the complete Claim contract."""
+    return {
+        "messages": [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": sentence},
+        ],
+        "temperature": 0,
+        "maxCompletionTokens": 1024,
+        "thinking": {"effort": "none"},
+        "responseFormat": {
+            "type": "json",
+            "schema": claim_output_json_schema(),
+        },
+    }
+
+
 class HcxClaimExtractor:
     def __init__(self, api_key: str | None = None, model: str = "HCX-007") -> None:
         self.api_key = api_key or os.getenv("HCX_API_KEY") or _dotenv_value("HCX_API_KEY")
@@ -29,40 +47,7 @@ class HcxClaimExtractor:
         if not self.api_key:
             raise RuntimeError("HCX_API_KEY is not configured")
 
-        body = {
-            "messages": [
-                {
-                    "role": "system",
-                    "content": SYSTEM_PROMPT,
-                },
-                {"role": "user", "content": sentence},
-            ],
-            "temperature": 0,
-            "maxCompletionTokens": 1024,
-            "thinking": {"effort": "none"},
-            "responseFormat": {
-                "type": "json",
-                "schema": {
-                    "type": "object",
-                    "properties": {
-                        "claim_id": {"type": "string"},
-                        "source_sentence": {"type": "string"},
-                        "indicator": {"type": "string"},
-                        "value": {"type": "number"},
-                        "unit": {"type": "string"},
-                        "time": {"type": "string"},
-                        "frequency": {"type": "string"},
-                        "region": {"type": "string"},
-                        "population": {"type": "string"},
-                        "calculation": {"type": "string"},
-                        "source_hint": {"type": "string"},
-                        "parse_status": {"type": "string", "enum": ["AUTO_OK", "HOLD", "HUMAN_REVIEW"]},
-                        "parse_reason": {"type": "string"},
-                    },
-                    "required": ["claim_id", "source_sentence", "parse_status"],
-                },
-            },
-        }
+        body = build_structured_claim_request(sentence)
         request = Request(
             f"https://clovastudio.stream.ntruss.com/v3/chat-completions/{self.model}",
             data=json.dumps(body).encode(),
@@ -100,6 +85,7 @@ def _dotenv_value(name: str) -> str | None:
     except FileNotFoundError:
         pass
     return None
+
 
 def _frequency_from_time(value: str | None) -> str | None:
     """Derive only an explicit period frequency from the structured time slot."""
