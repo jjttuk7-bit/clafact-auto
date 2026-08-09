@@ -46,3 +46,9 @@ def test_streamlit_mvp_renders_and_holds_invalid_article_date() -> None:
     app.button[0].click()
     app.run()
     assert any("HOLD: 기사 기준일은 YYYY-MM-DD 형식이어야 합니다." in element.value for element in app.error)
+
+def test_streamlit_mvp_displays_safe_secret_connection_status() -> None:
+    app = AppTest.from_file("app/streamlit_app.py")
+    app.run()
+
+    assert app.subheader[0].value == "운영 연결 상태"

@@ -36,6 +36,13 @@ st.set_page_config(page_title="CLAFACT-AUTO", layout="wide")
 st.title("CLAFACT-AUTO")
 st.caption("KOSIS 공식값만 사용하며, 좌표·기사시점·후보가 불확실하면 자동 판정하지 않습니다.")
 
+settings = Settings()
+st.subheader("운영 연결 상태")
+connection_columns = st.columns(2)
+connection_columns[0].metric("KOSIS API", "연결됨" if settings.kosis_api_key else "미설정")
+connection_columns[1].metric("HCX Structured Output", "연결됨" if settings.hcx_api_key else "미설정")
+st.caption("키 값은 표시하거나 로그에 기록하지 않습니다.")
+
 sentence = st.text_area("검증할 뉴스 문장", placeholder="예: 2024년 전국 고용률은 70%였다.")
 article_date_text = st.text_input("기사 기준일 (YYYY-MM-DD)", placeholder="예: 2025-06-26")
 
@@ -74,7 +81,6 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
                 verdict = make_verdict(claim.claim_id, claim.value, [], None)
                 st.warning(f"HOLD: {best.reason_code or cell.status}")
             else:
-                settings = Settings()
                 api_lookup = build_kosis_api_lookup(settings.kosis_api_key) if settings.kosis_api_key else None
                 official_value = OfficialValueFetcher(SNAPSHOT_PATHS, api_lookup=api_lookup).fetch(cell, article_date=article_date)
                 if official_value.status != "SUCCESS":
