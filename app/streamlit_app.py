@@ -107,11 +107,13 @@ def _verify_batch_claim(sentence: str, article_date: date, settings: Settings) -
     recorder.catalog_searched()
     matches = semantic_match(claim, candidates)
     if not matches:
+        recorder.hard_guard_held("NO_HARD_GUARD_CANDIDATE")
         reason = "LIVE_CATALOG_METADATA_UNRESOLVED" if has_unresolved_live_metadata(candidates) else "NO_HARD_GUARD_CANDIDATE"
         explanation = "KOSIS table was found, but official item and dimension codes are not yet resolved." if reason == "LIVE_CATALOG_METADATA_UNRESOLVED" else "No KOSIS candidate passed Hard Guard."
         return attach_trace(make_verdict(claim.claim_id, claim.value, [], None), recorder.build()).model_copy(
             update={"reason_code": reason, "explanation": explanation}
         )
+    recorder.hard_guard_passed().semantic_matched(matches[0].route_status, matches[0].reason_code or "MATCH_ACCEPTED", matches[0].top1_top2_margin)
     best = matches[0]
     selected = next(item for item in candidates if item.tbl_id == best.candidate_tbl_id)
     cell = resolve_evidence_cell(claim, selected)
