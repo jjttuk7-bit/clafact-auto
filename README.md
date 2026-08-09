@@ -30,6 +30,41 @@ CLAFACT-AUTO는 이 조건을 명시적 데이터 계약으로 보존합니다. 
 
 ## 전체 파이프라인
 
+```mermaid
+flowchart TD
+    A[크롤링 뉴스 파일 / 기사 입력] --> B[전처리<br/>인코딩·열 정규화<br/>제목·본문 정리<br/>광고·메뉴·중복 문구 제거]
+    B --> C[문장 분할 · 수치 Claim 후보 추출]
+    C --> D[Claim Split<br/>복합 수치 문장을 독립 Claim으로 분리]
+    D --> E[HCX Structured Output<br/>12 Semantic Slot Parsing]
+    E --> F{파싱 상태}
+    F -->|AUTO_OK| G[Semantic Standard Mapping]
+    F -->|HOLD / HUMAN_REVIEW| R[검토 콘솔 전달 Payload]
+    G --> H[KOSIS Semantic Catalog Search<br/>로컬 카탈로그 + KOSIS API]
+    H --> I[Hard Guard<br/>시점·지역·단위·분모·측정량 충돌 차단]
+    I --> J{Guard 통과?}
+    J -->|아니오| K[HOLD<br/>후보 또는 메타데이터 불충분]
+    J -->|예| L[Semantic Matching<br/>Top-1 / Top-2 Margin 확인]
+    L --> M{후보 확정?}
+    M -->|아니오| K
+    M -->|예| N[Evidence Cell Resolution<br/>표·항목·차원·기간 좌표 확정]
+    N --> O{좌표·기사시점<br/>공식값 확보?}
+    O -->|아니오| K
+    O -->|예| P[KOSIS Official Value Fetch<br/>API 또는 공식 Snapshot]
+    P --> Q[Deterministic Calculation<br/>Python: 직접값·증감률·차이·비율]
+    Q --> S[Verdict<br/>MATCH / MISMATCH / UNDETERMINED]
+    K --> R
+    S --> T[근거 표시<br/>KOSIS 원문 링크·좌표·공식값·계산식]
+
+    classDef external fill:#eef6ff,stroke:#2677c9,color:#113a66;
+    classDef safe fill:#fff4d6,stroke:#c98600,color:#6b4700;
+    classDef result fill:#eaf7ed,stroke:#248a3d,color:#134d24;
+    class A,P external;
+    class K,R safe;
+    class S,T result;
+```
+
+전처리 단계는 기사 원문을 내부 데이터 계약으로 쓰지 않기 위해 입력 형식을 정리하고, 본문 속 광고·메뉴·중복 문구를 제거한 뒤 수치 Claim 후보 문장만 다음 단계로 전달합니다. 이후 LLM은 **Structured Output 파싱에만** 사용되며, KOSIS 공식값 조회와 계산은 각각 KOSIS adapter와 Python 코드가 수행합니다.
+
 ```text
 Article
   → Claim Extraction
