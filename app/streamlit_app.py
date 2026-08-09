@@ -101,7 +101,8 @@ def _verify_batch_claim(sentence: str, article_date: date, settings: Settings) -
     recorder.concept_mapped()
     growth_verdict = make_cpi_growth_verdict(claim, article_date, _cpi_growth_fetcher(settings))
     if growth_verdict is not None:
-        return growth_verdict
+        recorder.registered_growth_profile_matched().verification_succeeded()
+        return attach_trace(growth_verdict, recorder.build())
     concept = normalize_concept(claim, load_standard_concepts(STANDARD_PATH))
     candidates = _find_catalog_candidates(claim, concept, settings)
     recorder.catalog_searched()
@@ -174,11 +175,7 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
         official_value = None
         evidence_cells = []
         if growth_verdict is not None:
-            if matches:
-                ui_trace.hard_guard_passed().semantic_matched(matches[0].route_status, matches[0].reason_code or "MATCH_ACCEPTED", matches[0].top1_top2_margin)
-                ui_trace.verification_succeeded()
-            else:
-                ui_trace.hard_guard_held("NO_HARD_GUARD_CANDIDATE")
+            ui_trace.registered_growth_profile_matched().verification_succeeded()
             verdict = growth_verdict
             evidence_cells = verdict.evidence_cells
             st.subheader("Evidence 좌표")

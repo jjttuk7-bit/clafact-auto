@@ -47,3 +47,18 @@ def test_trace_recorder_records_complete_success_path() -> None:
         "VERDICT",
     ]
     assert all(event.status == "PASS" for event in trace.events[-4:])
+
+def test_registered_growth_profile_records_guard_and_match_as_pass() -> None:
+    trace = (
+        VerificationTraceRecorder("cpi-1")
+        .registered_growth_profile_matched()
+        .build()
+    )
+
+    assert [event.stage for event in trace.events] == [
+        "HARD_GUARD",
+        "SEMANTIC_MATCH",
+    ]
+    assert all(event.status == "PASS" for event in trace.events)
+    assert trace.events[0].output_ref == "registered_growth_profile"
+    assert trace.events[1].output_ref == "exact_registered_profile"
