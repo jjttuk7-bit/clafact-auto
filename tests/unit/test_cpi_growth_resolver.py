@@ -32,6 +32,9 @@ def test_resolves_registered_cpi_item_to_current_and_prior_year_cells() -> None:
     assert [cell.prd_de for cell in plan.calculation_plan.required_cells] == ["202510", "202410"]
     assert all(cell.tbl_id == "DT_1J22112" and cell.itm_id == "T" for cell in plan.calculation_plan.required_cells)
     assert all(cell.dimension_codes == {"C1": "T10", "C2": "A02A01701"} for cell in plan.calculation_plan.required_cells)
+    assert plan.candidate.tbl_id == "DT_1J22112"
+    assert plan.candidate.metadata_status == "REGISTERED_OFFICIAL_COORDINATE"
+    assert plan.candidate.core_item_names == ["배추"]
 
 
 def test_growth_plan_uses_python_calculation_for_two_official_values() -> None:

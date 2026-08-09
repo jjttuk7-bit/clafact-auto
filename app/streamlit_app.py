@@ -23,6 +23,7 @@ from core.evidence_resolver import resolve_evidence_cell
 from core.evidence_presentation import build_evidence_rows, build_kosis_table_url
 from core.hcx_claim_extractor import HcxClaimExtractor
 from core.kosis_fetcher import OfficialValueFetcher
+from core.cpi_growth_resolver import resolve_cpi_growth_plan
 from core.growth_verdict import make_cpi_growth_verdict
 from core.kosis_live_catalog import KosisLiveCatalogSearch
 from core.kosis_api_adapter import build_kosis_api_lookup
@@ -138,9 +139,10 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
         article_date = date.fromisoformat(article_date_text) if article_date_text else None
         claim = parse_claim(sentence, HcxClaimExtractor())
         claim = resolve_relative_time(claim, article_date)
+        growth_plan = resolve_cpi_growth_plan(claim)
         growth_verdict = make_cpi_growth_verdict(claim, article_date, _cpi_growth_fetcher(settings)) if article_date else None
         concept = None if growth_verdict is not None else normalize_concept(claim, load_standard_concepts(STANDARD_PATH))
-        candidates = [] if concept is None else _find_catalog_candidates(claim, concept, settings)
+        candidates = [growth_plan.candidate] if growth_plan is not None else _find_catalog_candidates(claim, concept, settings)
         matches = semantic_match(claim, candidates)
 
         st.subheader("기사 주장")

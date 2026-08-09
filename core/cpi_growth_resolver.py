@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
+from schemas.candidate import KosisCandidateSchema
 from schemas.claim import ClaimSchema
 from schemas.evidence import CalculationPlan, EvidenceCellSchema
 
@@ -19,6 +20,7 @@ class CpiGrowthPlan:
     """A deterministic two-cell plan for a registered CPI item."""
 
     calculation_plan: CalculationPlan
+    candidate: KosisCandidateSchema
     dataset_version: str
 
 
@@ -39,7 +41,26 @@ def resolve_cpi_growth_plan(claim: ClaimSchema) -> CpiGrowthPlan | None:
     ]
     return CpiGrowthPlan(
         calculation_plan=CalculationPlan(calculation_type="GROWTH_RATE", required_cells=cells),
+        candidate=_candidate(profile),
         dataset_version=_dataset_version(),
+    )
+
+
+def _candidate(profile: dict[str, object]) -> KosisCandidateSchema:
+    """Expose a registered coordinate profile as a visible, non-scored catalog candidate."""
+    indicator = str(profile["indicator"])
+    return KosisCandidateSchema(
+        org_id=str(profile["org_id"]),
+        tbl_id=str(profile["tbl_id"]),
+        tbl_name="소비자물가지수(품목별)",
+        core_item_ids=[str(profile["itm_id"])],
+        core_item_names=[indicator],
+        dimension_ids=["C1", "C2"],
+        dimension_names=["지역", "품목"],
+        dimension_members={"C1": ["전국"], "C2": [indicator]},
+        unit_names=["2020=100"],
+        frequency="월",
+        metadata_status="REGISTERED_OFFICIAL_COORDINATE",
     )
 
 
