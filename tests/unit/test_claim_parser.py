@@ -146,3 +146,31 @@ def test_hcx_extractor_returns_claim_for_supported_frequency(monkeypatch: pytest
 
     assert result.frequency == "year"
     assert result.indicator == "고용률"
+
+def test_hcx_extractor_restores_month_frequency_from_structured_time(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FakeResponse:
+        def read(self) -> bytes:
+            return json.dumps(
+                {"result": {"message": {"content": json.dumps({
+                    "claim_id": "hcx-id",
+                    "source_sentence": "2025년 3월 취업자 수는 2858만9000명이었다.",
+                    "indicator": "취업자 수",
+                    "value": 28589000,
+                    "unit": "명",
+                    "time": "2025년 3월",
+                    "frequency": "월 | 분기 | 년",
+                    "parse_status": "AUTO_OK",
+                })}}}
+            ).encode()
+
+        def __enter__(self) -> "FakeResponse":
+            return self
+
+        def __exit__(self, exc_type: object, exc_value: object, traceback: object) -> None:
+            return None
+
+    monkeypatch.setattr("core.hcx_claim_extractor.urlopen", lambda *args, **kwargs: FakeResponse())
+
+    result = HcxClaimExtractor(api_key="test-key").extract("2025년 3월 취업자 수는 2858만9000명이었다.")
+
+    assert result.frequency == "월"

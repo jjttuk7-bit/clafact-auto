@@ -74,3 +74,51 @@ def test_resolve_evidence_cell_confirms_explicit_two_dimension_coordinate() -> N
     )
     assert cell.status == "CONFIRMED"
     assert cell.dimension_members == {"C1": "서울", "C2": "15-29세"}
+
+
+def test_resolve_evidence_cell_uses_registered_official_total_coordinate() -> None:
+    """A known official snapshot coordinate must resolve without guessing dimensions."""
+    cell = resolve_evidence_cell(
+        claim(
+            indicator="취업자 수",
+            unit="명",
+            time="2025년 3월",
+            frequency="월",
+            region=None,
+        ),
+        candidate(
+            tbl_id="DT_1DA7028S",
+            tbl_name="경제활동인구조사",
+            core_item_ids=["T30"],
+            core_item_names=["취업자 수"],
+            dimension_ids=["B", "J"],
+            dimension_names=["성별", "종사상지위"],
+            dimension_members={"B": ["계", "남자", "여자"], "J": ["계", "상용근로자"]},
+            unit_names=["천명"],
+            frequency="월",
+        ),
+    )
+
+    assert cell.status == "CONFIRMED"
+    assert cell.dimension_members == {"B": "계", "J": "계"}
+    assert cell.dimension_codes == {"B": "0", "J": "00"}
+    assert cell.canonical_key == "ORG=101|TBL=DT_1DA7028S|ITM=T30|OBJ=B|MEMBER=계|PRD_SE=월|PRD_DE=2025-03"
+
+
+
+
+def test_resolve_evidence_cell_uses_claim_frequency_for_multi_frequency_table() -> None:
+    cell = resolve_evidence_cell(
+        claim(indicator="취업자 수", unit="명", time="2025년 3월", frequency="월", region=None),
+        candidate(
+            tbl_id="DT_1DA7028S",
+            core_item_ids=["T30"],
+            core_item_names=["취업자 수"],
+            dimension_ids=["B", "J"],
+            dimension_members={"B": ["계", "남자"], "J": ["계", "상용근로자"]},
+            unit_names=["천명"],
+            frequency="월 | 분기 | 년",
+        ),
+    )
+
+    assert cell.prd_se == "월"

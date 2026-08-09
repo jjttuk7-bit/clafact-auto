@@ -11,6 +11,7 @@ if str(PROJECT_ROOT) not in sys.path:
 import streamlit as st
 
 from core.calculator import calculate
+from core.catalog_binding import apply_catalog_binding
 from core.catalog_search import search_semantic_catalog
 from core.data_loader import load_kosis_catalog, load_standard_concepts
 from core.evidence_resolver import resolve_evidence_cell
@@ -21,6 +22,7 @@ from config.settings import Settings
 from core.review_handoff import build_review_payload
 from core.semantic_matcher import semantic_match
 from core.semantic_normalizer import normalize_concept
+from core.unit_normalizer import convert_value
 from core.verdict_engine import make_verdict
 from schemas.evidence import CalculationPlan
 
@@ -51,7 +53,7 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
         article_date = date.fromisoformat(article_date_text) if article_date_text else None
         claim = HcxClaimExtractor().extract(sentence)
         concept = normalize_concept(claim, load_standard_concepts(STANDARD_PATH))
-        candidates = search_semantic_catalog(claim, concept, load_kosis_catalog(CATALOG_PATH))
+        candidates = apply_catalog_binding(claim, concept, search_semantic_catalog(claim, concept, load_kosis_catalog(CATALOG_PATH)))
         matches = semantic_match(claim, candidates)
 
         st.subheader("기사 주장")
@@ -94,7 +96,8 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
                     st.warning(f"HOLD: {official_value.status}")
                 else:
                     calculated = calculate(CalculationPlan(calculation_type="DIRECT_VALUE", required_cells=[cell]), [official_value.value])
-                    verdict = make_verdict(claim.claim_id, claim.value, [official_value.value], calculated, tolerance=0.01)
+                    claim_unit_value = convert_value(calculated, cell.unit or "", claim.unit or "")
+                    verdict = make_verdict(claim.claim_id, claim.value, [official_value.value], claim_unit_value, tolerance=0.01)
                     st.success(f"{verdict.verdict}: KOSIS Snapshot 공식값 {official_value.value}")
 
         st.subheader("최종 판정")

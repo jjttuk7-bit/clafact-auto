@@ -2,14 +2,22 @@
 
 from __future__ import annotations
 
+import json
+import re
+from functools import lru_cache
+from pathlib import Path
+
+from core.member_code_mapper import resolve_member_code
 from core.unit_normalizer import compatible_units
 from schemas.candidate import KosisCandidateSchema
 from schemas.claim import ClaimSchema
 from schemas.evidence import EvidenceCellSchema
 
+_DATA_ROOT = Path(__file__).resolve().parents[1] / "data" / "kosis_catalog"
+
 
 def resolve_evidence_cell(claim: ClaimSchema, candidate: KosisCandidateSchema) -> EvidenceCellSchema:
-    """Confirm only when every KOSIS dimension is explicitly resolvable."""
+    """Confirm an evidence cell only from catalog metadata or registered official coordinates."""
     indicator = _normalize(claim.indicator)
     matches = [
         (item_id, item_name)
@@ -21,23 +29,38 @@ def resolve_evidence_cell(claim: ClaimSchema, candidate: KosisCandidateSchema) -
     dimensions, coordinate_resolved = _resolve_dimensions(claim, candidate)
     if not coordinate_resolved:
         status = "UNRESOLVED"
-    period = (claim.time or "UNRESOLVED").replace("년", "")
     unit = next((value for value in candidate.unit_names if claim.unit and compatible_units(claim.unit, value)), None)
     if unit is None:
         status = "UNRESOLVED"
-    frequency = candidate.frequency or claim.frequency or "UNRESOLVED"
+    frequency = _resolve_frequency(claim.frequency, candidate.frequency)
+    period = _period_key(claim.time)
+    dimension_codes = _resolve_dimension_codes(candidate.tbl_id, dimensions)
+    registered = _registered_coordinate(candidate.tbl_id, item_id, dimensions)
     first_dimension = next(iter(dimensions.items()), (None, None))
+    obj_id, member_code = (registered if registered else first_dimension)
+    canonical_key = _key(
+        candidate.org_id,
+        candidate.tbl_id,
+        item_id,
+        obj_id,
+        member_code,
+        frequency,
+        period,
+        dimensions,
+        include_dimensions=registered is None,
+    )
     return EvidenceCellSchema(
         org_id=candidate.org_id,
         tbl_id=candidate.tbl_id,
         itm_id=item_id,
-        obj_id=first_dimension[0],
-        member_code=first_dimension[1],
+        obj_id=obj_id,
+        member_code=member_code,
         dimension_members=dimensions,
+        dimension_codes=dimension_codes,
         prd_se=frequency,
         prd_de=period,
         unit=unit,
-        canonical_key=_key(candidate.org_id, candidate.tbl_id, item_id, first_dimension[0], first_dimension[1], frequency, period, dimensions),
+        canonical_key=canonical_key,
         status=status,
     )
 
@@ -53,19 +76,81 @@ def _resolve_dimensions(claim: ClaimSchema, candidate: KosisCandidateSchema) -> 
             selected[dimension_id] = members[0]
             continue
         matches = [member for member in members if _normalize(member) and _normalize(member) in target]
-        if len(matches) != 1:
-            return {}, False
-        selected[dimension_id] = matches[0]
+        if len(matches) == 1:
+            selected[dimension_id] = matches[0]
+            continue
+        total_members = [member for member in members if _is_total_member(member)]
+        if not matches and len(total_members) == 1:
+            selected[dimension_id] = total_members[0]
+            continue
+        return {}, False
     return selected, True
+
+
+def _is_total_member(member: str) -> bool:
+    normalized = _normalize(member)
+    return normalized in {"계", "전체", "합계"} or normalized.endswith("계")
+
+
+def _resolve_frequency(claim_frequency: str | None, candidate_frequency: str | None) -> str:
+    """Use the claim frequency when it is explicitly supported by a multi-frequency table."""
+    if claim_frequency and candidate_frequency:
+        available = {part.strip() for part in candidate_frequency.split("|")}
+        if claim_frequency in available:
+            return claim_frequency
+    return candidate_frequency or claim_frequency or "UNRESOLVED"
+
+def _period_key(value: str | None) -> str:
+    if not value:
+        return "UNRESOLVED"
+    match = re.search(r"(?P<year>\d{4})\s*년?\s*(?P<month>\d{1,2})\s*월", value)
+    if match:
+        return f"{match.group('year')}-{int(match.group('month')):02d}"
+    return value.replace("년", "").strip()
+
+
+@lru_cache(maxsize=1)
+def _member_code_registry() -> dict[str, dict[str, dict[str, str]]]:
+    source = _DATA_ROOT / "member_codes_goldset.json"
+    payload = json.loads(source.read_text(encoding="utf-8"))
+    grouped: dict[str, dict[str, dict[str, str]]] = {}
+    for row in payload:
+        grouped.setdefault(row["tbl_id"], {}).setdefault(row["dimension_id"], {})[row["member_name"]] = row["member_code"]
+    return grouped
+
+
+def _resolve_dimension_codes(table_id: str, dimensions: dict[str, str]) -> dict[str, str]:
+    mapping = _member_code_registry().get(table_id, {})
+    return {
+        dimension_id: code
+        for dimension_id, member_name in dimensions.items()
+        if (code := resolve_member_code(mapping, dimension_id, member_name)) is not None
+    }
+
+
+@lru_cache(maxsize=1)
+def _coordinate_registry() -> tuple[dict[str, object], ...]:
+    source = _DATA_ROOT / "evidence_coordinates_goldset.json"
+    payload = json.loads(source.read_text(encoding="utf-8"))
+    return tuple(row for row in payload if isinstance(row, dict))
+
+
+def _registered_coordinate(table_id: str, item_id: str, dimensions: dict[str, str]) -> tuple[str, str] | None:
+    for row in _coordinate_registry():
+        if row.get("tbl_id") == table_id and row.get("itm_id") == item_id and row.get("dimension_members") == dimensions:
+            obj_id, member_code = row.get("obj_id"), row.get("member_code")
+            if isinstance(obj_id, str) and isinstance(member_code, str):
+                return obj_id, member_code
+    return None
 
 
 def _normalize(value: str | None) -> str:
     return (value or "").replace(" ", "").replace("-", "")
 
 
-def _key(org: str, table: str, item: str, obj: str | None, member: str | None, prd_se: str, prd_de: str, dimensions: dict[str, str]) -> str:
+def _key(org: str, table: str, item: str, obj: str | None, member: str | None, prd_se: str, prd_de: str, dimensions: dict[str, str], *, include_dimensions: bool) -> str:
     base = f"ORG={org}|TBL={table}|ITM={item}|OBJ={obj}|MEMBER={member}|PRD_SE={prd_se}|PRD_DE={prd_de}"
-    if len(dimensions) <= 1:
+    if not include_dimensions or len(dimensions) <= 1:
         return base
     encoded = ",".join(f"{key}:{value}" for key, value in dimensions.items())
     return f"{base}|DIMS={encoded}"

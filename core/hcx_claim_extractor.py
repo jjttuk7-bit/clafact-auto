@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 import uuid
 from urllib.request import Request, urlopen
 
@@ -76,6 +77,9 @@ class HcxClaimExtractor:
         blank_fields = {key: None for key, value in claim.model_dump().items() if value == ""}
         if claim.frequency and claim.frequency.casefold() not in {"monthly", "month", "yearly", "year", "annual", "월", "년", "분기"}:
             blank_fields["frequency"] = None
+        normalized_frequency = _frequency_from_time(claim.time)
+        if (claim.frequency is None or "frequency" in blank_fields) and normalized_frequency:
+            blank_fields["frequency"] = normalized_frequency
         return claim.model_copy(update=blank_fields)
 
 
@@ -86,4 +90,16 @@ def _dotenv_value(name: str) -> str | None:
                 return line.split("=", 1)[1].strip() or None
     except FileNotFoundError:
         pass
+    return None
+
+def _frequency_from_time(value: str | None) -> str | None:
+    """Derive only an explicit period frequency from the structured time slot."""
+    if not value:
+        return None
+    if re.search(r"\d{4}\s*년\s*\d{1,2}\s*월", value):
+        return "월"
+    if re.search(r"\d{4}\s*년\s*\d\s*분기", value):
+        return "분기"
+    if re.search(r"\d{4}\s*년", value):
+        return "년"
     return None
