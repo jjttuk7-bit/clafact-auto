@@ -1,0 +1,81 @@
+"""Reproducible profile-first batch verification orchestration."""
+
+import re
+from collections import Counter
+from collections.abc import Callable, Iterable, Mapping
+from typing import Any
+
+from core.kosis_fetcher import OfficialValueFetcher
+from core.profile_first import resolve_profile_first
+from core.verification_evidence_service import resolve_profile_evidence
+from schemas.claim_registry import ClaimRegistryRecord
+from schemas.concept import StandardConceptSchema
+from schemas.evidence import EvidenceCellSchema
+from schemas.verification_profile import VerificationProfileSchema
+
+
+def run_e2e_batch(
+    records: Iterable[ClaimRegistryRecord],
+    profiles: Iterable[VerificationProfileSchema],
+    concepts: Mapping[tuple[str, str], StandardConceptSchema],
+    *,
+    snapshot_paths: Iterable[Any] = (),
+    api_lookup: Callable[[EvidenceCellSchema], list[dict[str, Any]]] | None = None,
+) -> list[dict[str, Any]]:
+    """Run only deterministic profile/evidence/value stages; never invent values."""
+    profile_list = list(profiles)
+    fetcher = OfficialValueFetcher(snapshot_paths, api_lookup=api_lookup)
+    results: list[dict[str, Any]] = []
+    for record in records:
+        key = (record.article_id, record.sentence_id)
+        concept = concepts.get(key)
+        base = {"article_id": record.article_id, "sentence_id": record.sentence_id, "claim_id": record.claim.claim_id, "route_status": "HOLD", "reason_code": None, "profile_id": None, "official_value": None, "snapshot_hash": "", "versions": {}}
+        if concept is None:
+            base["reason_code"] = "CONCEPT_NOT_FOUND"
+            results.append(base)
+            continue
+        selection = resolve_profile_first(record.claim, concept, profile_list)
+        if selection.status == "NOT_FOUND":
+            base["reason_code"] = "PROFILE_NOT_FOUND"
+            results.append(base)
+            continue
+        if selection.status == "HOLD" or selection.profile is None:
+            base["reason_code"] = selection.reason_code
+            results.append(base)
+            continue
+        base["profile_id"] = selection.profile.profile_id
+        base["versions"] = _versions(selection.profile)
+        evidence = resolve_profile_evidence(record.claim, selection.profile, period=_period(record.claim.time))
+        if evidence.status == "HOLD" or evidence.evidence_cell is None:
+            base["reason_code"] = evidence.reason_code
+            results.append(base)
+            continue
+        value = fetcher.fetch(evidence.evidence_cell, article_date=record.article_published_at)
+        base["snapshot_hash"] = value.snapshot_hash
+        if value.status != "SUCCESS":
+            base["reason_code"] = value.status
+            results.append(base)
+            continue
+        base.update({"route_status": "AUTO", "official_value": value.value})
+        results.append(base)
+    return results
+
+
+def summarize_e2e_batch(results: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
+    rows = list(results)
+    routes = Counter(str(row["route_status"]) for row in rows)
+    reasons = Counter(str(row["reason_code"]) for row in rows if row.get("reason_code"))
+    profiles = sum(row.get("profile_id") is not None for row in rows)
+    values = sum(row.get("official_value") is not None for row in rows)
+    return {"total_records": len(rows), "route_counts": dict(sorted(routes.items())), "hold_reason_counts": dict(sorted(reasons.items())), "profile_coverage": {"matched": profiles, "unmatched": len(rows)-profiles}, "snapshot_coverage": {"with_official_value": values, "without_official_value": len(rows)-values}}
+
+
+def _period(value: str | None) -> str | None:
+    if not value:
+        return None
+    match = re.search(r"(\d{4})\s*년\s*(\d{1,2})\s*월", value)
+    return f"{match.group(1)}-{int(match.group(2)):02d}" if match else value
+
+
+def _versions(profile: VerificationProfileSchema) -> dict[str, str]:
+    return {name: getattr(profile, name) for name in ("dataset_version", "preprocess_version", "claim_schema_version", "semantic_standard_version", "kosis_catalog_version", "matching_version", "calculation_version")}
