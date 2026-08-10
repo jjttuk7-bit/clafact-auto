@@ -36,11 +36,15 @@ def resolve_profile_evidence(
         return EvidenceResolution(
             status="HOLD", reason_code="PROFILE_COORDINATE_INCOMPLETE"
         )
-    if claim.frequency is not None and claim.frequency != profile.prd_se:
+    if claim.frequency is not None and _normalize_frequency(claim.frequency) != _normalize_frequency(profile.prd_se):
         return EvidenceResolution(
             status="HOLD", reason_code="EVIDENCE_FREQUENCY_MISMATCH"
         )
-    if claim.unit is not None and not compatible_units(claim.unit, profile.unit):
+    if (
+        claim.unit is not None
+        and profile.calculation_type == "DIRECT_VALUE"
+        and not compatible_units(claim.unit, profile.unit)
+    ):
         return EvidenceResolution(status="HOLD", reason_code="EVIDENCE_UNIT_MISMATCH")
 
     cell = EvidenceCellSchema(
@@ -69,3 +73,9 @@ def _canonical_key(profile: VerificationProfileSchema, period: str) -> str:
         f"{key}:{value}" for key, value in sorted(profile.dimension_codes.items())
     )
     return f"{base}|DIMS={dimensions}"
+
+
+def _normalize_frequency(value: str) -> str:
+    """Map supported English and Korean frequency labels to KOSIS codes."""
+    normalized = value.strip().casefold()
+    return {"monthly": "M", "month": "M", "월": "M", "m": "M", "yearly": "Y", "annual": "Y", "년": "Y", "y": "Y"}.get(normalized, value)
