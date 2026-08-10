@@ -6,6 +6,7 @@ from collections.abc import Callable, Iterable, Mapping
 from typing import Any
 
 from core.calculation_execution import execute_calculation_plan
+from core.e2e_trace import build_e2e_trace
 from core.calculation_planner import build_calculation_plan
 from core.kosis_fetcher import OfficialValueFetcher
 from core.verdict_engine import make_verdict
@@ -66,6 +67,7 @@ def run_e2e_batch(
             continue
         verdict = make_verdict(record.claim.claim_id, record.claim.value, execution.values, execution.calculated_value, tolerance=0.05)
         base.update({"route_status": verdict.route_status, "official_value": execution.values[0], "evidence_values": execution.values, "calculated_value": execution.calculated_value, "verdict": verdict.verdict, "reason_code": verdict.reason_code})
+        base["execution_trace"] = build_e2e_trace(record.claim.claim_id, route_status=str(base["route_status"]), reason_code=base["reason_code"], multi_evidence=bool(base.get("evidence_values") and len(base["evidence_values"]) > 1)).model_dump(mode="json")
         results.append(base)
     return results
 
