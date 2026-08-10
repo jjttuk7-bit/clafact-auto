@@ -13,6 +13,7 @@ import streamlit as st
 
 from core.batch_verifier import export_batch_xlsx, load_articles, verify_articles
 from core.claim_parser import parse_claim
+from core.claim_result_export import export_verdict_json_bytes, export_verdict_xlsx_bytes
 from core.claim_extractor_factory import create_claim_extractor
 from core.claim_time_resolver import resolve_relative_time
 from core.calculator import calculate
@@ -315,6 +316,19 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
         payload = build_review_payload(verdict)
         st.subheader("검토 콘솔 전달 데이터")
         st.json({"claim_id": payload.claim_id, "route_status": payload.route_status, "reason_code": payload.reason_code, "evidence_count": payload.evidence_count})
+        download_columns = st.columns(2)
+        download_columns[0].download_button(
+            "판정 결과 JSON 다운로드",
+            data=export_verdict_json_bytes(verdict),
+            file_name=f"clafact_claim_{verdict.claim_id}.json",
+            mime="application/json",
+        )
+        download_columns[1].download_button(
+            "판정 결과 XLSX 다운로드",
+            data=export_verdict_xlsx_bytes(verdict),
+            file_name=f"clafact_claim_{verdict.claim_id}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
     except _InvalidArticleDateError:
         st.error("보류: 기사 기준일은 YYYY-MM-DD 형식이어야 합니다.")
     except Exception as error:
