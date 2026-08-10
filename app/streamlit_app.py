@@ -46,7 +46,7 @@ from schemas.evidence import CalculationPlan
 from schemas.verdict import VerdictSchema
 
 DATA_ROOT = Path("data")
-STANDARD_PATH = DATA_ROOT / "semantic_standard" / "seed_concepts.json"
+STANDARD_PATH = DATA_ROOT / "semantic_standard" / "concept_seed_v1.json"
 CATALOG_PATH = DATA_ROOT / "kosis_catalog" / "catalog_350.json"
 SNAPSHOT_PATHS = [
     DATA_ROOT / "kosis_snapshots" / "goldset_pilot.json",
