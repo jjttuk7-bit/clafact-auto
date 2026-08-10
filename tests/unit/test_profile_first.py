@@ -33,6 +33,8 @@ def _profile(**updates: object) -> VerificationProfileSchema:
         "org_id": "101",
         "tbl_id": "DT_1DA7012",
         "itm_id": "T1",
+        "prd_se": "월",
+        "unit": "천명",
         "dataset_version": "registry-v1",
         "preprocess_version": "preprocess-v1",
         "claim_schema_version": "claim-v1",

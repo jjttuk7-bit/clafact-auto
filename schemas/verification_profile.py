@@ -25,6 +25,8 @@ class VerificationProfileSchema(BaseModel):
     org_id: str = Field(min_length=1)
     tbl_id: str = Field(min_length=1)
     itm_id: str = Field(min_length=1)
+    prd_se: str = Field(min_length=1)
+    unit: str = Field(min_length=1)
     dimension_codes: dict[str, str] = Field(default_factory=dict)
     dataset_version: str = Field(min_length=1)
     preprocess_version: str = Field(min_length=1)

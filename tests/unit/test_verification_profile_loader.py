@@ -15,6 +15,8 @@ def _profile(**updates: object) -> dict[str, object]:
         "org_id": "101",
         "tbl_id": "DT_1DA7012",
         "itm_id": "T1",
+        "prd_se": "월",
+        "unit": "천명",
         "dimension_codes": {"C1": "TOTAL"},
         "dataset_version": "registry-v1",
         "preprocess_version": "preprocess-v1",
@@ -45,6 +47,14 @@ def test_profile_schema_requires_all_version_fields() -> None:
     invalid.pop("matching_version")
 
     with pytest.raises(ValueError, match="matching_version"):
+        VerificationProfileSchema.model_validate(invalid)
+
+
+def test_profile_schema_requires_profile_owned_evidence_metadata() -> None:
+    invalid = _profile()
+    invalid.pop("prd_se")
+
+    with pytest.raises(ValueError, match="prd_se"):
         VerificationProfileSchema.model_validate(invalid)
 
 
