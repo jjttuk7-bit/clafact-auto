@@ -55,11 +55,14 @@ def test_slot_enricher_updates_only_target_slots_and_preserves_source_claim() ->
 
 
 def test_slot_enricher_holds_when_structured_output_has_no_calculation() -> None:
-    result = enrich_claim_slots(_claim(), FakeExtractor(_extracted(calculation=None)))
+    result = enrich_claim_slots(
+        _claim(source_sentence="수출은 3% 감소했다."),
+        FakeExtractor(_extracted(calculation=None)),
+    )
 
     assert result.claim.parse_status == "HOLD"
     assert result.catalog_search_ready is False
-    assert result.reason_code == "MISSING_CALCULATION"
+    assert result.reason_code == "AMBIGUOUS_COMPARISON"
 
 
 def test_slot_enricher_holds_growth_claim_without_comparison() -> None:
@@ -70,4 +73,31 @@ def test_slot_enricher_holds_growth_claim_without_comparison() -> None:
 
     assert result.claim.parse_status == "HOLD"
     assert result.catalog_search_ready is False
-    assert result.reason_code == "MISSING_COMPARISON_FOR_GROWTH_RATE"
+    assert result.reason_code == "AMBIGUOUS_COMPARISON"
+
+def test_slot_enricher_prefers_explicit_source_rule_over_provider_slots() -> None:
+    result = enrich_claim_slots(
+        _claim(condition=None),
+        FakeExtractor(
+            _extracted(
+                comparison={"type": "MONTH_OVER_MONTH"},
+                calculation="DIRECT_VALUE",
+                condition={"release_status": "잠정"},
+            )
+        ),
+    )
+
+    assert result.claim.comparison == {"type": "YEAR_OVER_YEAR"}
+    assert result.claim.calculation == "GROWTH_RATE"
+    assert result.claim.condition == {"release_status": "잠정"}
+    assert result.catalog_search_ready is True
+
+def test_slot_enricher_holds_ambiguous_direction_even_when_provider_suggests_slots() -> None:
+    result = enrich_claim_slots(
+        _claim(source_sentence="수출은 3% 감소했다."),
+        FakeExtractor(_extracted()),
+    )
+
+    assert result.claim.parse_status == "HOLD"
+    assert result.catalog_search_ready is False
+    assert result.reason_code == "AMBIGUOUS_COMPARISON"

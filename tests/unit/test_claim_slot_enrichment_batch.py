@@ -61,3 +61,18 @@ def test_batch_enricher_processes_only_auto_ok_records_and_adds_audit_status() -
         "skipped_records": 1,
         "error_records": 0,
     }
+
+def test_batch_enricher_holds_ambiguous_direction_despite_provider_suggestion() -> None:
+    records, summary = enrich_auto_registry_records(
+        [_record("AUTO_OK") | {"claim": _record("AUTO_OK")["claim"] | {"source_sentence": "수출은 3% 감소했다."}}],
+        FakeExtractor(),
+    )
+
+    assert records[0]["claim"]["parse_status"] == "HOLD"
+    assert records[0]["claim"]["parse_reason"] == "AMBIGUOUS_COMPARISON"
+    assert records[0]["slot_enrichment"] == {
+        "status": "HOLD",
+        "reason_code": "AMBIGUOUS_COMPARISON",
+        "catalog_search_ready": False,
+    }
+    assert summary["held_records"] == 1

@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 
 from core.claim_parser import StructuredClaimExtractor, parse_claim
+from core.deterministic_slot_enricher import infer_explicit_slots
 from schemas.claim import ClaimSchema
 
 _SUPPORTED_CALCULATIONS = {
@@ -30,18 +31,23 @@ def enrich_claim_slots(
     claim: ClaimSchema, extractor: StructuredClaimExtractor
 ) -> SlotEnrichmentResult:
     """Fill only missing comparison/calculation/condition slots from strict output."""
+    explicit = infer_explicit_slots(claim.source_sentence)
+    if explicit.reason_code is not None:
+        return _held(claim, explicit.reason_code)
+
     extracted = parse_claim(claim.source_sentence, extractor)
     if extracted.parse_status != "AUTO_OK":
         return _held(claim, "ENRICHMENT_PARSE_NOT_AUTO_OK")
-
-    calculation = claim.calculation or extracted.calculation
+    calculation = claim.calculation or explicit.calculation or extracted.calculation
     normalized_calculation = calculation.upper() if calculation else None
     enriched = claim.model_copy(
         update={
             "comparison": _non_empty_mapping(claim.comparison)
+            or explicit.comparison
             or _non_empty_mapping(extracted.comparison),
             "calculation": normalized_calculation,
             "condition": _non_empty_mapping(claim.condition)
+            or explicit.condition
             or _non_empty_mapping(extracted.condition),
         }
     )

@@ -33,4 +33,4 @@ def test_slot_enricher_holds_growth_when_provider_returns_empty_comparison_map()
 
     assert result.claim.parse_status == "HOLD"
     assert result.catalog_search_ready is False
-    assert result.reason_code == "MISSING_COMPARISON_FOR_GROWTH_RATE"
+    assert result.reason_code == "AMBIGUOUS_COMPARISON"
