@@ -350,3 +350,26 @@ if st.button("배치 검증 실행", type="primary", disabled=uploaded_file is N
         st.error(f"배치 입력 오류: {error}")
     except Exception as error:
         st.error(f"배치 처리 HOLD: {type(error).__name__}")
+
+st.divider()
+st.subheader("운영 배치 산출물 검토")
+st.caption("E2E 결과 JSONL·커버리지 보고서·비교 검토 큐를 읽기 전용으로 확인합니다. 업로드 파일은 저장하지 않습니다.")
+operations_results = st.file_uploader("E2E 결과 JSONL", type=["jsonl"], key="operations_results")
+operations_coverage = st.file_uploader("커버리지 보고서 JSON", type=["json"], key="operations_coverage")
+operations_queue = st.file_uploader("모호 비교 검토 큐 JSONL (선택)", type=["jsonl"], key="operations_queue")
+if operations_results and operations_coverage:
+    import json as _operations_json
+    try:
+        operations_rows = [_operations_json.loads(line) for line in operations_results.getvalue().decode("utf-8").splitlines() if line.strip()]
+        operations_report = _operations_json.loads(operations_coverage.getvalue().decode("utf-8"))
+        operations_review_rows = [_operations_json.loads(line) for line in operations_queue.getvalue().decode("utf-8").splitlines() if line.strip()] if operations_queue else []
+        metrics = st.columns(3)
+        metrics[0].metric("결과 Claim", len(operations_rows))
+        metrics[1].metric("검토 큐", len(operations_review_rows))
+        metrics[2].metric("자동 경로", operations_report.get("route_counts", {}).get("AUTO", 0))
+        st.json(operations_report)
+        st.dataframe(operations_rows)
+        if operations_review_rows:
+            st.dataframe(operations_review_rows)
+    except (UnicodeDecodeError, ValueError, _operations_json.JSONDecodeError):
+        st.error("운영 산출물 형식 오류: UTF-8 JSONL/JSON 파일을 확인하세요.")
