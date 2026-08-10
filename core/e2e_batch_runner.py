@@ -5,7 +5,10 @@ from collections import Counter
 from collections.abc import Callable, Iterable, Mapping
 from typing import Any
 
+from core.calculation_execution import execute_calculation_plan
+from core.calculation_planner import build_calculation_plan
 from core.kosis_fetcher import OfficialValueFetcher
+from core.verdict_engine import make_verdict
 from core.profile_first import resolve_profile_first
 from core.verification_evidence_service import resolve_profile_evidence
 from schemas.claim_registry import ClaimRegistryRecord
@@ -50,13 +53,19 @@ def run_e2e_batch(
             base["reason_code"] = evidence.reason_code
             results.append(base)
             continue
-        value = fetcher.fetch(evidence.evidence_cell, article_date=record.article_published_at)
-        base["snapshot_hash"] = value.snapshot_hash
-        if value.status != "SUCCESS":
-            base["reason_code"] = value.status
+        plan = build_calculation_plan(record.claim, evidence.evidence_cell)
+        if plan is None:
+            base["reason_code"] = "CALCULATION_PLAN_UNRESOLVED"
             results.append(base)
             continue
-        base.update({"route_status": "AUTO", "official_value": value.value})
+        execution = execute_calculation_plan(plan, fetcher, article_date=record.article_published_at)
+        base["snapshot_hashes"] = execution.snapshot_hashes
+        if execution.status != "SUCCESS":
+            base["reason_code"] = execution.status
+            results.append(base)
+            continue
+        verdict = make_verdict(record.claim.claim_id, record.claim.value, execution.values, execution.calculated_value, tolerance=0.05)
+        base.update({"route_status": verdict.route_status, "official_value": execution.values[0], "evidence_values": execution.values, "calculated_value": execution.calculated_value, "verdict": verdict.verdict, "reason_code": verdict.reason_code})
         results.append(base)
     return results
 

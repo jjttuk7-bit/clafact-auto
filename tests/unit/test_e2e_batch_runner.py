@@ -7,7 +7,7 @@ from schemas.verification_profile import VerificationProfileSchema
 
 
 def _record() -> ClaimRegistryRecord:
-    return ClaimRegistryRecord.model_validate({"article_id":"A1","sentence_id":"S1","article_published_at":"2025-04-01","source_ref":"test","claim":{"claim_id":"C1","source_sentence":"2025년 3월 취업자 수는 2,800만 명이다.","unit":"천명","time":"2025년 3월","frequency":"월","calculation":"DIRECT_VALUE","parse_status":"AUTO_OK"}})
+    return ClaimRegistryRecord.model_validate({"article_id":"A1","sentence_id":"S1","article_published_at":"2025-04-01","source_ref":"test","claim":{"claim_id":"C1","source_sentence":"2025년 3월 취업자 수는 2,800만 명이다.","value":28000,"unit":"천명","time":"2025년 3월","frequency":"월","calculation":"DIRECT_VALUE","parse_status":"AUTO_OK"}})
 
 
 def _profile() -> VerificationProfileSchema:
