@@ -86,3 +86,22 @@ def test_e2e_batch_compares_direct_values_after_profile_unit_conversion() -> Non
     assert result[0]["route_status"] == "AUTO"
     assert result[0]["verdict"] == "MATCH"
     assert result[0]["claim_value_in_profile_unit"] == 28000.0
+
+
+def test_e2e_batch_preserves_parse_hold_before_concept_or_profile_routing() -> None:
+    record = _record().model_copy(
+        update={
+            "claim": _record().claim.model_copy(
+                update={"parse_status": "HOLD", "parse_reason": "MISSING_REQUIRED_SLOTS:time"}
+            )
+        }
+    )
+
+    result = run_e2e_batch(
+        [record],
+        [],
+        {(record.article_id, record.sentence_id): StandardConceptSchema(concept_id="x", canonical_name="취업자 수", standard_key="employment_count", status="MATCHED")},
+    )
+
+    assert result[0]["route_status"] == "HOLD"
+    assert result[0]["reason_code"] == "PARSE_MISSING_REQUIRED_SLOTS:time"

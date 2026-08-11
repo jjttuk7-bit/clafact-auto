@@ -47,6 +47,13 @@ def run_e2e_batch(
                 "snapshot_hash": "",
                 "versions": {},
             }
+            if record.claim.parse_status != "AUTO_OK":
+                base["route_status"] = record.claim.parse_status
+                base["reason_code"] = (
+                    f"PARSE_{record.claim.parse_reason or record.claim.parse_status}"
+                )
+                results.append(_with_execution_trace(base))
+                continue
             if concept is None:
                 base["reason_code"] = "CONCEPT_NOT_FOUND"
                 results.append(_with_execution_trace(base))
