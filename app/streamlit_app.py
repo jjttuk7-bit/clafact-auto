@@ -406,7 +406,15 @@ if DEFAULT_INTERNAL_RUN_DIR.is_dir():
         st.json(operator_run.report)
         st.dataframe(operator_run.profile_queue)
         st.download_button("Profile 검토 큐 JSON 다운로드", data=json.dumps(operator_run.profile_queue, ensure_ascii=False, indent=2), file_name="profile_review_priority_queue.json", mime="application/json")
+        export_columns = st.columns(2)
+        csv_path = DEFAULT_INTERNAL_RUN_DIR / "claim_verification_results.csv"
+        xlsx_path = DEFAULT_INTERNAL_RUN_DIR / "claim_verification_results.xlsx"
+        if csv_path.is_file():
+            export_columns[0].download_button("전체 결과 CSV 다운로드", data=csv_path.read_bytes(), file_name=csv_path.name, mime="text/csv")
+        if xlsx_path.is_file():
+            export_columns[1].download_button("전체 결과 XLSX 다운로드", data=xlsx_path.read_bytes(), file_name=xlsx_path.name, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     except (OSError, ValueError, json.JSONDecodeError):
         st.error("내부 검증 실행 산출물을 읽을 수 없습니다.")
 else:
     st.info("아직 내부 검증 실행 산출물이 없습니다.")
+
