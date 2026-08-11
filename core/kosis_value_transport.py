@@ -37,10 +37,15 @@ def get_parameter_data(
         try:
             with urlopen(url, timeout=20) as response:
                 decoded = _decode_kosis_payload(response.read())
+            if isinstance(decoded, dict) and isinstance(decoded.get("err"), str):
+                raise RuntimeError(f"KOSIS_VALUE_API_ERROR_{decoded['err']}")
             if not isinstance(decoded, list) or not all(isinstance(record, dict) for record in decoded):
                 raise RuntimeError("KOSIS_VALUE_INVALID_RESPONSE")
             return decoded
-        except RuntimeError:
+        except RuntimeError as error:
+            message = str(error)
+            if message.startswith("KOSIS_METADATA_API_ERROR_"):
+                raise RuntimeError(message.replace("KOSIS_METADATA_API_ERROR_", "KOSIS_VALUE_API_ERROR_", 1)) from error
             raise
         except Exception as error:
             last = error
