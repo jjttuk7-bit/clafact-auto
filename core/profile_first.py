@@ -57,27 +57,32 @@ def resolve_profile_first(
 def _applicability_conflict(
     claim: ClaimSchema, profile: VerificationProfileSchema
 ) -> str | None:
-    if _frequency_mismatch(claim.frequency, profile.frequency_constraint):
-        return "PROFILE_FREQUENCY_CONFLICT"
-    if _string_mismatch(claim.region, profile.region_constraint):
-        return "PROFILE_REGION_CONFLICT"
-    if _string_mismatch(claim.population, profile.population_constraint):
-        return "PROFILE_POPULATION_CONFLICT"
-    if (
-        claim.condition is not None
-        and profile.condition_constraint is not None
-        and claim.condition != profile.condition_constraint
-    ):
-        return "PROFILE_CONDITION_CONFLICT"
-    if (
-        claim.dimension is not None
-        and profile.dimension_constraint is not None
-        and claim.dimension != profile.dimension_constraint
-    ):
-        return "PROFILE_DIMENSION_CONFLICT"
+    if profile.frequency_constraint is not None:
+        if claim.frequency is None:
+            return "PROFILE_FREQUENCY_UNRESOLVED"
+        if _frequency_mismatch(claim.frequency, profile.frequency_constraint):
+            return "PROFILE_FREQUENCY_CONFLICT"
+    if profile.region_constraint is not None:
+        if claim.region is None:
+            return "PROFILE_REGION_UNRESOLVED"
+        if _string_mismatch(claim.region, profile.region_constraint):
+            return "PROFILE_REGION_CONFLICT"
+    if profile.population_constraint is not None:
+        if claim.population is None:
+            return "PROFILE_POPULATION_UNRESOLVED"
+        if _string_mismatch(claim.population, profile.population_constraint):
+            return "PROFILE_POPULATION_CONFLICT"
+    if profile.condition_constraint is not None:
+        if claim.condition is None:
+            return "PROFILE_CONDITION_UNRESOLVED"
+        if claim.condition != profile.condition_constraint:
+            return "PROFILE_CONDITION_CONFLICT"
+    if profile.dimension_constraint is not None:
+        if claim.dimension is None:
+            return "PROFILE_DIMENSION_UNRESOLVED"
+        if claim.dimension != profile.dimension_constraint:
+            return "PROFILE_DIMENSION_CONFLICT"
     return None
-
-
 def _frequency_mismatch(claim_value: str | None, profile_value: str | None) -> bool:
     if claim_value is None or profile_value is None:
         return False

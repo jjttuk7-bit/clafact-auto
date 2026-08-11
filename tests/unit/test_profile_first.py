@@ -56,7 +56,6 @@ def test_selects_the_profile_with_an_exact_standard_key() -> None:
     assert result.profile == profile
     assert result.reason_code is None
 
-
 def test_returns_not_found_for_a_standard_key_without_a_profile() -> None:
     result = resolve_profile_first(_claim(), _concept(), [_profile(claim_key="other_key")])
 
@@ -113,7 +112,6 @@ def test_selects_profile_when_declared_applicability_constraints_match() -> None
 
     assert result.status == "MATCHED"
 
-
 def test_holds_when_declared_frequency_constraint_conflicts() -> None:
     result = resolve_profile_first(
         _claim(frequency="년"),
@@ -158,7 +156,7 @@ def test_holds_when_declared_condition_constraint_conflicts() -> None:
     assert result.reason_code == "PROFILE_CONDITION_CONFLICT"
 
 
-def test_ignores_profile_constraint_when_claim_slot_is_missing() -> None:
+def test_holds_when_required_profile_constraint_is_missing_from_claim() -> None:
     result = resolve_profile_first(
         _claim(frequency=None, region=None, population=None, condition=None),
         _concept(),
@@ -172,7 +170,8 @@ def test_ignores_profile_constraint_when_claim_slot_is_missing() -> None:
         ],
     )
 
-    assert result.status == "MATCHED"
+    assert result.status == "HOLD"
+    assert result.reason_code == "PROFILE_FREQUENCY_UNRESOLVED"
 
 def test_holds_when_declared_dimension_constraint_conflicts() -> None:
     result = resolve_profile_first(
