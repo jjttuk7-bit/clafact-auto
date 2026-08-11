@@ -11,7 +11,8 @@ from schemas.review_queue import ReviewQueueRecord
 _QUEUE_RULES: tuple[tuple[str, str, str, str], ...] = (
     ("PARSE_", "parse", "CLAIM_ANALYST", "Resolve the 12-slot parsing ambiguity from the source sentence."),
     ("CONCEPT_", "concept", "SEMANTIC_STANDARD_CURATOR", "Add an evidence-backed semantic standard mapping."),
-    ("PROFILE_", "profile", "KOSIS_PROFILE_CURATOR", "Verify official KOSIS coordinates and add an applicable profile."),
+    ("NO_HARD_GUARD_", "catalog", "KOSIS_CATALOG_CURATOR", "Confirm a compatible official KOSIS table and its metadata."),
+    ("NO_EVIDENCE_", "evidence", "EVIDENCE_RESOLVER", "Resolve an official KOSIS item and dimension coordinate."),
     ("EVIDENCE_", "evidence", "EVIDENCE_RESOLVER", "Resolve the official KOSIS evidence cell and dimensions."),
     ("PUBLICATION_", "publication_policy", "KOSIS_PUBLICATION_POLICY_REVIEWER", "Confirm publication timing and source snapshot policy."),
 )

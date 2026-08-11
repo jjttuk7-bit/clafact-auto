@@ -10,7 +10,7 @@ class ReviewQueueRecord(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    queue_type: Literal["parse", "concept", "profile", "evidence", "publication_policy", "retry", "verification"]
+    queue_type: Literal["parse", "concept", "catalog", "evidence", "publication_policy", "retry", "verification"]
     owner_role: str
     next_action: str
     route_status: Literal["HOLD", "HUMAN_REVIEW"]

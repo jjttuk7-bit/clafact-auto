@@ -32,7 +32,7 @@ def test_build_review_queues_routes_each_actionable_reason_without_mutating_resu
     reasons = {
         "PARSE_CONDITION_UNRESOLVED": "parse",
         "CONCEPT_NOT_FOUND": "concept",
-        "PROFILE_NOT_FOUND": "profile",
+        "NO_HARD_GUARD_CANDIDATE": "catalog",
         "EVIDENCE_CELL_UNRESOLVED": "evidence",
         "PUBLICATION_POLICY_HOLD": "publication_policy",
         "KOSIS_VALUE_TRANSPORT_TIMEOUT": "retry",
@@ -52,7 +52,7 @@ def test_build_review_queues_routes_each_actionable_reason_without_mutating_resu
 
     assert set(queues) == set(reasons.values())
     assert all(len(rows) == 1 for rows in queues.values())
-    assert queues["profile"][0]["owner_role"] == "KOSIS_PROFILE_CURATOR"
+    assert queues["catalog"][0]["owner_role"] == "KOSIS_CATALOG_CURATOR"
     assert queues["retry"][0]["next_action"] == "Retry the official KOSIS request with the recorded coordinate."
     assert queues["concept"][0]["slots"]["indicator"] == "employment"
     assert queues["concept"][0]["candidate_metadata"] == {"table_id": "DT_TEST"}
@@ -67,13 +67,13 @@ def test_build_review_queues_excludes_auto_rows_and_reconciles_human_review() ->
     record = _record("claim-1")
     queues, summary = build_review_queues(
         [
-            {"claim_id": "claim-1", "route_status": "HUMAN_REVIEW", "reason_code": "PROFILE_NOT_FOUND"},
+            {"claim_id": "claim-1", "route_status": "HUMAN_REVIEW", "reason_code": "NO_HARD_GUARD_CANDIDATE"},
             {"claim_id": "claim-2", "route_status": "AUTO", "reason_code": "MATCH"},
         ],
         {"claim-1": record},
     )
 
-    assert list(queues) == ["profile"]
-    assert queues["profile"][0]["route_status"] == "HUMAN_REVIEW"
+    assert list(queues) == ["catalog"]
+    assert queues["catalog"][0]["route_status"] == "HUMAN_REVIEW"
     assert summary["total_actionable"] == 1
     assert summary["route_counts"] == {"HUMAN_REVIEW": 1}
