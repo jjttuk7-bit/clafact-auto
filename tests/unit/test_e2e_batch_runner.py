@@ -31,3 +31,25 @@ def test_e2e_report_counts_routes_and_coverage() -> None:
     report = summarize_e2e_batch([{ "route_status":"AUTO", "official_value":1.0, "reason_code":None, "profile_id":"p" }, {"route_status":"HOLD", "official_value":None, "reason_code":"PROFILE_NOT_FOUND", "profile_id":None}])
     assert report["route_counts"] == {"AUTO": 1, "HOLD": 1}
     assert report["snapshot_coverage"] == {"with_official_value": 1, "without_official_value": 1}
+
+
+def test_e2e_batch_isolates_one_record_error_and_continues(monkeypatch) -> None:
+    import core.e2e_batch_runner as runner
+
+    records = [_record(), _record().model_copy(update={"article_id": "A2", "sentence_id": "S2", "claim": _record().claim.model_copy(update={"claim_id": "C2"})})]
+    concepts = {
+        ("A1", "S1"): StandardConceptSchema(concept_id="x", canonical_name="취업자 수", standard_key="employment_count", status="MATCHED"),
+        ("A2", "S2"): StandardConceptSchema(concept_id="x", canonical_name="취업자 수", standard_key="employment_count", status="MATCHED"),
+    }
+    original = runner.resolve_profile_first
+
+    def raise_for_first(claim, concept, profiles):
+        if claim.claim_id == "C1":
+            raise RuntimeError("simulated profile failure")
+        return original(claim, concept, profiles)
+
+    monkeypatch.setattr(runner, "resolve_profile_first", raise_for_first)
+    results = runner.run_e2e_batch(records, [], concepts)
+
+    assert [row["reason_code"] for row in results] == ["BATCH_RECORD_ERROR", "PROFILE_NOT_FOUND"]
+    assert all(row["route_status"] == "HOLD" for row in results)

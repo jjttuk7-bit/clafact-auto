@@ -31,62 +31,65 @@ def run_e2e_batch(
     fetcher = OfficialValueFetcher(snapshot_paths, api_lookup=api_lookup)
     results: list[dict[str, Any]] = []
     for record in records:
-        key = (record.article_id, record.sentence_id)
-        concept = concepts.get(key)
-        base = {
-            "article_id": record.article_id,
-            "sentence_id": record.sentence_id,
-            "claim_id": record.claim.claim_id,
-            "route_status": "HOLD",
-            "reason_code": None,
-            "profile_id": None,
-            "official_value": None,
-            "snapshot_hash": "",
-            "versions": {},
-        }
-        if concept is None:
-            base["reason_code"] = "CONCEPT_NOT_FOUND"
-            results.append(_with_execution_trace(base))
-            continue
-        selection = resolve_profile_first(record.claim, concept, profile_list)
-        if selection.status == "NOT_FOUND":
-            base["reason_code"] = "PROFILE_NOT_FOUND"
-            results.append(_with_execution_trace(base))
-            continue
-        if selection.status == "HOLD" or selection.profile is None:
-            base["reason_code"] = selection.reason_code
-            results.append(_with_execution_trace(base))
-            continue
-        base["profile_id"] = selection.profile.profile_id
-        base["versions"] = _versions(selection.profile)
-        evidence = resolve_profile_evidence(record.claim, selection.profile, period=_period(record.claim.time))
-        if evidence.status == "HOLD" or evidence.evidence_cell is None:
-            base["reason_code"] = evidence.reason_code
-            results.append(_with_execution_trace(base))
-            continue
-        plan = build_calculation_plan(record.claim, evidence.evidence_cell)
-        if plan is None:
-            base["reason_code"] = "CALCULATION_PLAN_UNRESOLVED"
-            results.append(_with_execution_trace(base))
-            continue
-        execution = execute_calculation_plan(plan, fetcher, article_date=record.article_published_at)
-        base["snapshot_hashes"] = execution.snapshot_hashes
-        if execution.status != "SUCCESS":
-            base["reason_code"] = execution.status
-            results.append(_with_execution_trace(base))
-            continue
-        verdict = make_verdict(record.claim.claim_id, record.claim.value, execution.values, execution.calculated_value, tolerance=0.05)
-        base.update(
-            {
-                "route_status": verdict.route_status,
-                "official_value": execution.values[0],
-                "evidence_values": execution.values,
-                "calculated_value": execution.calculated_value,
-                "verdict": verdict.verdict,
-                "reason_code": verdict.reason_code,
+        try:
+            key = (record.article_id, record.sentence_id)
+            concept = concepts.get(key)
+            base = {
+                "article_id": record.article_id,
+                "sentence_id": record.sentence_id,
+                "claim_id": record.claim.claim_id,
+                "route_status": "HOLD",
+                "reason_code": None,
+                "profile_id": None,
+                "official_value": None,
+                "snapshot_hash": "",
+                "versions": {},
             }
-        )
-        results.append(_with_execution_trace(base))
+            if concept is None:
+                base["reason_code"] = "CONCEPT_NOT_FOUND"
+                results.append(_with_execution_trace(base))
+                continue
+            selection = resolve_profile_first(record.claim, concept, profile_list)
+            if selection.status == "NOT_FOUND":
+                base["reason_code"] = "PROFILE_NOT_FOUND"
+                results.append(_with_execution_trace(base))
+                continue
+            if selection.status == "HOLD" or selection.profile is None:
+                base["reason_code"] = selection.reason_code
+                results.append(_with_execution_trace(base))
+                continue
+            base["profile_id"] = selection.profile.profile_id
+            base["versions"] = _versions(selection.profile)
+            evidence = resolve_profile_evidence(record.claim, selection.profile, period=_period(record.claim.time))
+            if evidence.status == "HOLD" or evidence.evidence_cell is None:
+                base["reason_code"] = evidence.reason_code
+                results.append(_with_execution_trace(base))
+                continue
+            plan = build_calculation_plan(record.claim, evidence.evidence_cell)
+            if plan is None:
+                base["reason_code"] = "CALCULATION_PLAN_UNRESOLVED"
+                results.append(_with_execution_trace(base))
+                continue
+            execution = execute_calculation_plan(plan, fetcher, article_date=record.article_published_at)
+            base["snapshot_hashes"] = execution.snapshot_hashes
+            if execution.status != "SUCCESS":
+                base["reason_code"] = execution.status
+                results.append(_with_execution_trace(base))
+                continue
+            verdict = make_verdict(record.claim.claim_id, record.claim.value, execution.values, execution.calculated_value, tolerance=0.05)
+            base.update(
+                {
+                    "route_status": verdict.route_status,
+                    "official_value": execution.values[0],
+                    "evidence_values": execution.values,
+                    "calculated_value": execution.calculated_value,
+                    "verdict": verdict.verdict,
+                    "reason_code": verdict.reason_code,
+                }
+            )
+            results.append(_with_execution_trace(base))
+        except Exception as error:
+            results.append(_batch_record_error(record, error))
     return results
 
 
@@ -135,3 +138,18 @@ def _with_execution_trace(result: dict[str, Any]) -> dict[str, Any]:
         multi_evidence=bool(result.get("evidence_values") and len(result["evidence_values"]) > 1),
     ).model_dump(mode="json")
     return result
+
+def _batch_record_error(record: ClaimRegistryRecord, error: Exception) -> dict[str, Any]:
+    """Convert an unexpected per-Claim failure into an auditable HOLD result."""
+    return _with_execution_trace({
+        "article_id": record.article_id,
+        "sentence_id": record.sentence_id,
+        "claim_id": record.claim.claim_id,
+        "route_status": "HOLD",
+        "reason_code": "BATCH_RECORD_ERROR",
+        "error_type": type(error).__name__,
+        "profile_id": None,
+        "official_value": None,
+        "snapshot_hash": "",
+        "versions": {},
+    })

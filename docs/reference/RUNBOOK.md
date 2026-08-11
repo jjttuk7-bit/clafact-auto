@@ -47,9 +47,11 @@ Run the structured registry only with registered Profiles and immutable snapshot
 ```powershell
 python -m pytest tests/goldset -q
 python -m pytest -q
+python -m tools.materialize_semantic_concepts <registry.jsonl> data/semantic_standard/concept_seed_v1.json <run_dir>/concepts.json
+python -m tools.run_e2e_batch <registry.jsonl> <profiles.json> <run_dir>/concepts.json <run_dir>/error_isolation_recheck
 ```
 
-Expected acceptance baseline: 24 Goldset tests and 429 total tests pass.
+The second command materializes the deterministic Claim-to-Concept input required by the batch rerun; it does not invoke an LLM. Expected acceptance baseline: 24 Goldset tests and 432 total tests pass. The current acceptance decision and the 1,532nd-record boundary are documented in `docs/reference/INTERNAL_VALIDATION_MVP_ACCEPTANCE.md`.
 
 ## Review queues and Profile changes
 
