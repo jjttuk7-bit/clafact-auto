@@ -9,7 +9,8 @@ from pathlib import Path
 
 from config.settings import Settings
 from core.claim_registry_loader import load_claim_registry
-from core.data_loader import load_kosis_catalog
+from core.data_loader import load_kosis_catalog, load_standard_concepts
+from core.kosis_live_catalog import KosisLiveCatalogSearch
 from core.dynamic_e2e_batch_runner import run_dynamic_e2e_batch
 from core.kosis_api_adapter import build_kosis_api_lookup
 from schemas.concept import StandardConceptSchema
@@ -18,7 +19,7 @@ from schemas.concept import StandardConceptSchema
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("registry_path", type=Path)
-    parser.add_argument("concepts_path", type=Path)
+    parser.add_argument("standard_path", type=Path)
     parser.add_argument("output_dir", type=Path)
     parser.add_argument("--catalog", type=Path, default=Path("data/kosis_catalog/catalog_350.json"))
     parser.add_argument("--snapshot", action="append", type=Path, default=[])
@@ -26,11 +27,7 @@ def main() -> None:
     args = parser.parse_args()
 
     registry = load_claim_registry(args.registry_path)
-    concept_rows = json.loads(args.concepts_path.read_text(encoding="utf-8"))
-    concepts = {
-        (row["article_id"], row["sentence_id"]): StandardConceptSchema.model_validate(row["concept"])
-        for row in concept_rows
-    }
+
     settings = Settings()
     if args.live_kosis and not settings.kosis_api_key:
         parser.error("--live-kosis requires KOSIS_API_KEY")
@@ -42,6 +39,7 @@ def main() -> None:
         snapshot_paths=args.snapshot,
         api_lookup=api_lookup,
         kosis_api_key=settings.kosis_api_key if args.live_kosis else None,
+        live_search=KosisLiveCatalogSearch(settings.kosis_api_key) if args.live_kosis else None,
     )
     args.output_dir.mkdir(parents=True, exist_ok=True)
     (args.output_dir / "e2e_results.jsonl").write_text(

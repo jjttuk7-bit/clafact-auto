@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Iterable
 from pathlib import Path
 from typing import Any
 
 from core.catalog_metadata_refresh import refresh_item_metadata
+from core.catalog_discovery import discover_catalog_candidates
+from core.kosis_live_catalog import KosisLiveCatalogSearch
 from core.catalog_search import search_semantic_catalog
 from core.dynamic_kosis_verifier import verify_claim_against_kosis
 from core.kosis_fetcher import OfficialValueFetcher
+from core.semantic_normalizer import normalize_concept
+from core.data_loader import SemanticStandardRecord
 from schemas.candidate import KosisCandidateSchema
 from schemas.claim_registry import ClaimRegistryRecord
 from schemas.concept import StandardConceptSchema
@@ -18,18 +22,20 @@ from schemas.evidence import EvidenceCellSchema
 
 def run_dynamic_e2e_batch(
     records: Iterable[ClaimRegistryRecord],
-    concepts: Mapping[tuple[str, str], StandardConceptSchema],
+    standard_concepts: Iterable[SemanticStandardRecord],
     catalog: Iterable[KosisCandidateSchema],
     *,
     snapshot_paths: Iterable[Path] = (),
     api_lookup: Callable[[EvidenceCellSchema], list[dict[str, Any]]] | None = None,
     kosis_api_key: str | None = None,
+    live_search: KosisLiveCatalogSearch | None = None,
 ) -> list[dict[str, Any]]:
     """Run each structured Claim through catalog, coordinates, fetch, calculation, verdict.
 
     No verification profile is accepted or consulted.
     """
     catalog_rows = list(catalog)
+    standard_rows = list(standard_concepts)
     fetcher = OfficialValueFetcher(snapshot_paths, api_lookup=api_lookup, prefer_api=api_lookup is not None)
     results: list[dict[str, Any]] = []
     for record in records:
@@ -49,8 +55,8 @@ def run_dynamic_e2e_batch(
         if record.article_published_at is None:
             results.append({**base, "route_status": "HOLD", "reason_code": "ARTICLE_DATE_REQUIRED"})
             continue
-        concept = concepts.get((record.article_id, record.sentence_id))
-        if concept is None or concept.status != "MATCHED":
+        concept = normalize_concept(claim, standard_rows)
+        if concept.status != "MATCHED":
             results.append({**base, "route_status": "HOLD", "reason_code": "CONCEPT_NOT_FOUND"})
             continue
         candidates = search_semantic_catalog(claim, concept, catalog_rows)
