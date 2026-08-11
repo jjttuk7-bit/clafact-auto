@@ -27,3 +27,19 @@ def test_infers_growth_rate_from_exact_yoy_basis_without_calculation_slot() -> N
 
     assert plan is not None
     assert plan.calculation_type == "GROWTH_RATE"
+
+def test_builds_growth_plan_from_openai_period_alias() -> None:
+    claim = ClaimSchema(
+        claim_id="C3",
+        source_sentence="",
+        comparison={"period": "전년 동월 대비"},
+        parse_status="AUTO_OK",
+    )
+    current = EvidenceCellSchema(
+        org_id="101", tbl_id="DT", itm_id="T", prd_se="M", prd_de="202510", canonical_key="now", status="CONFIRMED"
+    )
+
+    plan = build_calculation_plan(claim, current)
+
+    assert plan is not None
+    assert [cell.prd_de for cell in plan.required_cells] == ["202510", "202410"]

@@ -1,17 +1,19 @@
 """Create deterministic multi-cell calculation plans from confirmed coordinates."""
 
+from core.comparison_normalizer import normalize_comparison
 from schemas.claim import ClaimSchema
 from schemas.evidence import CalculationPlan, EvidenceCellSchema
 
 
 def build_calculation_plan(claim: ClaimSchema, current: EvidenceCellSchema) -> CalculationPlan | None:
     """Build a plan only for explicit supported calculations and period relations."""
+    comparison = normalize_comparison(claim.comparison)
     calculation = claim.calculation
-    if calculation is None and claim.comparison and claim.comparison.get("basis") == "전년 동월 대비":
+    if calculation is None and comparison and comparison.get("basis") == "전년 동월 대비":
         calculation = "GROWTH_RATE"
     if calculation == "DIRECT_VALUE":
         return CalculationPlan(calculation_type="DIRECT_VALUE", required_cells=[current])
-    if calculation == "GROWTH_RATE" and claim.comparison and claim.comparison.get("basis") == "전년 동월 대비":
+    if calculation == "GROWTH_RATE" and comparison and comparison.get("basis") == "전년 동월 대비":
         previous_period = _previous_year_same_period(current.prd_de)
         if previous_period is None:
             return None

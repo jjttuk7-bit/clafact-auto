@@ -75,6 +75,15 @@ def test_slot_enricher_holds_growth_claim_without_comparison() -> None:
     assert result.catalog_search_ready is False
     assert result.reason_code == "AMBIGUOUS_COMPARISON"
 
+def test_slot_enricher_normalizes_period_comparison_alias() -> None:
+    result = enrich_claim_slots(
+        _claim(comparison={"period": "전년 동월 대비", "direction": "하락"}),
+        FakeExtractor(_extracted(calculation="GROWTH_RATE")),
+    )
+
+    assert result.catalog_search_ready is True
+    assert result.claim.comparison == {"basis": "전년 동월 대비", "direction": "하락"}
+
 def test_slot_enricher_prefers_explicit_source_rule_over_provider_slots() -> None:
     result = enrich_claim_slots(
         _claim(condition=None),
