@@ -52,6 +52,7 @@ def run_dynamic_e2e_batch(
         prefer_api=api_lookup is not None,
     )
     metadata_cache: dict[tuple[str, str], list[dict[str, object]]] = {}
+    live_candidate_cache: dict[str, list[KosisCandidateSchema]] = {}
     def cached_metadata_fetcher(
         _api_key: str, org_id: str, table_id: str, **kwargs: Any
     ) -> list[dict[str, object]]:
@@ -86,7 +87,15 @@ def run_dynamic_e2e_batch(
             results.append({**base, "route_status": "HOLD", "reason_code": "CONCEPT_NOT_FOUND"})
             continue
         local_candidates = search_semantic_catalog(claim, concept, catalog_rows)
-        candidates = discover_catalog_candidates(claim, concept, local_candidates, live_search)
+        if local_candidates or live_search is None:
+            candidates = local_candidates
+        else:
+            search_query = claim.indicator or concept.canonical_name or concept.matched_alias
+            if search_query not in live_candidate_cache:
+                live_candidate_cache[search_query] = discover_catalog_candidates(
+                    claim, concept, local_candidates, live_search
+                )
+            candidates = live_candidate_cache[search_query]
         candidates = refresh_item_metadata(
             candidates,
             kosis_api_key,

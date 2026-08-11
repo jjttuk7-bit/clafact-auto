@@ -42,17 +42,14 @@ Snapshots are immutable JSON evidence under `data/kosis_snapshots/`; each saved 
 
 The owner-approved internal-MVP target is the 1,531 available structured Claims. The historical declaration of 1,532 remains recorded: the missing declared record has no Claim ID in the supplied registries and must never be synthesized. The 1,600 raw candidates and 69 source exclusions remain recorded in `artifacts/internal_validation_mvp_full_20260811/reconciliation_report.json`; the approval boundary is in `acceptance_scope.json`.
 
-Run the structured registry only with registered Profiles and immutable snapshots. Preserve results outside Git when they contain operational source data.
+Run the structured registry through the same dynamic pipeline used for a new article. Profiles, fixed table bindings, and hand-entered coordinates are not inputs to this command. Preserve results outside Git when they contain operational source data.
 
 ```powershell
 python -m pytest tests/goldset -q
-python -m pytest -q
-python -m tools.merge_enriched_registry --source-registry <registry.jsonl> --enriched-registry <enriched_claims.jsonl> --output-dir <run_dir>
-python -m tools.materialize_semantic_concepts <run_dir>/derived_registry.jsonl data/semantic_standard/concept_seed_v1.json <run_dir>/concepts.json
-python -m tools.run_e2e_batch <run_dir>/derived_registry.jsonl <profiles.json> <run_dir>/concepts.json <run_dir> --profile <additional-profile.json> --snapshot <official-snapshot.json>
+python -m tools.run_dynamic_e2e_batch <run_dir>/derived_registry.jsonl data/semantic_standard/concept_seed_v1.json <run_dir> --catalog data/kosis_catalog/catalog_350.json --live-kosis
 ```
 
-The merge command creates a derived Registry and never alters the source Registry. The next command materializes the deterministic Claim-to-Concept input required by the batch rerun; it does not invoke an LLM. Expected acceptance baseline: 24 Goldset tests and 450 total tests pass. The current acceptance decision and the historical 1,532nd-record boundary are documented in `docs/reference/INTERNAL_VALIDATION_MVP_ACCEPTANCE.md`.
+The batch maps every Claim at runtime, searches KOSIS when the local Catalog has no viable candidate, refreshes official ITM metadata, resolves evidence cells, fetches values through the KOSIS API, and calculates the verdict in Python. A missing or ambiguous input is retained as a stage-specific `HOLD`; it is never converted into a guessed table coordinate. The current acceptance decision and the historical 1,532nd-record boundary are documented in `docs/reference/INTERNAL_VALIDATION_MVP_ACCEPTANCE.md`.
 
 ## Review queues and Profile changes
 

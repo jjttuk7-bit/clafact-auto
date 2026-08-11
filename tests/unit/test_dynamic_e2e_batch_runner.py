@@ -61,7 +61,7 @@ def test_dynamic_batch_uses_live_catalog_when_local_catalog_has_no_candidate() -
 
     live = LiveSearch()
     results = run_dynamic_e2e_batch(
-        [_employment_record()], _employment_concept(), [],
+        [_employment_record(), _employment_record()], _employment_concept(), [],
         live_search=live, api_lookup=lambda _cell: [{
             "TBL_ID": "DT_1DA7028S", "ITM_ID": "T30", "PRD_DE": "202412",
             "B": "0", "J": "00", "DT": "28041", "LST_CHN_DE": "2025-01-10",

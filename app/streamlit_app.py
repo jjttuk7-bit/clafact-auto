@@ -351,7 +351,7 @@ if DEFAULT_INTERNAL_RUN_DIR.is_dir():
         status_columns = st.columns(3)
         status_columns[0].metric("실행 Claim", len(operator_run.results))
         status_columns[1].metric("자동 판정", operator_run.report.get("route_counts", {}).get("AUTO", 0))
-        status_columns[2].metric("Profile 검토 묶음", len(operator_run.profile_queue))
+        status_columns[2].metric("보류 검토 묶음", len(operator_run.profile_queue))
         st.json(operator_run.report)
         if operator_run.review_queues:
             st.subheader("유형별 검토 큐")
@@ -364,7 +364,7 @@ if DEFAULT_INTERNAL_RUN_DIR.is_dir():
                     mime="application/json",
                 )
         reasons = sorted({str(row.get("reason_code", "UNSPECIFIED")) for row in operator_run.profile_queue})
-        selected_reason = st.selectbox("Profile 사유 필터", ["전체", *reasons])
+        selected_reason = st.selectbox("보류 사유 필터", ["전체", *reasons])
         max_rank = max((int(row.get("priority_rank", 0)) for row in operator_run.profile_queue), default=0)
         selected_max_rank = st.number_input("최대 우선순위", min_value=1, max_value=max(1, max_rank), value=max(1, max_rank), step=1)
         filtered_queue = [
@@ -373,7 +373,7 @@ if DEFAULT_INTERNAL_RUN_DIR.is_dir():
             and int(row.get("priority_rank", 0)) <= selected_max_rank
         ]
         st.dataframe(filtered_queue)
-        st.download_button("Profile 검토 큐 JSON 다운로드", data=json.dumps(operator_run.profile_queue, ensure_ascii=False, indent=2), file_name="profile_review_priority_queue.json", mime="application/json")
+        st.download_button("보류 검토 큐 JSON 다운로드", data=json.dumps(operator_run.profile_queue, ensure_ascii=False, indent=2), file_name="profile_review_priority_queue.json", mime="application/json")
         export_columns = st.columns(2)
         csv_path = DEFAULT_INTERNAL_RUN_DIR / "claim_verification_results.csv"
         xlsx_path = DEFAULT_INTERNAL_RUN_DIR / "claim_verification_results.xlsx"

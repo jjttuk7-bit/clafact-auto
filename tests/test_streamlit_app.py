@@ -345,5 +345,5 @@ def test_streamlit_operator_panel_uses_configured_run_directory(monkeypatch, tmp
     assert not app.exception
     assert any(item.value == "내부 검증 MVP 실행 결과" for item in app.subheader)
     labels = {item.label for item in app.download_button}
-    assert {"Profile 검토 큐 JSON 다운로드", "전체 결과 CSV 다운로드", "전체 결과 XLSX 다운로드"} <= labels
+    assert {"보류 검토 큐 JSON 다운로드", "전체 결과 CSV 다운로드", "전체 결과 XLSX 다운로드"} <= labels
 
