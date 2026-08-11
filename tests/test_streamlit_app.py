@@ -86,7 +86,7 @@ def test_single_claim_preserves_parse_review_route_without_downstream_calls(
     metrics = _metric_values(app)
     assert metrics["파싱 상태"] == {"HOLD": "보류", "HUMAN_REVIEW": "사람 검토 필요"}[parse_status]
     assert metrics["판정"] == "판정 보류"
-    assert metrics["경로"] == {"HOLD": "보류", "HUMAN_REVIEW": "사람 검토 필요"}[parse_status]
+    assert metrics["경로"] == "보류"
     assert any(element.label == "구조화된 주장 상세" for element in app.expander)
     assert any(element.label == "판정 상세 JSON" for element in app.expander)
     assert any(element.value == "검토 콘솔 전달 데이터" for element in app.subheader)
@@ -346,3 +346,4 @@ def test_streamlit_operator_panel_uses_configured_run_directory(monkeypatch, tmp
     assert any(item.value == "내부 검증 MVP 실행 결과" for item in app.subheader)
     labels = {item.label for item in app.download_button}
     assert {"Profile 검토 큐 JSON 다운로드", "전체 결과 CSV 다운로드", "전체 결과 XLSX 다운로드"} <= labels
+

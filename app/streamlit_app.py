@@ -114,7 +114,7 @@ def _verify_batch_claim(sentence: str, article_date: date, settings: Settings) -
     if claim.parse_status != "AUTO_OK":
         return attach_trace(make_verdict(claim.claim_id, claim.value, [], None), recorder.build()).model_copy(
             update={
-                "route_status": claim.parse_status,
+                "route_status": "HOLD",
                 "reason_code": claim.parse_reason or "CLAIM_PARSE_UNCERTAIN",
                 "explanation": "Claim parsing requires human review.",
             }
@@ -207,7 +207,7 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
             matches = []
             verdict = make_verdict(claim.claim_id, claim.value, [], None).model_copy(
                 update={
-                    "route_status": claim.parse_status,
+                    "route_status": "HOLD",
                     "reason_code": claim.parse_reason or "CLAIM_PARSE_UNCERTAIN",
                     "explanation": "Claim parsing requires human review.",
                 }
@@ -428,4 +428,5 @@ if DEFAULT_INTERNAL_RUN_DIR.is_dir():
         st.error("내부 검증 실행 산출물을 읽을 수 없습니다.")
 else:
     st.info("아직 내부 검증 실행 산출물이 없습니다.")
+
 
