@@ -51,3 +51,23 @@ def test_hard_guard_rejects_live_candidate_without_coordinate_metadata() -> None
 
     assert guard.passed is False
     assert guard.reject_codes == ["METADATA_INCOMPLETE"]
+
+
+def test_live_catalog_search_parses_kosis_legacy_unquoted_json() -> None:
+    class LegacyResponse:
+        def read(self) -> bytes:
+            return '[{ORG_ID:"122",ORG_NM:"산업통상자원부",TBL_ID:"DT_TRADE",TBL_NM:"수출액"}]'.encode("utf-8")
+
+        def __enter__(self) -> "LegacyResponse":
+            return self
+
+        def __exit__(self, *_: object) -> None:
+            return None
+
+    candidates = KosisLiveCatalogSearch(
+        "secret", opener=lambda *_, **__: LegacyResponse()
+    ).search("수출액")
+
+    assert [(item.org_id, item.tbl_id, item.tbl_name) for item in candidates] == [
+        ("122", "DT_TRADE", "수출액")
+    ]

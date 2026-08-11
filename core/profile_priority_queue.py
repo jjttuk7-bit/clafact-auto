@@ -18,7 +18,7 @@ def build_profile_priority_queue(
         (str(row["article_id"]), str(row["sentence_id"])): row
         for row in derived_rows
     }
-    groups: dict[tuple[str, str, str], list[Mapping[str, Any]]] = defaultdict(list)
+    groups: dict[tuple[str, str, str, str], list[Mapping[str, Any]]] = defaultdict(list)
     for result in e2e_rows:
         if result.get("reason_code") != "PROFILE_NOT_FOUND":
             continue
@@ -31,11 +31,12 @@ def build_profile_priority_queue(
             str(claim.get("indicator") or "UNRESOLVED"),
             str(claim.get("calculation") or "UNRESOLVED"),
             str(claim.get("frequency") or "UNRESOLVED"),
+            str(claim.get("unit") or "UNRESOLVED"),
         )
         groups[group_key].append(claim)
 
     queue: list[dict[str, Any]] = []
-    for (indicator, calculation, frequency), claims in groups.items():
+    for (indicator, calculation, frequency, unit), claims in groups.items():
         missing_slots = sorted(
             {slot for claim in claims for slot in _CORE_SLOTS if claim.get(slot) is None}
         )
@@ -44,6 +45,7 @@ def build_profile_priority_queue(
                 "indicator": indicator,
                 "calculation": calculation,
                 "frequency": frequency,
+                "unit": unit,
                 "claim_count": len(claims),
                 "claim_ids": sorted(str(claim["claim_id"]) for claim in claims),
                 "unresolved_claim_slots": missing_slots,
@@ -51,7 +53,8 @@ def build_profile_priority_queue(
             }
         )
 
-    queue.sort(key=lambda row: (-int(row["claim_count"]), row["indicator"], row["calculation"], row["frequency"]))
+    queue.sort(key=lambda row: (-int(row["claim_count"]), row["indicator"], row["calculation"], row["frequency"], row["unit"]))
     for rank, row in enumerate(queue, start=1):
         row["priority_rank"] = rank
     return queue
+

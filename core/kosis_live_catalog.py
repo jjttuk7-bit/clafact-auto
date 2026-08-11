@@ -8,6 +8,8 @@ from typing import Any
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
+from core.kosis_openapi_transport import _decode_kosis_payload
+
 from schemas.candidate import KosisCandidateSchema
 
 KOSIS_SEARCH_URL = "https://kosis.kr/openapi/statisticsSearch.do"
@@ -44,8 +46,8 @@ class KosisLiveCatalogSearch:
         request = Request(f"{self._endpoint}?{params}", headers={"Accept": "application/json", "User-Agent": "CLAFACT-AUTO/0.1"})
         try:
             with self._opener(request, timeout=10) as response:
-                payload = json.loads(response.read().decode("utf-8-sig"))
-        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+                payload = _decode_kosis_payload(response.read())
+        except (OSError, UnicodeDecodeError, RuntimeError):
             return []
         rows = payload if isinstance(payload, list) else payload.get("data", []) if isinstance(payload, dict) else []
         if not isinstance(rows, list):

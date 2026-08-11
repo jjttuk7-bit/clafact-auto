@@ -96,3 +96,10 @@ def test_run_uses_injected_kosis_lookup_for_registered_profile(tmp_path) -> None
     result = json.loads(results_path.read_text(encoding="utf-8").strip())
     assert result["route_status"] == "AUTO"
     assert json.loads((tmp_path / "run" / "profile_review_priority_queue.json").read_text(encoding="utf-8")) == []
+    assert json.loads((tmp_path / "run" / "review_queues" / "summary.json").read_text(encoding="utf-8")) == {
+        "queue_counts": {},
+        "reason_counts": {},
+        "route_counts": {},
+        "total_actionable": 0,
+    }
+
