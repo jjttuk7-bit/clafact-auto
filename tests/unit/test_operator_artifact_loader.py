@@ -30,6 +30,12 @@ def test_load_operator_run_reads_standard_e2e_results_and_review_queue(tmp_path:
     (run_dir / "e2e_results.jsonl").write_text(
         '{"claim_id":"c1","route_status":"HOLD"}\n', encoding="utf-8"
     )
+    (review_dir / "parse.jsonl").write_text(
+        '{"claim_id":"c2","reason_code":"PARSE_HOLD"}\n', encoding="utf-8"
+    )
+    (review_dir / "summary.json").write_text(
+        json.dumps({"queue_counts": {"parse": 1, "profile": 1}}), encoding="utf-8"
+    )
     (review_dir / "profile.jsonl").write_text(
         '{"claim_id":"c1","reason_code":"PROFILE_NOT_FOUND"}\n',
         encoding="utf-8",
@@ -40,3 +46,7 @@ def test_load_operator_run_reads_standard_e2e_results_and_review_queue(tmp_path:
     assert artifact.report["route_counts"] == {"HOLD": 1}
     assert artifact.results[0]["claim_id"] == "c1"
     assert artifact.profile_queue[0]["reason_code"] == "PROFILE_NOT_FOUND"
+    assert artifact.review_summary["queue_counts"] == {"parse": 1, "profile": 1}
+    assert artifact.review_queues["parse"][0]["claim_id"] == "c2"
+
+

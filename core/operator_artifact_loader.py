@@ -12,6 +12,8 @@ class OperatorRunArtifact:
     report: dict[str, Any]
     results: list[dict[str, Any]]
     profile_queue: list[dict[str, Any]]
+    review_summary: dict[str, Any]
+    review_queues: dict[str, list[dict[str, Any]]]
 
 
 def load_operator_run(run_dir: Path) -> OperatorRunArtifact:
@@ -34,7 +36,9 @@ def load_operator_run(run_dir: Path) -> OperatorRunArtifact:
     )
     if not isinstance(report, dict) or not isinstance(profile_queue, list):
         raise ValueError("OPERATOR_ARTIFACT_INVALID")
-    return OperatorRunArtifact(run_dir, report, results, profile_queue)
+    review_queues = _read_review_queues(run_dir / "review_queues")
+    review_summary = _read_review_summary(run_dir / "review_queues", review_queues)
+    return OperatorRunArtifact(run_dir, report, results, profile_queue, review_summary, review_queues)
 
 
 def _read_jsonl(path: Path) -> list[dict[str, Any]]:
@@ -50,3 +54,19 @@ def _first_existing(run_dir: Path, *names: str) -> Path:
         if path.is_file():
             return path
     raise FileNotFoundError(names[0])
+
+
+def _read_review_queues(review_dir: Path) -> dict[str, list[dict[str, Any]]]:
+    if not review_dir.is_dir():
+        return {}
+    return {path.stem: _read_jsonl(path) for path in sorted(review_dir.glob("*.jsonl"))}
+
+
+def _read_review_summary(review_dir: Path, review_queues: dict[str, list[dict[str, Any]]]) -> dict[str, Any]:
+    summary_path = review_dir / "summary.json"
+    if summary_path.is_file():
+        summary = json.loads(summary_path.read_text(encoding="utf-8"))
+        if isinstance(summary, dict):
+            return summary
+        raise ValueError("OPERATOR_ARTIFACT_INVALID")
+    return {"queue_counts": {name: len(rows) for name, rows in review_queues.items()}}

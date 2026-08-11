@@ -406,6 +406,16 @@ if DEFAULT_INTERNAL_RUN_DIR.is_dir():
         status_columns[1].metric("자동 판정", operator_run.report.get("route_counts", {}).get("AUTO", 0))
         status_columns[2].metric("Profile 검토 묶음", len(operator_run.profile_queue))
         st.json(operator_run.report)
+        if operator_run.review_queues:
+            st.subheader("유형별 검토 큐")
+            st.json(operator_run.review_summary)
+            for queue_type, queue_rows in operator_run.review_queues.items():
+                st.download_button(
+                    f"{queue_type} 검토 큐 JSON 다운로드",
+                    data=json.dumps(queue_rows, ensure_ascii=False, indent=2),
+                    file_name=f"{queue_type}_review_queue.json",
+                    mime="application/json",
+                )
         reasons = sorted({str(row.get("reason_code", "UNSPECIFIED")) for row in operator_run.profile_queue})
         selected_reason = st.selectbox("Profile 사유 필터", ["전체", *reasons])
         max_rank = max((int(row.get("priority_rank", 0)) for row in operator_run.profile_queue), default=0)
@@ -428,5 +438,6 @@ if DEFAULT_INTERNAL_RUN_DIR.is_dir():
         st.error("내부 검증 실행 산출물을 읽을 수 없습니다.")
 else:
     st.info("아직 내부 검증 실행 산출물이 없습니다.")
+
 
 
