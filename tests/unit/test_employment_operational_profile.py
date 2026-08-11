@@ -31,7 +31,7 @@ def test_employment_profile_selects_only_its_declared_claim_scope() -> None:
             "time": "2025-03",
             "frequency": "monthly",
             "region": "\uC804\uAD6D",
-            "population": "\uC804\uCCB4",
+            "population": "\uCDE8\uC5C5\uC790",
             "dimension": {"raw": "\uC804\uCCB4"},
             "calculation": "DIRECT_VALUE",
             "parse_status": "AUTO_OK",

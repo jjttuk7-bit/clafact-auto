@@ -13,7 +13,7 @@
       "dimension_codes": {"C1": "0", "C2": "00"},
       "frequency_constraint": "M",
       "region_constraint": "\uC804\uAD6D",
-      "population_constraint": "\uC804\uCCB4",
+      "population_constraint": "\uCDE8\uC5C5\uC790",
       "dimension_constraint": {"raw": "\uC804\uCCB4"},
       "dataset_version": "registry-v1",
       "preprocess_version": "1.0",

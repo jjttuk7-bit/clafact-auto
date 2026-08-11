@@ -66,3 +66,23 @@ def test_e2e_batch_uses_registered_direct_value_when_claim_calculation_is_missin
 
     assert result[0]["route_status"] == "AUTO"
     assert result[0]["official_value"] == 28000.0
+
+
+def test_e2e_batch_compares_direct_values_after_profile_unit_conversion() -> None:
+    record = _record().model_copy(
+        update={
+            "claim": _record().claim.model_copy(
+                update={"value": 28_000_000, "unit": "명"}
+            )
+        }
+    )
+    result = run_e2e_batch(
+        [record],
+        [_profile()],
+        {("A1", "S1"): StandardConceptSchema(concept_id="x", canonical_name="취업자 수", standard_key="employment_count", status="MATCHED")},
+        api_lookup=lambda _cell: [{"tbl_id": "DT", "item_id": "T1", "period": "202503", "value": 28000, "LST_CHN_DE": "2025-03-31"}],
+    )
+
+    assert result[0]["route_status"] == "AUTO"
+    assert result[0]["verdict"] == "MATCH"
+    assert result[0]["claim_value_in_profile_unit"] == 28000.0

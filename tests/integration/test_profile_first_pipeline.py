@@ -23,7 +23,7 @@ def test_verified_employment_profile_reaches_auto_verdict_from_official_snapshot
             time="2025-03",
             frequency="monthly",
             region="전국",
-            population="전체",
+            population="취업자",
             dimension={"raw": "전체"},
             calculation="DIRECT_VALUE",
             parse_status="AUTO_OK",

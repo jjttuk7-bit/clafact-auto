@@ -51,7 +51,7 @@ python -m tools.materialize_semantic_concepts <registry.jsonl> data/semantic_sta
 python -m tools.run_e2e_batch <registry.jsonl> <profiles.json> <run_dir>/concepts.json <run_dir>/error_isolation_recheck --profile <additional-profile.json> --snapshot <official-snapshot.json>
 ```
 
-The second command materializes the deterministic Claim-to-Concept input required by the batch rerun; it does not invoke an LLM. Expected acceptance baseline: 24 Goldset tests and 438 total tests pass. The current acceptance decision and the 1,532nd-record boundary are documented in `docs/reference/INTERNAL_VALIDATION_MVP_ACCEPTANCE.md`.
+The second command materializes the deterministic Claim-to-Concept input required by the batch rerun; it does not invoke an LLM. Expected acceptance baseline: 24 Goldset tests and 439 total tests pass. The current acceptance decision and the 1,532nd-record boundary are documented in `docs/reference/INTERNAL_VALIDATION_MVP_ACCEPTANCE.md`.
 
 ## Review queues and Profile changes
 

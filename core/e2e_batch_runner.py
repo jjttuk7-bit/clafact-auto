@@ -8,6 +8,7 @@ from typing import Any
 from core.calculation_execution import execute_calculation_plan
 from core.calculation_planner import build_calculation_plan
 from core.claim_value_provenance import has_explicit_percent_value
+from core.unit_normalizer import convert_value
 from core.e2e_trace import build_e2e_trace
 from core.kosis_fetcher import OfficialValueFetcher
 from core.profile_first import resolve_profile_first
@@ -92,7 +93,23 @@ def run_e2e_batch(
                 base["reason_code"] = execution.status
                 results.append(_with_execution_trace(base))
                 continue
-            verdict = make_verdict(record.claim.claim_id, record.claim.value, execution.values, execution.calculated_value, tolerance=0.05)
+            claim_value_for_verdict = record.claim.value
+            if (
+                selection.profile.calculation_type == "DIRECT_VALUE"
+                and record.claim.value is not None
+                and record.claim.unit is not None
+            ):
+                claim_value_for_verdict = convert_value(
+                    record.claim.value, record.claim.unit, selection.profile.unit
+                )
+                base["claim_value_in_profile_unit"] = claim_value_for_verdict
+            verdict = make_verdict(
+                record.claim.claim_id,
+                claim_value_for_verdict,
+                execution.values,
+                execution.calculated_value,
+                tolerance=0.05,
+            )
             base.update(
                 {
                     "route_status": verdict.route_status,
