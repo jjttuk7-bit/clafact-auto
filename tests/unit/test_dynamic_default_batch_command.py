@@ -1,6 +1,6 @@
 import json
 
-from tools.run_e2e_batch import run
+from tools.run_e2e_batch import select_records, run
 
 
 def test_default_batch_command_uses_dynamic_catalog_without_profiles(tmp_path) -> None:
@@ -24,7 +24,7 @@ def test_default_batch_command_uses_dynamic_catalog_without_profiles(tmp_path) -
     }], ensure_ascii=False), encoding="utf-8")
 
     results_path, report_path = run(
-        registry_path, standard_path, tmp_path / "run", catalog_path=catalog_path,
+        registry_path, standard_path, tmp_path / "run", catalog_path=catalog_path, start=0, limit=1,
         api_lookup=lambda _cell: [{"tbl_id": "DT", "item_id": "T1", "period": "202503", "B": "0", "value": 28000, "LST_CHN_DE": "2025-03-31"}],
     )
 
@@ -33,3 +33,7 @@ def test_default_batch_command_uses_dynamic_catalog_without_profiles(tmp_path) -
     assert result["route_status"] == "HOLD"
     assert result["profile_id"] is None
     assert report["profile_dependency"] == "none"
+
+
+def test_select_records_returns_a_stable_batch_range() -> None:
+    assert select_records(["a", "b", "c", "d"], start=1, limit=2) == ["b", "c"]

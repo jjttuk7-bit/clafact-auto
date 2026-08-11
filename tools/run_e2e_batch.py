@@ -24,6 +24,15 @@ from schemas.claim import ClaimSchema
 from schemas.evidence import EvidenceCellSchema
 
 
+def select_records(records: list[Any], *, start: int = 0, limit: int | None = None) -> list[Any]:
+    """Return a stable, non-overlapping range for resumable batch execution."""
+    if start < 0:
+        raise ValueError("start must be non-negative")
+    if limit is not None and limit < 1:
+        raise ValueError("limit must be at least one")
+    return records[start:] if limit is None else records[start : start + limit]
+
+
 def run(
     registry_path: Path,
     standard_path: Path,
@@ -36,6 +45,8 @@ def run(
     live_search: KosisLiveCatalogSearch | None = None,
     claim_reparser: Callable[[ClaimSchema, date], ClaimSchema] | None = None,
     reparse_workers: int = 1,
+    start: int = 0,
+    limit: int | None = None,
 ) -> tuple[Path, Path]:
     """Write a dynamic KOSIS batch run with typed, stage-specific review queues."""
     registry = load_claim_registry(registry_path)
@@ -93,6 +104,8 @@ def main() -> None:
     parser.add_argument("--live-kosis", action="store_true")
     parser.add_argument("--skip-reparse-holds", action="store_true", help="Keep prior non-AUTO parse results without re-running 12-slot parsing.")
     parser.add_argument("--reparse-workers", type=int, default=5, help="Maximum concurrent Structured Output reparses.")
+    parser.add_argument("--start", type=int, default=0, help="Zero-based Registry record offset for a resumable run.")
+    parser.add_argument("--limit", type=int, help="Maximum Registry records in this resumable run.")
     args = parser.parse_args()
 
     settings = Settings()
