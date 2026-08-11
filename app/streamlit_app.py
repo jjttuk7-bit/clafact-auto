@@ -39,6 +39,7 @@ from core.unit_normalizer import convert_value
 from core.verdict_engine import make_verdict
 from core.ui_labels import translate_status
 from core.verdict_explainer import explain_verdict
+from core.operator_artifact_loader import load_operator_run
 from core.claim_verification_service import VerificationTraceRecorder
 from core.verification_trace import attach_trace
 from schemas.candidate import KosisCandidateSchema
@@ -48,6 +49,7 @@ from schemas.evidence import CalculationPlan
 from schemas.verdict import VerdictSchema
 
 DATA_ROOT = Path("data")
+DEFAULT_INTERNAL_RUN_DIR = PROJECT_ROOT / "artifacts" / "internal_validation_mvp_full_20260811"
 STANDARD_PATH = DATA_ROOT / "semantic_standard" / "concept_seed_v1.json"
 CATALOG_PATH = DATA_ROOT / "kosis_catalog" / "catalog_350.json"
 SNAPSHOT_PATHS = [
@@ -390,3 +392,21 @@ if operations_results and operations_coverage:
             st.dataframe(operations_review_rows)
     except (UnicodeDecodeError, ValueError, _operations_json.JSONDecodeError):
         st.error("운영 산출물 형식 오류: UTF-8 JSONL/JSON 파일을 확인하세요.")
+
+st.divider()
+st.subheader("내부 검증 MVP 실행 결과")
+st.caption("버전형 실행 산출물을 읽기 전용으로 표시합니다.")
+if DEFAULT_INTERNAL_RUN_DIR.is_dir():
+    try:
+        operator_run = load_operator_run(DEFAULT_INTERNAL_RUN_DIR)
+        status_columns = st.columns(3)
+        status_columns[0].metric("실행 Claim", len(operator_run.results))
+        status_columns[1].metric("자동 판정", operator_run.report.get("route_counts", {}).get("AUTO", 0))
+        status_columns[2].metric("Profile 검토 묶음", len(operator_run.profile_queue))
+        st.json(operator_run.report)
+        st.dataframe(operator_run.profile_queue)
+        st.download_button("Profile 검토 큐 JSON 다운로드", data=json.dumps(operator_run.profile_queue, ensure_ascii=False, indent=2), file_name="profile_review_priority_queue.json", mime="application/json")
+    except (OSError, ValueError, json.JSONDecodeError):
+        st.error("내부 검증 실행 산출물을 읽을 수 없습니다.")
+else:
+    st.info("아직 내부 검증 실행 산출물이 없습니다.")
