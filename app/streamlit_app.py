@@ -51,7 +51,7 @@ from schemas.evidence import CalculationPlan
 from schemas.verdict import VerdictSchema
 
 DATA_ROOT = Path("data")
-DEFAULT_INTERNAL_RUN_DIR = Path(os.environ.get("CLAFACT_INTERNAL_RUN_DIR", PROJECT_ROOT / "artifacts" / "internal_validation_mvp_full_20260811"))
+DEFAULT_INTERNAL_RUN_DIR = Path(os.environ.get("CLAFACT_INTERNAL_RUN_DIR", PROJECT_ROOT / "artifacts" / "internal_validation_mvp_e2e_structured_20260811"))
 STANDARD_PATH = DATA_ROOT / "semantic_standard" / "concept_seed_v1.json"
 CATALOG_PATH = DATA_ROOT / "kosis_catalog" / "catalog_350.json"
 SNAPSHOT_PATHS = [
@@ -428,3 +428,4 @@ if DEFAULT_INTERNAL_RUN_DIR.is_dir():
         st.error("내부 검증 실행 산출물을 읽을 수 없습니다.")
 else:
     st.info("아직 내부 검증 실행 산출물이 없습니다.")
+
