@@ -75,6 +75,8 @@ def run(
     )
     review_dir = output_dir / "review_queues"
     review_dir.mkdir(exist_ok=True)
+    for stale_queue in review_dir.glob("*.jsonl"):
+        stale_queue.unlink()
     for queue_type, rows in review_queues.items():
         (review_dir / f"{queue_type}.jsonl").write_text(
             "".join(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n" for row in rows),
