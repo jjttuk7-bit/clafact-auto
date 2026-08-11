@@ -40,7 +40,7 @@ Snapshots are immutable JSON evidence under `data/kosis_snapshots/`; each saved 
 
 ## Internal validation MVP run
 
-The declared target is 1,532 Claims. Available structured source records are 1,531; the missing declared record has no Claim ID in the supplied registries and must never be synthesized. The 1,600 raw candidates, 69 source exclusions, and one unresolved declaration gap are recorded in `artifacts/internal_validation_mvp_full_20260811/reconciliation_report.json`.
+The owner-approved internal-MVP target is the 1,531 available structured Claims. The historical declaration of 1,532 remains recorded: the missing declared record has no Claim ID in the supplied registries and must never be synthesized. The 1,600 raw candidates and 69 source exclusions remain recorded in `artifacts/internal_validation_mvp_full_20260811/reconciliation_report.json`; the approval boundary is in `acceptance_scope.json`.
 
 Run the structured registry only with registered Profiles and immutable snapshots. Preserve results outside Git when they contain operational source data.
 
@@ -51,7 +51,7 @@ python -m tools.materialize_semantic_concepts <registry.jsonl> data/semantic_sta
 python -m tools.run_e2e_batch <registry.jsonl> <profiles.json> <run_dir>/concepts.json <run_dir>/error_isolation_recheck --profile <additional-profile.json> --snapshot <official-snapshot.json>
 ```
 
-The second command materializes the deterministic Claim-to-Concept input required by the batch rerun; it does not invoke an LLM. Expected acceptance baseline: 24 Goldset tests and 439 total tests pass. The current acceptance decision and the 1,532nd-record boundary are documented in `docs/reference/INTERNAL_VALIDATION_MVP_ACCEPTANCE.md`.
+The second command materializes the deterministic Claim-to-Concept input required by the batch rerun; it does not invoke an LLM. Expected acceptance baseline: 24 Goldset tests and 439 total tests pass. The current acceptance decision and the historical 1,532nd-record boundary are documented in `docs/reference/INTERNAL_VALIDATION_MVP_ACCEPTANCE.md`.
 
 ## Review queues and Profile changes
 
