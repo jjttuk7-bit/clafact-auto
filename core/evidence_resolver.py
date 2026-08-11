@@ -75,7 +75,7 @@ def resolve_evidence_cell(claim: ClaimSchema, candidate: KosisCandidateSchema) -
 def _resolve_dimensions(claim: ClaimSchema, candidate: KosisCandidateSchema) -> tuple[dict[str, str], bool]:
     if not candidate.dimension_ids:
         return {}, True
-    target = _normalize(" ".join(filter(None, [claim.region, claim.population, claim.dimension, claim.indicator])))
+    target = _normalize(" ".join(filter(None, [claim.region, claim.population, _dimension_text(claim.dimension), claim.indicator])))
     selected: dict[str, str] = {}
     for dimension_id in candidate.dimension_ids:
         members = candidate.dimension_members.get(dimension_id, [])
@@ -93,6 +93,12 @@ def _resolve_dimensions(claim: ClaimSchema, candidate: KosisCandidateSchema) -> 
         return {}, False
     return selected, True
 
+
+def _dimension_text(value: dict[str, str] | None) -> str | None:
+    """Flatten the structured 12-slot dimension into deterministic search text."""
+    if not value:
+        return None
+    return " ".join(str(item) for item in value.values())
 
 def _is_total_member(member: str) -> bool:
     normalized = _normalize(member)

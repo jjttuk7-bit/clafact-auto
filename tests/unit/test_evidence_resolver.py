@@ -64,6 +64,19 @@ def test_resolve_evidence_cell_confirms_singleton_dimension_without_claim_member
 
 
 
+def test_resolve_evidence_cell_accepts_structured_dimension_slot() -> None:
+    cell = resolve_evidence_cell(
+        claim(region=None, dimension={"raw": "전체"}),
+        candidate(
+            dimension_ids=["TOTAL"],
+            dimension_names=["전체"],
+            dimension_members={"TOTAL": ["계"]},
+            dimension_member_codes={"TOTAL": {"계": "00"}},
+        ),
+    )
+
+    assert cell.status == "CONFIRMED"
+
 def test_resolve_evidence_cell_holds_when_selected_dimension_has_no_api_code() -> None:
     cell = resolve_evidence_cell(
         claim(region=None),
