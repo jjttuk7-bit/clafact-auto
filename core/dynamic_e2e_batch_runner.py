@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -33,12 +34,30 @@ def run_dynamic_e2e_batch(
     kosis_api_key: str | None = None,
     live_search: KosisLiveCatalogSearch | None = None,
     claim_reparser: Callable[[ClaimSchema, date], ClaimSchema] | None = None,
+    reparse_workers: int = 1,
 ) -> list[dict[str, Any]]:
     """Run structured Claims through shared mapping, KOSIS discovery, and verdict stages.
 
     No verification profile is accepted or consulted. KOSIS ITM metadata is cached per
     official table so a batch never repeats the same metadata request for every Claim.
     """
+    materialized_records = list(records)
+    if claim_reparser is not None and reparse_workers > 1:
+        def reparse_record(record: ClaimRegistryRecord) -> ClaimRegistryRecord:
+            claim = record.claim
+            if claim.parse_status == "AUTO_OK" or record.article_published_at is None:
+                return record
+            try:
+                reparsed = claim_reparser(claim, record.article_published_at)
+                normalized = reparsed.model_copy(update={"claim_id": claim.claim_id, "source_sentence": claim.source_sentence})
+            except Exception:
+                normalized = claim.model_copy(update={"parse_status": "HOLD", "parse_reason": "CLAIM_REPARSE_FAILED"})
+            return record.model_copy(update={"claim": normalized})
+
+        with ThreadPoolExecutor(max_workers=reparse_workers) as executor:
+            materialized_records = list(executor.map(reparse_record, materialized_records))
+        claim_reparser = None
+
     catalog_rows = list(catalog)
     standard_rows = list(standard_concepts)
     value_cache: dict[str, list[dict[str, Any]]] = {}
@@ -84,7 +103,7 @@ def run_dynamic_e2e_batch(
             },
         }
     results: list[dict[str, Any]] = []
-    for record in records:
+    for record in materialized_records:
         claim = record.claim
         if claim.parse_status != "AUTO_OK" and claim_reparser is not None and record.article_published_at is not None:
             try:

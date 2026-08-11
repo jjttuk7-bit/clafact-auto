@@ -35,6 +35,7 @@ def run(
     kosis_api_key: str | None = None,
     live_search: KosisLiveCatalogSearch | None = None,
     claim_reparser: Callable[[ClaimSchema, date], ClaimSchema] | None = None,
+    reparse_workers: int = 1,
 ) -> tuple[Path, Path]:
     """Write a dynamic KOSIS batch run with typed, stage-specific review queues."""
     registry = load_claim_registry(registry_path)
@@ -47,6 +48,7 @@ def run(
         kosis_api_key=kosis_api_key,
         live_search=live_search,
         claim_reparser=claim_reparser,
+        reparse_workers=reparse_workers,
     )
     output_dir.mkdir(parents=True, exist_ok=True)
     results_path = output_dir / "e2e_results.jsonl"
@@ -90,6 +92,7 @@ def main() -> None:
     parser.add_argument("--snapshot", action="append", type=Path, default=[])
     parser.add_argument("--live-kosis", action="store_true")
     parser.add_argument("--skip-reparse-holds", action="store_true", help="Keep prior non-AUTO parse results without re-running 12-slot parsing.")
+    parser.add_argument("--reparse-workers", type=int, default=5, help="Maximum concurrent Structured Output reparses.")
     args = parser.parse_args()
 
     settings = Settings()
@@ -113,6 +116,8 @@ def main() -> None:
         kosis_api_key=settings.kosis_api_key if args.live_kosis else None,
         live_search=KosisLiveCatalogSearch(settings.kosis_api_key) if args.live_kosis else None,
         claim_reparser=claim_reparser,
+        reparse_workers=max(1, args.reparse_workers),
+
     )
     print(json.dumps({"results_path": str(results_path), "report_path": str(report_path)}, ensure_ascii=False))
 
