@@ -96,7 +96,7 @@ class OfficialValueFetcher:
         return self._extract_rows(cell, records, article_date, source="SNAPSHOT", digest=digest)
 
     def _extract_rows(self, cell: EvidenceCellSchema, rows: list[dict[str, Any]], article_date: date | None, *, source: Literal["SNAPSHOT", "API"], digest: str) -> KosisValue:
-        matching = [row for row in rows if _matches_cell(row, cell)]
+        matching = [row for row in rows if _matches_cell(row, cell, allow_missing_codes=source == "API")]
         if not matching:
             return KosisValue(None, "NO_DATA", digest, source)
         usable = filter_rows_as_of(matching, article_date) if article_date else matching
@@ -109,7 +109,7 @@ class OfficialValueFetcher:
             return KosisValue(None, "INVALID_RESPONSE", digest, source)
 
 
-def _matches_cell(row: dict[str, Any], cell: EvidenceCellSchema) -> bool:
+def _matches_cell(row: dict[str, Any], cell: EvidenceCellSchema, *, allow_missing_codes: bool = False) -> bool:
     table = row.get("tbl_id", row.get("TBL_ID"))
     item = row.get("item_id", row.get("ITM_ID"))
     period = str(row.get("period", row.get("PRD_DE", ""))).replace("-", "")
@@ -117,7 +117,12 @@ def _matches_cell(row: dict[str, Any], cell: EvidenceCellSchema) -> bool:
     codes = row.get("dimension_codes")
     if not isinstance(codes, dict):
         codes = {key: row.get(key) for key in cell.dimension_codes}
-    codes_match = not cell.dimension_codes or all(codes.get(key) == value for key, value in cell.dimension_codes.items())
+    has_returned_codes = any(value is not None for value in codes.values())
+    codes_match = (
+        not cell.dimension_codes
+        or (allow_missing_codes and not has_returned_codes)
+        or all(codes.get(key) == value for key, value in cell.dimension_codes.items())
+    )
     return (table in (None, cell.tbl_id) and item in (None, cell.itm_id) and period == expected_period and codes_match)
 
 

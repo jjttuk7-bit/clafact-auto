@@ -82,7 +82,13 @@ def verify_claim_against_kosis(
     calculated = calculate(CalculationPlan(calculation_type="DIRECT_VALUE", required_cells=[cell]), [official_value.value])
     recorder.calculation_completed()
     claim_unit_value = convert_value(calculated, cell.unit or "", claim.unit or "")
-    verdict = make_verdict(claim.claim_id, claim.value, [official_value.value], claim_unit_value, tolerance=0.01)
+    verdict = make_verdict(
+        claim.claim_id,
+        claim.value,
+        [official_value.value],
+        claim_unit_value,
+        tolerance=_claim_tolerance(claim),
+    )
     recorder.verdict_completed()
     return attach_trace(verdict.model_copy(update={"evidence_cells": [cell]}), recorder.build())
 
@@ -100,3 +106,10 @@ def _hold(
         verdict.model_copy(update={"reason_code": reason_code, "explanation": explanation, "evidence_cells": evidence_cells or []}),
         recorder.build(),
     )
+
+
+def _claim_tolerance(claim: ClaimSchema) -> float:
+    """Accept only the explicit reporting precision present in the article text."""
+    if claim.unit == "명" and "천" in claim.source_sentence:
+        return 500.0
+    return 0.01

@@ -49,6 +49,18 @@ def test_unified_fetcher_matches_dimension_codes(tmp_path) -> None:
     assert result.value == 1593.8
 
 
+def test_unified_fetcher_accepts_api_row_without_echoed_dimension_codes() -> None:
+    rows = [{"TBL_ID":"DT", "ITM_ID":"T", "PRD_DE":"202405", "DT":"70", "LST_CHN_DE":"2024-06-01"}]
+    selected = EvidenceCellSchema(
+        org_id="101", tbl_id="DT", itm_id="T", prd_se="M", prd_de="202405",
+        dimension_codes={"B":"0", "J":"00"}, canonical_key="key", status="CONFIRMED",
+    )
+
+    result = OfficialValueFetcher([], api_lookup=lambda _cell: rows).fetch(selected, article_date=date(2024, 6, 2))
+
+    assert result.status == "SUCCESS"
+    assert result.value == 70.0
+
 def test_unified_fetcher_matches_native_kosis_c_columns() -> None:
     rows = [{"TBL_ID":"DT", "ITM_ID":"T", "PRD_DE":"202405", "C1":"00", "DT":"70", "LST_CHN_DE":"2024-06-01"}]
     cell = EvidenceCellSchema(org_id="101", tbl_id="DT", itm_id="T", prd_se="M", prd_de="202405", dimension_codes={"C1":"00"}, canonical_key="key", status="CONFIRMED")
