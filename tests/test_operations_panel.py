@@ -19,3 +19,4 @@ def test_streamlit_operator_panel_has_profile_reason_and_priority_filters() -> N
 
     assert "Profile 사유 필터" in source
     assert "최대 우선순위" in source
+    assert "CLAFACT_INTERNAL_RUN_DIR" in source

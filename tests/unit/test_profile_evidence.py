@@ -40,7 +40,12 @@ def test_employment_profile_evidence_uses_the_existing_official_snapshot() -> No
 
     evidence = load_profile_evidence(Path("data/verification_profiles/profile_evidence_v1.json"))
 
-    assert len(evidence) == 1
-    assert evidence[0].profile_id == "employment-count-national-total-monthly-v1"
-    assert evidence[0].sample_value == 28589
-    assert evidence[0].official_coordinate.dimension_codes == {"C1": "0", "C2": "00"}
+    evidence_by_profile = {row.profile_id: row for row in evidence}
+
+    employment = evidence_by_profile["employment-count-national-total-monthly-v1"]
+    assert employment.sample_value == 28589
+    assert employment.official_coordinate.dimension_codes == {"C1": "0", "C2": "00"}
+
+    consumer_price = evidence_by_profile["consumer-price-yoy-national-monthly-v1"]
+    assert consumer_price.sample_value == 2.4
+    assert consumer_price.official_coordinate.dimension_codes == {"I": "T10"}

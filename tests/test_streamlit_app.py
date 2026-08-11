@@ -321,3 +321,28 @@ def test_streamlit_mvp_renders_batch_default_article_date_input() -> None:
     app.run()
 
     assert any(widget.label == "배치 기본 기사 기준일 (선택)" for widget in app.text_input)
+
+
+def test_streamlit_operator_panel_uses_configured_run_directory(monkeypatch, tmp_path: Path) -> None:
+    run_dir = tmp_path / "internal-run"
+    run_dir.mkdir()
+    (run_dir / "coverage_and_e2e_report.json").write_text(
+        '{"route_counts":{"AUTO":5,"HOLD":1}}', encoding="utf-8"
+    )
+    (run_dir / "claim_verification_results.jsonl").write_text(
+        '{"claim_id":"C1","route_status":"AUTO"}\n', encoding="utf-8"
+    )
+    (run_dir / "profile_review_priority_queue.json").write_text(
+        '[{"priority_rank":1,"reason_code":"PROFILE_NOT_FOUND"}]', encoding="utf-8"
+    )
+    (run_dir / "claim_verification_results.csv").write_text("claim_id\nC1\n", encoding="utf-8")
+    (run_dir / "claim_verification_results.xlsx").write_bytes(b"xlsx")
+    monkeypatch.setenv("CLAFACT_INTERNAL_RUN_DIR", str(run_dir))
+
+    app = AppTest.from_file("app/streamlit_app.py", default_timeout=20)
+    app.run()
+
+    assert not app.exception
+    assert any(item.value == "내부 검증 MVP 실행 결과" for item in app.subheader)
+    labels = {item.label for item in app.download_button}
+    assert {"Profile 검토 큐 JSON 다운로드", "전체 결과 CSV 다운로드", "전체 결과 XLSX 다운로드"} <= labels

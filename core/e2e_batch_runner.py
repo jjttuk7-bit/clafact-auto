@@ -7,6 +7,7 @@ from typing import Any
 
 from core.calculation_execution import execute_calculation_plan
 from core.calculation_planner import build_calculation_plan
+from core.claim_value_provenance import has_explicit_percent_value
 from core.e2e_trace import build_e2e_trace
 from core.kosis_fetcher import OfficialValueFetcher
 from core.profile_first import resolve_profile_first
@@ -58,6 +59,16 @@ def run_e2e_batch(
                 base["reason_code"] = selection.reason_code
                 results.append(_with_execution_trace(base))
                 continue
+            if (
+                record.claim.unit == "%"
+                and record.claim.value is not None
+                and not has_explicit_percent_value(
+                    record.claim.source_sentence, record.claim.value
+                )
+            ):
+                base["reason_code"] = "CLAIM_VALUE_NOT_EXPLICIT_IN_SOURCE"
+                results.append(_with_execution_trace(base))
+                continue
             base["profile_id"] = selection.profile.profile_id
             base["versions"] = _versions(selection.profile)
             evidence = resolve_profile_evidence(record.claim, selection.profile, period=_period(record.claim.time))
@@ -65,7 +76,12 @@ def run_e2e_batch(
                 base["reason_code"] = evidence.reason_code
                 results.append(_with_execution_trace(base))
                 continue
-            plan = build_calculation_plan(record.claim, evidence.evidence_cell)
+            plan_claim = record.claim
+            if plan_claim.calculation is None:
+                plan_claim = plan_claim.model_copy(
+                    update={"calculation": selection.profile.calculation_type}
+                )
+            plan = build_calculation_plan(plan_claim, evidence.evidence_cell)
             if plan is None:
                 base["reason_code"] = "CALCULATION_PLAN_UNRESOLVED"
                 results.append(_with_execution_trace(base))

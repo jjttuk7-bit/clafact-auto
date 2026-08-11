@@ -53,3 +53,16 @@ def test_e2e_batch_isolates_one_record_error_and_continues(monkeypatch) -> None:
 
     assert [row["reason_code"] for row in results] == ["BATCH_RECORD_ERROR", "PROFILE_NOT_FOUND"]
     assert all(row["route_status"] == "HOLD" for row in results)
+
+
+def test_e2e_batch_uses_registered_direct_value_when_claim_calculation_is_missing() -> None:
+    record = _record().model_copy(update={"claim": _record().claim.model_copy(update={"calculation": None})})
+    result = run_e2e_batch(
+        [record],
+        [_profile()],
+        {("A1", "S1"): StandardConceptSchema(concept_id="x", canonical_name="취업자 수", standard_key="employment_count", status="MATCHED")},
+        api_lookup=lambda _cell: [{"tbl_id": "DT", "item_id": "T1", "period": "202503", "value": 28000, "LST_CHN_DE": "2025-03-31"}],
+    )
+
+    assert result[0]["route_status"] == "AUTO"
+    assert result[0]["official_value"] == 28000.0
