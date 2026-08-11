@@ -6,17 +6,17 @@ from collections.abc import Callable, Iterable
 from pathlib import Path
 from typing import Any
 
-from core.catalog_metadata_refresh import refresh_item_metadata
 from core.catalog_discovery import discover_catalog_candidates
-from core.kosis_live_catalog import KosisLiveCatalogSearch
+from core.catalog_metadata_refresh import refresh_item_metadata
 from core.catalog_search import search_semantic_catalog
+from core.data_loader import SemanticStandardRecord
 from core.dynamic_kosis_verifier import verify_claim_against_kosis
 from core.kosis_fetcher import OfficialValueFetcher
+from core.kosis_live_catalog import KosisLiveCatalogSearch
+from core.kosis_openapi_transport import get_meta
 from core.semantic_normalizer import normalize_concept
-from core.data_loader import SemanticStandardRecord
 from schemas.candidate import KosisCandidateSchema
 from schemas.claim_registry import ClaimRegistryRecord
-from schemas.concept import StandardConceptSchema
 from schemas.evidence import EvidenceCellSchema
 
 
@@ -30,13 +30,39 @@ def run_dynamic_e2e_batch(
     kosis_api_key: str | None = None,
     live_search: KosisLiveCatalogSearch | None = None,
 ) -> list[dict[str, Any]]:
-    """Run each structured Claim through catalog, coordinates, fetch, calculation, verdict.
+    """Run structured Claims through shared mapping, KOSIS discovery, and verdict stages.
 
-    No verification profile is accepted or consulted.
+    No verification profile is accepted or consulted. KOSIS ITM metadata is cached per
+    official table so a batch never repeats the same metadata request for every Claim.
     """
     catalog_rows = list(catalog)
     standard_rows = list(standard_concepts)
-    fetcher = OfficialValueFetcher(snapshot_paths, api_lookup=api_lookup, prefer_api=api_lookup is not None)
+    value_cache: dict[str, list[dict[str, Any]]] = {}
+
+    def cached_api_lookup(cell: EvidenceCellSchema) -> list[dict[str, Any]]:
+        if api_lookup is None:
+            return []
+        if cell.canonical_key not in value_cache:
+            value_cache[cell.canonical_key] = api_lookup(cell)
+        return value_cache[cell.canonical_key]
+
+    fetcher = OfficialValueFetcher(
+        snapshot_paths,
+        api_lookup=cached_api_lookup if api_lookup is not None else None,
+        prefer_api=api_lookup is not None,
+    )
+    metadata_cache: dict[tuple[str, str], list[dict[str, object]]] = {}
+    def cached_metadata_fetcher(
+        _api_key: str, org_id: str, table_id: str, **kwargs: Any
+    ) -> list[dict[str, object]]:
+        cache_key = (org_id, table_id)
+        if cache_key not in metadata_cache:
+            try:
+                metadata_cache[cache_key] = list(get_meta(_api_key, org_id, table_id, **kwargs))
+            except RuntimeError:
+                metadata_cache[cache_key] = []
+        return metadata_cache[cache_key]
+
     results: list[dict[str, Any]] = []
     for record in records:
         claim = record.claim
@@ -59,8 +85,13 @@ def run_dynamic_e2e_batch(
         if concept.status != "MATCHED":
             results.append({**base, "route_status": "HOLD", "reason_code": "CONCEPT_NOT_FOUND"})
             continue
-        candidates = search_semantic_catalog(claim, concept, catalog_rows)
-        candidates = refresh_item_metadata(candidates, kosis_api_key)
+        local_candidates = search_semantic_catalog(claim, concept, catalog_rows)
+        candidates = discover_catalog_candidates(claim, concept, local_candidates, live_search)
+        candidates = refresh_item_metadata(
+            candidates,
+            kosis_api_key,
+            metadata_fetcher=cached_metadata_fetcher,
+        )
         verdict = verify_claim_against_kosis(
             claim, concept, candidates, article_date=record.article_published_at, official_fetcher=fetcher
         )

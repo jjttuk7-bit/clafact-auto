@@ -34,7 +34,7 @@ def main() -> None:
     api_lookup = build_kosis_api_lookup(settings.kosis_api_key) if args.live_kosis else None
     results = run_dynamic_e2e_batch(
         registry.records,
-        concepts,
+        load_standard_concepts(args.standard_path),
         load_kosis_catalog(args.catalog),
         snapshot_paths=args.snapshot,
         api_lookup=api_lookup,
