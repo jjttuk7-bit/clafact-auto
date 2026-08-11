@@ -28,6 +28,11 @@ class VerificationProfileSchema(BaseModel):
     prd_se: str = Field(min_length=1)
     unit: str = Field(min_length=1)
     dimension_codes: dict[str, str] = Field(default_factory=dict)
+    frequency_constraint: str | None = None
+    region_constraint: str | None = None
+    population_constraint: str | None = None
+    condition_constraint: dict[str, str] | None = None
+    dimension_constraint: dict[str, str] | None = None
     dataset_version: str = Field(min_length=1)
     preprocess_version: str = Field(min_length=1)
     claim_schema_version: str = Field(min_length=1)

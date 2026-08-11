@@ -90,3 +90,96 @@ def test_holds_when_profile_coordinate_is_incomplete() -> None:
 
     assert result.status == "HOLD"
     assert result.reason_code == "PROFILE_COORDINATE_INCOMPLETE"
+
+
+def test_selects_profile_when_declared_applicability_constraints_match() -> None:
+    profile = _profile(
+        frequency_constraint="월",
+        region_constraint="전국",
+        population_constraint="전체",
+        condition_constraint={"seasonal_adjustment": "계절조정"},
+    )
+
+    result = resolve_profile_first(
+        _claim(
+            frequency="monthly",
+            region="전국",
+            population="전체",
+            condition={"seasonal_adjustment": "계절조정"},
+        ),
+        _concept(),
+        [profile],
+    )
+
+    assert result.status == "MATCHED"
+
+
+def test_holds_when_declared_frequency_constraint_conflicts() -> None:
+    result = resolve_profile_first(
+        _claim(frequency="년"),
+        _concept(),
+        [_profile(frequency_constraint="월")],
+    )
+
+    assert result.status == "HOLD"
+    assert result.reason_code == "PROFILE_FREQUENCY_CONFLICT"
+
+
+def test_holds_when_declared_region_constraint_conflicts() -> None:
+    result = resolve_profile_first(
+        _claim(region="서울"),
+        _concept(),
+        [_profile(region_constraint="전국")],
+    )
+
+    assert result.status == "HOLD"
+    assert result.reason_code == "PROFILE_REGION_CONFLICT"
+
+
+def test_holds_when_declared_population_constraint_conflicts() -> None:
+    result = resolve_profile_first(
+        _claim(population="청년"),
+        _concept(),
+        [_profile(population_constraint="전체")],
+    )
+
+    assert result.status == "HOLD"
+    assert result.reason_code == "PROFILE_POPULATION_CONFLICT"
+
+
+def test_holds_when_declared_condition_constraint_conflicts() -> None:
+    result = resolve_profile_first(
+        _claim(condition={"seasonal_adjustment": "원계열"}),
+        _concept(),
+        [_profile(condition_constraint={"seasonal_adjustment": "계절조정"})],
+    )
+
+    assert result.status == "HOLD"
+    assert result.reason_code == "PROFILE_CONDITION_CONFLICT"
+
+
+def test_ignores_profile_constraint_when_claim_slot_is_missing() -> None:
+    result = resolve_profile_first(
+        _claim(frequency=None, region=None, population=None, condition=None),
+        _concept(),
+        [
+            _profile(
+                frequency_constraint="월",
+                region_constraint="전국",
+                population_constraint="전체",
+                condition_constraint={"seasonal_adjustment": "계절조정"},
+            )
+        ],
+    )
+
+    assert result.status == "MATCHED"
+
+def test_holds_when_declared_dimension_constraint_conflicts() -> None:
+    result = resolve_profile_first(
+        _claim(dimension={"raw": "여성"}),
+        _concept(),
+        [_profile(dimension_constraint={"raw": "전체"})],
+    )
+
+    assert result.status == "HOLD"
+    assert result.reason_code == "PROFILE_DIMENSION_CONFLICT"

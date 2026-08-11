@@ -48,8 +48,45 @@ def resolve_profile_first(
         return ProfileFirstResolution(
             status="HOLD", reason_code="PROFILE_CALCULATION_CONFLICT"
         )
+    conflict = _applicability_conflict(claim, profile)
+    if conflict:
+        return ProfileFirstResolution(status="HOLD", reason_code=conflict)
     return ProfileFirstResolution(status="MATCHED", profile=profile)
 
+
+def _applicability_conflict(
+    claim: ClaimSchema, profile: VerificationProfileSchema
+) -> str | None:
+    if _frequency_mismatch(claim.frequency, profile.frequency_constraint):
+        return "PROFILE_FREQUENCY_CONFLICT"
+    if _string_mismatch(claim.region, profile.region_constraint):
+        return "PROFILE_REGION_CONFLICT"
+    if _string_mismatch(claim.population, profile.population_constraint):
+        return "PROFILE_POPULATION_CONFLICT"
+    if (
+        claim.condition is not None
+        and profile.condition_constraint is not None
+        and claim.condition != profile.condition_constraint
+    ):
+        return "PROFILE_CONDITION_CONFLICT"
+    if (
+        claim.dimension is not None
+        and profile.dimension_constraint is not None
+        and claim.dimension != profile.dimension_constraint
+    ):
+        return "PROFILE_DIMENSION_CONFLICT"
+    return None
+
+
+def _frequency_mismatch(claim_value: str | None, profile_value: str | None) -> bool:
+    if claim_value is None or profile_value is None:
+        return False
+    aliases = {"monthly": "M", "month": "M", "월": "M", "m": "M", "yearly": "Y", "annual": "Y", "년": "Y", "y": "Y"}
+    return aliases.get(claim_value.strip().casefold(), claim_value) != aliases.get(profile_value.strip().casefold(), profile_value)
+
+
+def _string_mismatch(claim_value: str | None, profile_value: str | None) -> bool:
+    return claim_value is not None and profile_value is not None and claim_value.strip() != profile_value.strip()
 
 def _has_complete_coordinate(profile: VerificationProfileSchema) -> bool:
     """Defend callers against profile objects constructed without validation."""
