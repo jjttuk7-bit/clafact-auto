@@ -7,6 +7,7 @@ from datetime import date
 from typing import Protocol
 
 from core.calculator import calculate
+from core.hard_guard import apply_hard_guard
 from core.claim_verification_service import VerificationTraceRecorder
 from core.evidence_resolver import resolve_evidence_cell
 from core.kosis_fetcher import KosisValue
@@ -39,18 +40,24 @@ def verify_claim_against_kosis(
     verification profile, determine whether the Claim can be auto-verified.
     """
     recorder = VerificationTraceRecorder(claim.claim_id).claim_parsed().concept_mapped().catalog_searched()
+    guarded_candidates = [candidate for candidate in candidates if apply_hard_guard(claim, candidate).passed]
+    if not guarded_candidates:
+        reason = "NO_HARD_GUARD_CANDIDATE"
+        recorder.hard_guard_held(reason)
+        return _hold(claim, recorder, reason, "No KOSIS candidate satisfies required Claim slots.")
+
     resolved_cells = {
         candidate.tbl_id: resolve_evidence_cell(claim, candidate)
-        for candidate in candidates
+        for candidate in guarded_candidates
     }
     eligible_candidates = [
         candidate
-        for candidate in candidates
+        for candidate in guarded_candidates
         if resolved_cells[candidate.tbl_id].status == "CONFIRMED"
     ]
     matches = semantic_match(claim, eligible_candidates)
     if not matches:
-        reason = "NO_EVIDENCE_COORDINATE_CANDIDATE" if resolved_cells else "NO_HARD_GUARD_CANDIDATE"
+        reason = "NO_EVIDENCE_COORDINATE_CANDIDATE"
         recorder.hard_guard_held(reason)
         return _hold(claim, recorder, reason, "No KOSIS candidate has a complete official coordinate.")
 
