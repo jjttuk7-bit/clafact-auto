@@ -28,8 +28,6 @@ from core.dynamic_kosis_verifier import verify_claim_against_kosis
 from core.evidence_resolver import resolve_evidence_cell
 from core.evidence_presentation import build_evidence_rows, build_kosis_table_url
 from core.kosis_fetcher import OfficialValueFetcher
-from core.cpi_growth_resolver import resolve_cpi_growth_plan
-from core.growth_verdict import make_cpi_growth_verdict
 from core.kosis_live_catalog import KosisLiveCatalogSearch
 from core.catalog_metadata_refresh import refresh_item_metadata
 from core.kosis_api_adapter import build_kosis_api_lookup
