@@ -74,7 +74,7 @@ def _find_catalog_candidates(
     )
     live_search = KosisLiveCatalogSearch(settings.kosis_api_key) if settings.kosis_api_key else None
     discovered = discover_catalog_candidates(claim, concept, local, live_search)
-    return discovered
+    return refresh_item_metadata(discovered, settings.kosis_api_key)
 
 
 def _official_fetcher(settings: Settings) -> OfficialValueFetcher:
@@ -438,6 +438,7 @@ if DEFAULT_INTERNAL_RUN_DIR.is_dir():
         st.error("내부 검증 실행 산출물을 읽을 수 없습니다.")
 else:
     st.info("아직 내부 검증 실행 산출물이 없습니다.")
+
 
 
 
