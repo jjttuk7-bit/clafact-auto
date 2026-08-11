@@ -117,3 +117,15 @@ def test_hard_guard_rejects_forecast_claim() -> None:
     result = apply_hard_guard(claim(source_sentence="내년 고용률은 70%가 될 전망이다."), candidate())
 
     assert result.reject_codes == ["FORECAST_CLAIM"]
+
+
+def test_catalog_search_matches_count_suffix_to_official_item_name() -> None:
+    employment = claim(indicator="취업자 수", unit="명", frequency="월")
+    employment_concept = concept().model_copy(update={"canonical_name": "취업자 수", "standard_key": "employment_count"})
+    result = search_semantic_catalog(
+        employment,
+        employment_concept,
+        [candidate(tbl_name="경제활동인구", core_item_names=["취업자"], unit_names=["천명"], frequency="월")],
+    )
+
+    assert [item.tbl_id for item in result] == ["DT_EMPLOYMENT"]

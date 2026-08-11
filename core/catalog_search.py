@@ -22,9 +22,10 @@ def search_semantic_catalog(
         return []
 
     query_terms = {
-        _normalize(term)
+        expanded
         for term in (claim.indicator, concept.canonical_name, concept.matched_alias)
         if term
+        for expanded in _expand_query_term(term)
     }
     scored: list[tuple[int, KosisCandidateSchema]] = []
     for candidate in candidates:
@@ -42,3 +43,12 @@ def search_semantic_catalog(
 
 def _normalize(value: str) -> str:
     return re.sub(r"[\s_-]+", "", value).casefold()
+
+
+def _expand_query_term(value: str) -> set[str]:
+    """Keep the original term and Korean measurement-name stems for catalog recall."""
+    normalized = _normalize(value)
+    terms = {normalized}
+    if len(normalized) > 1 and normalized[-1] in {"수", "액", "률"}:
+        terms.add(normalized[:-1])
+    return {term for term in terms if term}
