@@ -4,7 +4,7 @@ from schemas.claim import ClaimSchema
 
 
 def candidate(**updates: object) -> KosisCandidateSchema:
-    data: dict[str, object] = {"org_id": "101", "tbl_id": "DT_EMP", "tbl_name": "고용", "core_item_ids": ["T1"], "core_item_names": ["고용률"], "dimension_ids": ["SIDO"], "dimension_names": ["시도별"], "dimension_members": {"SIDO": ["서울", "부산"]}, "unit_names": ["%"], "frequency": "YEAR", "metadata_status": "READY"}
+    data: dict[str, object] = {"org_id": "101", "tbl_id": "DT_EMP", "tbl_name": "고용", "core_item_ids": ["T1"], "core_item_names": ["고용률"], "dimension_ids": ["SIDO"], "dimension_names": ["시도별"], "dimension_members": {"SIDO": ["서울", "부산"]}, "dimension_member_codes": {"SIDO": {"서울": "11", "부산": "26"}}, "unit_names": ["%"], "frequency": "YEAR", "metadata_status": "READY"}
     data.update(updates)
     return KosisCandidateSchema(**data)
 
@@ -55,6 +55,7 @@ def test_resolve_evidence_cell_confirms_singleton_dimension_without_claim_member
             dimension_ids=["TOTAL"],
             dimension_names=["전체"],
             dimension_members={"TOTAL": ["계"]},
+            dimension_member_codes={"TOTAL": {"계": "00"}},
         ),
     )
     assert cell.status == "CONFIRMED"
@@ -63,6 +64,19 @@ def test_resolve_evidence_cell_confirms_singleton_dimension_without_claim_member
 
 
 
+def test_resolve_evidence_cell_holds_when_selected_dimension_has_no_api_code() -> None:
+    cell = resolve_evidence_cell(
+        claim(region=None),
+        candidate(
+            tbl_id="DT_NO_MEMBER_CODE",
+            dimension_ids=["TOTAL"],
+            dimension_names=["전체"],
+            dimension_members={"TOTAL": ["계"]},
+        ),
+    )
+
+    assert cell.status == "UNRESOLVED"
+
 def test_resolve_evidence_cell_confirms_explicit_two_dimension_coordinate() -> None:
     cell = resolve_evidence_cell(
         claim(region="서울", population="15-29세"),
@@ -70,6 +84,7 @@ def test_resolve_evidence_cell_confirms_explicit_two_dimension_coordinate() -> N
             dimension_ids=["C1", "C2"],
             dimension_names=["시도별", "연령별"],
             dimension_members={"C1": ["서울", "부산"], "C2": ["15-29세", "30-39세"]},
+            dimension_member_codes={"C1": {"서울": "11", "부산": "26"}, "C2": {"15-29세": "15", "30-39세": "30"}},
         ),
     )
     assert cell.status == "CONFIRMED"

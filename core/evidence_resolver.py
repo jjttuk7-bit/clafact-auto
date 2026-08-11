@@ -39,7 +39,9 @@ def resolve_evidence_cell(claim: ClaimSchema, candidate: KosisCandidateSchema) -
         status = "UNRESOLVED"
     frequency = _resolve_frequency(claim.frequency, candidate.frequency)
     period = _period_key(claim.time)
-    dimension_codes = _resolve_dimension_codes(candidate.tbl_id, dimensions)
+    dimension_codes = _resolve_dimension_codes(candidate.tbl_id, dimensions, candidate.dimension_member_codes)
+    if set(dimension_codes) != set(dimensions):
+        status = "UNRESOLVED"
     registered = _registered_coordinate(candidate.tbl_id, item_id, dimensions)
     first_dimension = next(iter(dimensions.items()), (None, None))
     obj_id, member_code = (registered if registered else first_dimension)
@@ -124,8 +126,13 @@ def _member_code_registry() -> dict[str, dict[str, dict[str, str]]]:
     return grouped
 
 
-def _resolve_dimension_codes(table_id: str, dimensions: dict[str, str]) -> dict[str, str]:
-    mapping = _member_code_registry().get(table_id, {})
+def _resolve_dimension_codes(
+    table_id: str,
+    dimensions: dict[str, str],
+    candidate_codes: dict[str, dict[str, str]],
+) -> dict[str, str]:
+    mapping = dict(_member_code_registry().get(table_id, {}))
+    mapping.update(candidate_codes)
     return {
         dimension_id: code
         for dimension_id, member_name in dimensions.items()

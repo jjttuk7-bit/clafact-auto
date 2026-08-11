@@ -16,6 +16,7 @@ class KosisCandidateSchema(BaseModel):
     dimension_ids: list[str] = Field(default_factory=list)
     dimension_names: list[str] = Field(default_factory=list)
     dimension_members: dict[str, list[str]] = Field(default_factory=dict)
+    dimension_member_codes: dict[str, dict[str, str]] = Field(default_factory=dict)
     unit_names: list[str] = Field(default_factory=list)
     frequency: str | None = None
     start_period: str | None = None

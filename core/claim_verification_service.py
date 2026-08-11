@@ -23,6 +23,9 @@ class VerificationTraceRecorder:
     def official_value_fetched(self) -> 'VerificationTraceRecorder':
         self._trace = self._trace.pass_stage('OFFICIAL_VALUE_FETCH'); return self
 
+    def official_value_held(self, reason_code: str) -> 'VerificationTraceRecorder':
+        self._trace = self._trace.hold('OFFICIAL_VALUE_FETCH', reason_code); return self
+
     def calculation_completed(self) -> 'VerificationTraceRecorder':
         self._trace = self._trace.pass_stage('CALCULATION'); return self
 

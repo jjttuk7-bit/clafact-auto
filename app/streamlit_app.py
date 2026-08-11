@@ -24,6 +24,7 @@ from core.catalog_binding import apply_catalog_binding
 from core.catalog_discovery import discover_catalog_candidates, has_unresolved_live_metadata
 from core.catalog_search import search_semantic_catalog
 from core.data_loader import load_kosis_catalog, load_standard_concepts
+from core.dynamic_kosis_verifier import verify_claim_against_kosis
 from core.evidence_resolver import resolve_evidence_cell
 from core.evidence_presentation import build_evidence_rows, build_kosis_table_url
 from core.kosis_fetcher import OfficialValueFetcher
@@ -67,11 +68,7 @@ def _find_catalog_candidates(
     settings: Settings,
 ) -> list[KosisCandidateSchema]:
     """Prefer registered structural metadata; search KOSIS only for missing tables."""
-    local = apply_catalog_binding(
-        claim,
-        concept,
-        search_semantic_catalog(claim, concept, load_kosis_catalog(CATALOG_PATH)),
-    )
+    local = search_semantic_catalog(claim, concept, load_kosis_catalog(CATALOG_PATH))
     live_search = KosisLiveCatalogSearch(settings.kosis_api_key) if settings.kosis_api_key else None
     discovered = discover_catalog_candidates(claim, concept, local, live_search)
     return refresh_item_metadata(discovered, settings.kosis_api_key)
@@ -107,11 +104,10 @@ def _parse_article_date(value: str) -> date | None:
 
 
 def _verify_batch_claim(sentence: str, article_date: date, settings: Settings) -> VerdictSchema:
-    """Run the same safe claim pipeline for one batch sentence."""
-    claim = parse_claim(sentence, create_claim_extractor(settings))
-    claim = resolve_relative_time(claim, article_date)
-    recorder = VerificationTraceRecorder(claim.claim_id).claim_parsed()
+    """Parse a batch sentence, then use the same dynamic KOSIS engine as the UI."""
+    claim = resolve_relative_time(parse_claim(sentence, create_claim_extractor(settings)), article_date)
     if claim.parse_status != "AUTO_OK":
+        recorder = VerificationTraceRecorder(claim.claim_id).claim_parsed()
         return attach_trace(make_verdict(claim.claim_id, claim.value, [], None), recorder.build()).model_copy(
             update={
                 "route_status": "HOLD",
@@ -119,39 +115,15 @@ def _verify_batch_claim(sentence: str, article_date: date, settings: Settings) -
                 "explanation": "Claim parsing requires human review.",
             }
         )
-    growth_verdict = make_cpi_growth_verdict(claim, article_date, _cpi_growth_fetcher(settings))
-    if growth_verdict is not None:
-        recorder.registered_growth_profile_matched().verification_succeeded()
-        return attach_trace(growth_verdict, recorder.build())
-    recorder.concept_mapped()
     concept = normalize_concept(claim, load_standard_concepts(STANDARD_PATH))
     candidates = _find_catalog_candidates(claim, concept, settings)
-    recorder.catalog_searched()
-    matches = semantic_match(claim, candidates)
-    if not matches:
-        recorder.hard_guard_held("NO_HARD_GUARD_CANDIDATE")
-        reason = "LIVE_CATALOG_METADATA_UNRESOLVED" if has_unresolved_live_metadata(candidates) else "NO_HARD_GUARD_CANDIDATE"
-        explanation = "KOSIS table was found, but official item and dimension codes are not yet resolved." if reason == "LIVE_CATALOG_METADATA_UNRESOLVED" else "No KOSIS candidate passed Hard Guard."
-        return attach_trace(make_verdict(claim.claim_id, claim.value, [], None), recorder.build()).model_copy(
-            update={"reason_code": reason, "explanation": explanation}
-        )
-    recorder.hard_guard_passed().semantic_matched(matches[0].route_status, matches[0].reason_code or "MATCH_ACCEPTED", matches[0].top1_top2_margin)
-    best = matches[0]
-    selected = next(item for item in candidates if item.tbl_id == best.candidate_tbl_id)
-    cell = resolve_evidence_cell(claim, selected)
-    if best.route_status != "AUTO" or cell.status != "CONFIRMED":
-        return attach_trace(make_verdict(claim.claim_id, claim.value, [], None), recorder.build()).model_copy(
-            update={"reason_code": best.reason_code or cell.status, "explanation": "KOSIS coordinate is not confirmed.", "evidence_cells": [cell]}
-        )
-    official_value = _official_fetcher(settings).fetch(cell, article_date=article_date)
-    if official_value.status != "SUCCESS":
-        return attach_trace(make_verdict(claim.claim_id, claim.value, [], None), recorder.build()).model_copy(
-            update={"reason_code": official_value.status, "explanation": "Official value is unavailable.", "evidence_cells": [cell]}
-        )
-    calculated = calculate(CalculationPlan(calculation_type="DIRECT_VALUE", required_cells=[cell]), [official_value.value])
-    claim_unit_value = convert_value(calculated, cell.unit or "", claim.unit or "")
-    return attach_trace(make_verdict(claim.claim_id, claim.value, [official_value.value], claim_unit_value, tolerance=0.01), recorder.build()).model_copy(update={"evidence_cells": [cell]})
-
+    return verify_claim_against_kosis(
+        claim,
+        concept,
+        candidates,
+        article_date=article_date,
+        official_fetcher=_official_fetcher(settings),
+    )
 st.set_page_config(page_title="CLAFACT-AUTO", layout="wide")
 st.title("CLAFACT-AUTO")
 st.caption("KOSIS 공식값만 사용하며, 좌표·기사시점·후보가 불확실하면 자동 판정하지 않습니다.")
@@ -213,15 +185,10 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
                 }
             )
         else:
-            growth_plan = resolve_cpi_growth_plan(claim)
-            growth_verdict = make_cpi_growth_verdict(claim, article_date, _cpi_growth_fetcher(settings)) if article_date else None
-            concept = growth_plan.concept if growth_plan is not None else normalize_concept(claim, load_standard_concepts(STANDARD_PATH))
-            candidates = [growth_plan.candidate] if growth_plan is not None else _find_catalog_candidates(claim, concept, settings)
-            if growth_plan is not None:
-                ui_trace.registered_growth_profile_matched()
-            else:
-                ui_trace.concept_mapped().catalog_searched()
-            matches = semantic_match(claim, candidates)
+            growth_verdict = None
+            concept = normalize_concept(claim, load_standard_concepts(STANDARD_PATH))
+            candidates = _find_catalog_candidates(claim, concept, settings)
+            matches = []
 
         st.subheader("기사 주장")
         claim_columns = st.columns(4)
@@ -241,45 +208,27 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
         evidence_cells = []
         if requires_parse_review:
             pass
-        elif growth_verdict is not None:
-            ui_trace.verification_succeeded()
-            verdict = growth_verdict
-            evidence_cells = verdict.evidence_cells
-            st.subheader("근거 좌표")
-            st.json([cell.model_dump() for cell in evidence_cells])
         elif not article_date:
             verdict = make_verdict(claim.claim_id, claim.value, [], None)
             st.warning("보류: 기사 기준일이 없어 사후 개정값을 차단할 수 없습니다.")
-        elif not matches:
-            ui_trace.hard_guard_held("NO_HARD_GUARD_CANDIDATE")
-            verdict = make_verdict(claim.claim_id, claim.value, [], None)
-            if has_unresolved_live_metadata(candidates):
-                st.warning("보류: KOSIS 표는 찾았지만 항목·분류 코드가 확정되지 않았습니다.")
-            else:
-                st.warning("보류: 필수 조건을 통과한 KOSIS 후보가 없습니다.")
         else:
-            ui_trace.hard_guard_passed().semantic_matched(matches[0].route_status, matches[0].reason_code or "MATCH_ACCEPTED", matches[0].top1_top2_margin)
-            best = matches[0]
-            selected = next(item for item in candidates if item.tbl_id == best.candidate_tbl_id)
-            cell = resolve_evidence_cell(claim, selected)
-            evidence_cells = [cell]
-            st.subheader("근거 좌표")
-            st.json(cell.model_dump())
-            if best.route_status != "AUTO" or cell.status != "CONFIRMED":
-                verdict = make_verdict(claim.claim_id, claim.value, [], None)
-                st.warning(f"보류: {best.reason_code or cell.status}")
+            verdict = verify_claim_against_kosis(
+                claim,
+                concept,
+                candidates,
+                article_date=article_date,
+                official_fetcher=_official_fetcher(settings),
+            )
+            evidence_cells = verdict.evidence_cells
+            if evidence_cells:
+                st.subheader("근거 좌표")
+                st.json([cell.model_dump() for cell in evidence_cells])
+            if verdict.route_status != "AUTO":
+                st.warning(f"보류: {verdict.reason_code}")
             else:
-                official_value = _official_fetcher(settings).fetch(cell, article_date=article_date)
-                if official_value.status != "SUCCESS":
-                    verdict = make_verdict(claim.claim_id, claim.value, [], None)
-                    st.warning(f"보류: {official_value.status}")
-                else:
-                    calculated = calculate(CalculationPlan(calculation_type="DIRECT_VALUE", required_cells=[cell]), [official_value.value])
-                    claim_unit_value = convert_value(calculated, cell.unit or "", claim.unit or "")
-                    verdict = make_verdict(claim.claim_id, claim.value, [official_value.value], claim_unit_value, tolerance=0.01)
-                    st.success(f"{translate_status(verdict.verdict)}: KOSIS 공식값 {official_value.value}")
-
-        verdict = attach_trace(verdict, ui_trace.build())
+                st.success(f"{translate_status(verdict.verdict)}: KOSIS 공식값 {verdict.evidence_values[0]}")
+        if verdict.execution_trace is None:
+            verdict = attach_trace(verdict, ui_trace.build())
         st.subheader("최종 판정")
         verdict_columns = st.columns(4)
         verdict_columns[0].metric("판정", translate_status(verdict.verdict))
