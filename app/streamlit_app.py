@@ -15,6 +15,7 @@ from core.batch_verifier import export_batch_xlsx, load_articles, verify_article
 from core.claim_parser import parse_claim
 from core.claim_result_export import export_verdict_json_bytes, export_verdict_xlsx_bytes
 from core.claim_extractor_factory import create_claim_extractor
+from core.secret_fingerprint import describe_secret_fingerprint
 from core.claim_time_resolver import resolve_relative_time
 from core.calculator import calculate
 from core.catalog_binding import apply_catalog_binding
@@ -175,6 +176,8 @@ connection_columns[1].metric(primary_provider_label, primary_provider_status)
 if is_openai_primary:
     connection_columns[2].metric("HCX 예비 처리", "연결됨" if settings.hcx_api_key else "미설정")
 st.caption("키 값은 표시하거나 로그에 기록하지 않습니다.")
+if is_openai_primary:
+    st.caption(f"OpenAI API 키 지문: {describe_secret_fingerprint(settings.openai_api_key)}")
 
 sentence = st.text_area("검증할 뉴스 문장", placeholder="예: 2024년 전국 고용률은 70%였다.")
 article_date_text = st.text_input("기사 기준일 (YYYY-MM-DD)", placeholder="예: 2025-06-26")

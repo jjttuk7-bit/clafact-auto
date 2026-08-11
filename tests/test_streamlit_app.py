@@ -154,6 +154,7 @@ def test_streamlit_mvp_displays_openai_and_fallback_connection_status(monkeypatc
     assert "kosis-secret" not in rendered_text
     assert "hcx-secret" not in rendered_text
     assert "openai-secret" not in rendered_text
+    assert "OpenAI API 키 지문: 설정됨 (SHA-256: 9cbbbfb350d0)" in rendered_text
 
 
 def test_streamlit_mvp_preserves_hcx_primary_status(monkeypatch) -> None:

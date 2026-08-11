@@ -9,6 +9,29 @@ from pathlib import Path
 from config.settings import Settings
 from core.claim_extractor_factory import create_claim_extractor
 from core.claim_slot_enrichment_batch import enrich_auto_registry_records
+from core.secret_fingerprint import describe_secret_fingerprint
+
+
+def add_run_metadata(
+    summary: dict[str, object],
+    *,
+    provider: str,
+    openai_api_key: str | None,
+    requested_limit: int,
+    source_registry: str,
+) -> dict[str, object]:
+    """Attach reproducibility metadata without persisting an API key."""
+    result = dict(summary)
+    result.update(
+        {
+            "provider": provider,
+            "requested_limit": requested_limit,
+            "source_registry": source_registry,
+        }
+    )
+    if provider == "openai":
+        result["openai_api_key_fingerprint"] = describe_secret_fingerprint(openai_api_key)
+    return result
 
 
 def main() -> None:
@@ -33,7 +56,8 @@ def main() -> None:
         print(json.dumps({"selected_records": len(selected), "execute": False}))
         return
 
-    extractor = create_claim_extractor(Settings())
+    settings = Settings()
+    extractor = create_claim_extractor(settings)
     enriched_records, summary = enrich_auto_registry_records(selected, extractor)
     args.output_dir.mkdir(parents=True, exist_ok=True)
     records_path = args.output_dir / "enriched_claims.jsonl"
@@ -46,12 +70,12 @@ def main() -> None:
         + ("\n" if enriched_records else ""),
         encoding="utf-8",
     )
-    summary.update(
-        {
-            "provider": Settings().claim_provider,
-            "requested_limit": args.limit,
-            "source_registry": str(args.registry),
-        }
+    summary = add_run_metadata(
+        summary,
+        provider=settings.claim_provider,
+        openai_api_key=settings.openai_api_key,
+        requested_limit=args.limit,
+        source_registry=str(args.registry),
     )
     summary_path.write_text(
         json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
