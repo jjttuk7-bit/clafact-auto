@@ -50,3 +50,11 @@ def test_get_meta_accepts_a_configured_timeout(monkeypatch) -> None:
     transport.get_meta('secret', '101', 'DT_TEST', retries=1, timeout_seconds=5)
 
     assert observed['timeout'] == 5
+
+def test_get_meta_repairs_kosis_cp949_mojibake_in_nested_metadata(monkeypatch) -> None:
+    payload = '{"ITM_NM":"Ãµ¸í","members":[{"OBJ_NM":"¼ºº°","ITM_NM":"°è"}]}'.encode("utf-8")
+    monkeypatch.setattr(transport, "urlopen", lambda *_args, **_kwargs: Response(payload))
+
+    assert transport.get_meta("secret", "101", "DT_TEST", retries=1) == {
+        "ITM_NM": "천명", "members": [{"OBJ_NM": "성별", "ITM_NM": "계"}],
+    }

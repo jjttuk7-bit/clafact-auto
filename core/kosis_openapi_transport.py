@@ -29,7 +29,7 @@ def get_meta(api_key: str, org_id: str, table_id: str, *, meta_type: str = "SOUR
             decoded = _decode_kosis_payload(payload)
             if not isinstance(decoded, (dict, list)):
                 raise RuntimeError("KOSIS_METADATA_INVALID_RESPONSE")
-            return decoded
+            return _repair_kosis_mojibake(decoded)
         except RuntimeError:
             raise
         except Exception as error:
@@ -39,6 +39,24 @@ def get_meta(api_key: str, org_id: str, table_id: str, *, meta_type: str = "SOUR
     raise RuntimeError("KOSIS_METADATA_FETCH_FAILED") from last
 
 
+
+def _repair_kosis_mojibake(value: Any) -> Any:
+    """Repair KOSIS metadata that arrives as CP949 bytes re-encoded as UTF-8 text."""
+    if isinstance(value, dict):
+        return {key: _repair_kosis_mojibake(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_repair_kosis_mojibake(item) for item in value]
+    if not isinstance(value, str) or not any(ord(character) > 127 for character in value):
+        return value
+    try:
+        repaired = value.encode("latin-1").decode("cp949")
+    except (UnicodeEncodeError, UnicodeDecodeError):
+        return value
+    return repaired if _looks_like_korean(repaired) else value
+
+
+def _looks_like_korean(value: str) -> bool:
+    return any("가" <= character <= "힣" for character in value)
 def _decode_kosis_payload(payload: bytes) -> Any:
     """Decode strict JSON and KOSIS's legacy unquoted-key JSON variant."""
     try:
