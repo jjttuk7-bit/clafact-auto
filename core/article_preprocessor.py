@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from core.claim_splitter import split_complex_claim
 from core.pipeline_trace import PipelineTrace
 from schemas.pipeline_trace import PipelineTraceSchema
 
@@ -37,6 +38,11 @@ def preprocess_article(body: str, *, preprocess_version: str = "1.0") -> Article
     trace = trace.pass_stage("PREPROCESS", output_ref="clean_text")
     sentences = [sentence.strip() for sentence in _SENTENCES.split(clean_text) if sentence.strip()]
     trace = trace.pass_stage("SENTENCE_SPLIT", output_ref=str(len(sentences)))
-    claim_candidates = [sentence for sentence in sentences if _NUMERIC.search(sentence)]
+    claim_candidates = [
+        clause
+        for sentence in sentences
+        if _NUMERIC.search(sentence)
+        for clause in split_complex_claim(sentence)
+    ]
     trace = trace.pass_stage("CLAIM_CANDIDATE_SELECTION", output_ref=str(len(claim_candidates)))
     return ArticlePreprocessResult(clean_text, sentences, claim_candidates, trace)

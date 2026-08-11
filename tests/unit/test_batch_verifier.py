@@ -65,6 +65,17 @@ def test_verify_articles_creates_one_claim_result_per_numeric_sentence() -> None
     assert result.article_rows[0].article_status == "ALL_MATCH"
 
 
+def test_verify_articles_splits_two_numeric_claims_in_one_sentence() -> None:
+    article = BatchArticle("A1", date(2025, 4, 9), "2023년 고용률은 60%였고 2024년 고용률은 61%였다.")
+
+    result = verify_articles([article], lambda sentence, _: _match_verdict(sentence))
+
+    assert [row.source_sentence for row in result.claim_rows] == [
+        "2023년 고용률은 60%",
+        "2024년 고용률은 61%였다.",
+    ]
+
+
 def test_verify_articles_converts_verifier_failure_to_hold() -> None:
     article = BatchArticle("A1", date(2025, 4, 9), "2025년 3월 취업자 수는 2858만9000명이었다.")
     result = verify_articles([article], lambda sentence, _: (_ for _ in ()).throw(RuntimeError("failure")))
@@ -128,7 +139,7 @@ def test_load_articles_accepts_article_body_crawler_headers() -> None:
     )
 
 
-def test_extract_batch_claim_sentences_keeps_thirteen_statistical_sentences_after_cleanup() -> None:
+def test_extract_batch_claim_sentences_splits_statistical_claims_after_cleanup() -> None:
     from core.batch_verifier import extract_batch_claim_sentences
 
     body = '''경제 기사 제목 기자 입력 2025.11.04. 08:00 업데이트 2025.11.04. 11:11 5 지난달 소비자 물가가 2.4% 상승했고, 9월(2.1%)에 이어 2개월 연속 2%대였다.
@@ -148,7 +159,9 @@ def test_extract_batch_claim_sentences_keeps_thirteen_statistical_sentences_afte
 
     claims = extract_batch_claim_sentences(body)
 
-    assert len(claims) == 13
+    assert len(claims) == 21
     assert claims[0].startswith("지난달 소비자 물가")
     assert all("관련 기사" not in claim for claim in claims)
     assert all("업데이트" not in claim for claim in claims)
+
+
