@@ -8,12 +8,17 @@ from typing import Any
 
 from config.settings import Settings
 from core.claim_registry_loader import load_claim_registry
+from core.deterministic_slot_enrichment_batch import (
+    build_deterministic_enrichment_report,
+    enrich_registry_records_deterministically,
+)
 from core.e2e_batch_runner import run_e2e_batch, summarize_e2e_batch
 from core.kosis_api_adapter import build_kosis_api_lookup
 from core.profile_priority_queue import build_profile_priority_queue
 from core.review_queue_builder import build_review_queues
 from core.verification_profile_loader import load_verification_profiles
 from schemas.concept import StandardConceptSchema
+from schemas.claim_registry import ClaimRegistryRecord
 from schemas.evidence import EvidenceCellSchema
 
 
@@ -28,6 +33,10 @@ def run(
     api_lookup: Callable[[EvidenceCellSchema], list[dict[str, Any]]] | None = None,
 ) -> tuple[Path, Path]:
     registry = load_claim_registry(registry_path)
+    enriched_rows, _ = enrich_registry_records_deterministically(
+        record.model_dump(mode="json") for record in registry.records
+    )
+    records = [ClaimRegistryRecord.model_validate(row) for row in enriched_rows]
     profiles = [
         profile
         for path in (profiles_path, *additional_profile_paths)
@@ -39,7 +48,7 @@ def run(
         for row in concepts_payload
     }
     results = run_e2e_batch(
-        registry.records,
+        records,
         profiles,
         concepts,
         snapshot_paths=snapshot_paths,
@@ -54,7 +63,7 @@ def run(
     )
     profile_queue = build_profile_priority_queue(
         results,
-        [record.model_dump(mode="json") for record in registry.records],
+        [record.model_dump(mode="json") for record in records],
     )
     (output_dir / "profile_review_priority_queue.json").write_text(
         json.dumps(profile_queue, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
@@ -62,7 +71,7 @@ def run(
     )
     review_queues, review_summary = build_review_queues(
         results,
-        {record.claim.claim_id: record for record in registry.records},
+        {record.claim.claim_id: record for record in records},
     )
     review_dir = output_dir / "review_queues"
     review_dir.mkdir(exist_ok=True)
@@ -73,6 +82,10 @@ def run(
         )
     (review_dir / "summary.json").write_text(
         json.dumps(review_summary, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    (output_dir / "deterministic_enrichment_report.json").write_text(
+        json.dumps(build_deterministic_enrichment_report(enriched_rows), ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
     report = summarize_e2e_batch(results)
@@ -112,4 +125,5 @@ if __name__ == "__main__":
         snapshot_paths=tuple(arguments.snapshots),
         api_lookup=api_lookup,
     )
+
 
