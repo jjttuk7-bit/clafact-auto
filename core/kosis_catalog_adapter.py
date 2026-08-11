@@ -1,7 +1,7 @@
 """Read-only adapter boundary for KOSIS table metadata."""
 
 from collections.abc import Callable, Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Mapping
 
 from schemas.candidate import KosisCandidateSchema
@@ -13,6 +13,8 @@ class OfficialTableStructure:
     item_codes: dict[str, str]
     dimension_ids: dict[str, str]
     unit_names: list[str]
+    dimension_members: dict[str, list[str]] = field(default_factory=dict)
+    dimension_member_codes: dict[str, dict[str, str]] = field(default_factory=dict)
 
 
 class KosisCatalogAdapter:
@@ -27,55 +29,60 @@ class KosisCatalogAdapter:
 
 
 def normalize_item_metadata(rows: Iterable[Mapping[str, object]], *, table_id: str) -> OfficialTableStructure:
-    """Normalize only official ITM metadata; never infer unavailable member codes."""
+    """Normalize KOSIS ITM metadata into items, axes, and official member codes."""
     item_codes: dict[str, str] = {}
     dimension_ids: dict[str, str] = {}
+    dimension_members: dict[str, list[str]] = {}
+    dimension_member_codes: dict[str, dict[str, str]] = {}
     unit_names: list[str] = []
     for row in rows:
         if str(row.get("TBL_ID", "")) != table_id:
             raise ValueError("KOSIS item metadata response does not match requested table")
         item_name, item_id = str(row.get("ITM_NM", "")).strip(), str(row.get("ITM_ID", "")).strip()
         dimension_name, dimension_id = str(row.get("OBJ_NM", "")).strip(), str(row.get("OBJ_ID", "")).strip()
-        if item_name and item_id:
-            item_codes[item_name] = item_id
-        if dimension_name and dimension_id:
-            dimension_ids[dimension_name] = dimension_id
         unit = str(row.get("UNIT_NM", "")).strip()
+        is_measurement_item = dimension_id == "ITEM" or bool(unit)
+        if is_measurement_item and item_name and item_id:
+            item_codes[item_name] = item_id
+        if dimension_name and dimension_id and dimension_id != "ITEM":
+            dimension_ids[dimension_name] = dimension_id
+        if not is_measurement_item and dimension_id and item_name and item_id:
+            dimension_members.setdefault(dimension_id, []).append(item_name)
+            dimension_member_codes.setdefault(dimension_id, {})[item_name] = item_id
         if unit and unit not in unit_names:
             unit_names.append(unit)
-    return OfficialTableStructure(table_id, item_codes, dimension_ids, unit_names)
+    return OfficialTableStructure(
+        table_id, item_codes, dimension_ids, unit_names, dimension_members, dimension_member_codes
+    )
 
-def hydrate_candidate(
-    candidate: KosisCandidateSchema,
-    official_structure: OfficialTableStructure,
-) -> KosisCandidateSchema:
-    """Apply verified KOSIS ITM metadata without inventing dimension members."""
+
+def hydrate_candidate(candidate: KosisCandidateSchema, official_structure: OfficialTableStructure) -> KosisCandidateSchema:
+    """Apply verified KOSIS metadata without inferring unavailable coordinates."""
     if candidate.tbl_id != official_structure.table_id:
         raise ValueError("Official KOSIS metadata table does not match candidate")
-
     return candidate.model_copy(
         update={
             "core_item_ids": list(official_structure.item_codes.values()),
             "core_item_names": list(official_structure.item_codes),
             "dimension_ids": list(official_structure.dimension_ids.values()),
             "dimension_names": list(official_structure.dimension_ids),
+            "dimension_members": official_structure.dimension_members,
+            "dimension_member_codes": official_structure.dimension_member_codes,
             "unit_names": list(official_structure.unit_names),
             "metadata_status": "OFFICIAL_ITEM_METADATA_READY",
         }
     )
 
+
 def hydrate_candidates_from_official_metadata(
     candidates: Iterable[KosisCandidateSchema],
     fetch_item_metadata: Callable[[str, str], Iterable[Mapping[str, object]]],
 ) -> list[KosisCandidateSchema]:
-    """Refresh KOSIS item/axis metadata; leave a candidate unchanged on fetch failure."""
+    """Refresh KOSIS metadata; leave a candidate unchanged on fetch failure."""
     hydrated: list[KosisCandidateSchema] = []
     for candidate in candidates:
         try:
-            structure = normalize_item_metadata(
-                fetch_item_metadata(candidate.org_id, candidate.tbl_id),
-                table_id=candidate.tbl_id,
-            )
+            structure = normalize_item_metadata(fetch_item_metadata(candidate.org_id, candidate.tbl_id), table_id=candidate.tbl_id)
             hydrated.append(hydrate_candidate(candidate, structure))
         except (RuntimeError, TypeError, ValueError):
             hydrated.append(candidate)

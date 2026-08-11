@@ -23,3 +23,20 @@ def test_refresh_keeps_candidates_unchanged_without_api_key() -> None:
 
     candidate = KosisCandidateSchema(org_id='101', tbl_id='DT', tbl_name='고용', metadata_status='STRUCTURAL_READY')
     assert refresh_item_metadata([candidate], None) == [candidate]
+
+def test_refresh_hydrates_dimension_member_codes_from_official_itm_metadata() -> None:
+    from core.catalog_metadata_refresh import refresh_item_metadata
+
+    candidate = KosisCandidateSchema(org_id="101", tbl_id="DT", tbl_name="고용", metadata_status="STRUCTURAL_READY")
+    refreshed = refresh_item_metadata(
+        [candidate],
+        "secret",
+        metadata_fetcher=lambda api_key, org_id, table_id, *, meta_type, retries, timeout_seconds: [
+            {"ORG_ID": org_id, "TBL_ID": table_id, "OBJ_ID": "ITEM", "OBJ_NM": "항목", "ITM_ID": "T30", "ITM_NM": "취업자", "UNIT_NM": "천명"},
+            {"ORG_ID": org_id, "TBL_ID": table_id, "OBJ_ID": "B", "OBJ_NM": "성별", "ITM_ID": "0", "ITM_NM": "계"},
+            {"ORG_ID": org_id, "TBL_ID": table_id, "OBJ_ID": "J", "OBJ_NM": "종사상지위", "ITM_ID": "00", "ITM_NM": "계"},
+        ],
+    )
+
+    assert refreshed[0].dimension_members == {"B": ["계"], "J": ["계"]}
+    assert refreshed[0].dimension_member_codes == {"B": {"계": "0"}, "J": {"계": "00"}}
