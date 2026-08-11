@@ -8,8 +8,17 @@ from typing import MutableMapping
 
 _ENV_PATH = Path(__file__).resolve().parents[1] / ".env"
 
+def _environment_paths() -> tuple[Path, ...]:
+    """Return the local .env and, for a Git worktree, its main repository .env."""
+    paths = [_ENV_PATH]
+    project_root = _ENV_PATH.parent
+    if project_root.parent.name == ".worktrees":
+        paths.append(project_root.parent.parent / ".env")
+    return tuple(paths)
 
-def load_environment_file(path: Path, target: MutableMapping[str, str]) -> None:
+def load_environment_file(
+    path: Path, target: MutableMapping[str, str], *, overwrite: bool = False
+) -> None:
     """Load simple KEY=VALUE entries without overwriting process environment values."""
     if not path.is_file():
         return
@@ -20,12 +29,17 @@ def load_environment_file(path: Path, target: MutableMapping[str, str]) -> None:
         key, value = line.split("=", 1)
         key = key.strip()
         if key and key.replace("_", "").isalnum():
-            target.setdefault(key, value.strip().strip('"').strip("'"))
+            normalized_value = value.strip().strip('"').strip("'")
+            if overwrite:
+                target[key] = normalized_value
+            else:
+                target.setdefault(key, normalized_value)
 
 
 def _environment_value(name: str, default: str | None = None) -> str | None:
     """Read one setting after centrally loading missing values from .env."""
-    load_environment_file(_ENV_PATH, environ)
+    for index, environment_path in enumerate(_environment_paths()):
+        load_environment_file(environment_path, environ, overwrite=index > 0)
     return getenv(name, default)
 
 

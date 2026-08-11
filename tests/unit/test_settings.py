@@ -133,3 +133,22 @@ def test_load_environment_file_reads_missing_values_without_overwriting_os_envir
     load_environment_file(environment_file, target)
 
     assert target == {"KOSIS_API_KEY": "os-key", "HCX_API_KEY": "file-hcx"}
+
+def test_settings_loads_main_repository_env_when_running_from_worktree(tmp_path, monkeypatch) -> None:
+    repository_root = tmp_path / "repository"
+    worktree_root = repository_root / ".worktrees" / "validation"
+    worktree_root.mkdir(parents=True)
+    (repository_root / ".env").write_text("OPENAI_API_KEY=main-key\n", encoding="utf-8")
+    monkeypatch.setattr(settings_module, "_ENV_PATH", worktree_root / ".env")
+
+    assert Settings().openai_api_key == "main-key"
+
+def test_settings_prefers_main_repository_env_over_inherited_key_in_worktree(tmp_path, monkeypatch) -> None:
+    repository_root = tmp_path / "repository"
+    worktree_root = repository_root / ".worktrees" / "validation"
+    worktree_root.mkdir(parents=True)
+    (repository_root / ".env").write_text("OPENAI_API_KEY=main-key\n", encoding="utf-8")
+    monkeypatch.setattr(settings_module, "_ENV_PATH", worktree_root / ".env")
+    monkeypatch.setenv("OPENAI_API_KEY", "inherited-key")
+
+    assert Settings().openai_api_key == "main-key"
