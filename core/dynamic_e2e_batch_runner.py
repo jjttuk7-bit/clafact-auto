@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -17,6 +18,7 @@ from core.kosis_openapi_transport import get_meta
 from core.pipeline_trace import PipelineTrace
 from core.semantic_normalizer import normalize_concept
 from schemas.candidate import KosisCandidateSchema
+from schemas.claim import ClaimSchema
 from schemas.claim_registry import ClaimRegistryRecord
 from schemas.evidence import EvidenceCellSchema
 
@@ -30,6 +32,7 @@ def run_dynamic_e2e_batch(
     api_lookup: Callable[[EvidenceCellSchema], list[dict[str, Any]]] | None = None,
     kosis_api_key: str | None = None,
     live_search: KosisLiveCatalogSearch | None = None,
+    claim_reparser: Callable[[ClaimSchema, date], ClaimSchema] | None = None,
 ) -> list[dict[str, Any]]:
     """Run structured Claims through shared mapping, KOSIS discovery, and verdict stages.
 
@@ -83,6 +86,12 @@ def run_dynamic_e2e_batch(
     results: list[dict[str, Any]] = []
     for record in records:
         claim = record.claim
+        if claim.parse_status != "AUTO_OK" and claim_reparser is not None and record.article_published_at is not None:
+            try:
+                reparsed = claim_reparser(claim, record.article_published_at)
+                claim = reparsed.model_copy(update={"claim_id": claim.claim_id, "source_sentence": claim.source_sentence})
+            except Exception:
+                claim = claim.model_copy(update={"parse_status": "HOLD", "parse_reason": "CLAIM_REPARSE_FAILED"})
         base = {
             "article_id": record.article_id,
             "sentence_id": record.sentence_id,

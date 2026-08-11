@@ -25,6 +25,8 @@ def resolve_evidence_cell(claim: ClaimSchema, candidate: KosisCandidateSchema) -
     if not coordinate_resolved:
         status = "UNRESOLVED"
     unit = next((value for value in candidate.unit_names if claim.unit and compatible_units(claim.unit, value)), None)
+    if unit is None and claim.calculation in {"GROWTH_RATE", "SHARE", "RATIO", "MULTIPLE"}:
+        unit = candidate.unit_names[0] if len(candidate.unit_names) == 1 else None
     if unit is None:
         status = "UNRESOLVED"
     frequency = _resolve_frequency(claim.frequency, candidate.frequency)

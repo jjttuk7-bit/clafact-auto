@@ -151,3 +151,35 @@ def test_hard_guard_runs_before_coordinate_resolution_and_value_fetch() -> None:
 
     assert verdict.route_status == "HOLD"
     assert verdict.reason_code == "NO_HARD_GUARD_CANDIDATE"
+
+
+def test_year_over_year_claim_fetches_two_periods_and_calculates_growth_rate() -> None:
+    claim = ClaimSchema(
+        claim_id="employment-yoy", source_sentence="2024년 12월 취업자 수는 전년 동월 대비 1.0% 증가했다.",
+        indicator="취업자 수", value=1.0, unit="%", time="2024년 12월", frequency="월", region="한국",
+        comparison={"type": "YEAR_OVER_YEAR"}, calculation="GROWTH_RATE", parse_status="AUTO_OK",
+    )
+    concept = StandardConceptSchema(
+        concept_id="employment_count", canonical_name="취업자 수", standard_key="employment_count",
+        matched_alias="취업자 수", status="MATCHED",
+    )
+    candidate = KosisCandidateSchema(
+        org_id="101", tbl_id="DT_1DA7028S", tbl_name="성/종사상지위별 취업자",
+        core_item_ids=["T30"], core_item_names=["취업자"], dimension_ids=["B", "J"],
+        dimension_names=["성별", "종사상지위"], dimension_members={"B": ["계"], "J": ["계"]},
+        dimension_member_codes={"B": {"계": "0"}, "J": {"계": "00"}},
+        unit_names=["천명"], frequency="월", metadata_status="OFFICIAL_METADATA_READY",
+    )
+
+    class Fetcher:
+        def fetch(self, cell, *, article_date):
+            return KosisValue({"2024-12": 101.0, "2023-12": 100.0}[cell.prd_de], "SUCCESS", "test", "API")
+
+    verdict = verify_claim_against_kosis(
+        claim, concept, [candidate], article_date=date(2025, 1, 15), official_fetcher=Fetcher()
+    )
+
+    assert verdict.route_status == "AUTO"
+    assert verdict.verdict == "MATCH"
+    assert verdict.calculated_value == 1.0
+    assert [cell.prd_de for cell in verdict.evidence_cells] == ["2024-12", "2023-12"]

@@ -24,6 +24,11 @@ def create_claim_extractor(settings: Settings) -> StructuredClaimExtractor:
         return primary
     if provider != "hcx":
         raise ValueError(f"CLAIM_PROVIDER_UNSUPPORTED:{provider}")
+    if not settings.hcx_api_key and settings.openai_api_key:
+        return OpenAIFunctionClaimExtractor(
+            api_key=settings.openai_api_key,
+            model=settings.openai_model,
+        )
 
     mode = settings.hcx_extraction_mode.strip().casefold()
     if mode == "structured_output":

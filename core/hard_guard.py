@@ -36,6 +36,8 @@ def _frequency_conflict(claim: ClaimSchema, candidate: KosisCandidateSchema) -> 
 
 
 def _unit_conflict(claim: ClaimSchema, candidate: KosisCandidateSchema) -> bool:
+    if claim.calculation in {"GROWTH_RATE", "SHARE", "RATIO", "MULTIPLE"}:
+        return False
     return bool(claim.unit and candidate.unit_names and not any(compatible_units(claim.unit, unit) for unit in candidate.unit_names))
 
 

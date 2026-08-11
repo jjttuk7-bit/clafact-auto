@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from datetime import date
+import re
 from typing import Protocol
 
 from core.calculator import calculate
@@ -79,27 +80,74 @@ def verify_claim_against_kosis(
             evidence_cells=[cell],
         )
 
+    calculation_type = claim.calculation or "DIRECT_VALUE"
+    evidence_cells = _calculation_cells(cell, claim, calculation_type)
+    if evidence_cells is None:
+        recorder.evidence_held("MISSING_COMPARISON_FOR_GROWTH_RATE")
+        return _hold(
+            claim, recorder, "MISSING_COMPARISON_FOR_GROWTH_RATE",
+            "The comparison period is not explicit enough to resolve official evidence.", evidence_cells=[cell],
+        )
+
     recorder.evidence_confirmed()
-    official_value = official_fetcher.fetch(cell, article_date=article_date)
-    if official_value.status != "SUCCESS" or official_value.value is None:
-        recorder.official_value_held(official_value.status)
-        return _hold(claim, recorder, official_value.status, "Official value is unavailable.", evidence_cells=[cell])
+    official_values: list[float] = []
+    for evidence_cell in evidence_cells:
+        official_value = official_fetcher.fetch(evidence_cell, article_date=article_date)
+        if official_value.status != "SUCCESS" or official_value.value is None:
+            recorder.official_value_held(official_value.status)
+            return _hold(
+                claim, recorder, official_value.status, "Official value is unavailable.", evidence_cells=evidence_cells,
+            )
+        official_values.append(official_value.value)
 
     recorder.official_value_fetched()
-    calculated = calculate(CalculationPlan(calculation_type="DIRECT_VALUE", required_cells=[cell]), [official_value.value])
+    calculated = calculate(
+        CalculationPlan(calculation_type=calculation_type, required_cells=evidence_cells), official_values
+    )
     recorder.calculation_completed()
-    claim_unit_value = convert_value(calculated, cell.unit or "", claim.unit or "")
+    claim_unit_value = (
+        calculated if calculation_type in {"GROWTH_RATE", "SHARE"}
+        else convert_value(calculated, cell.unit or "", claim.unit or "")
+    )
     verdict = make_verdict(
-        claim.claim_id,
-        claim.value,
-        [official_value.value],
-        claim_unit_value,
-        tolerance=_claim_tolerance(claim),
+        claim.claim_id, claim.value, official_values, claim_unit_value, tolerance=_claim_tolerance(claim)
     )
     recorder.verdict_completed()
-    return attach_trace(verdict.model_copy(update={"evidence_cells": [cell]}), recorder.build())
+    return attach_trace(verdict.model_copy(update={"evidence_cells": evidence_cells}), recorder.build())
 
 
+
+def _calculation_cells(
+    cell: EvidenceCellSchema, claim: ClaimSchema, calculation_type: str
+) -> list[EvidenceCellSchema] | None:
+    if calculation_type == "DIRECT_VALUE":
+        return [cell]
+    if calculation_type != "GROWTH_RATE":
+        return None
+    comparison = (claim.comparison or {}).get("type")
+    comparison_period = _comparison_period(cell.prd_de, comparison)
+    if comparison_period is None:
+        return None
+    comparison_cell = cell.model_copy(update={
+        "prd_de": comparison_period,
+        "canonical_key": cell.canonical_key.replace(f"PRD_DE={cell.prd_de}", f"PRD_DE={comparison_period}"),
+    })
+    return [cell, comparison_cell]
+
+
+def _comparison_period(period: str, comparison: str | None) -> str | None:
+    monthly = re.fullmatch(r"(\d{4})-(\d{2})", period)
+    annual = re.fullmatch(r"\d{4}", period)
+    if comparison == "YEAR_OVER_YEAR":
+        if monthly:
+            return f"{int(monthly.group(1)) - 1:04d}-{monthly.group(2)}"
+        if annual:
+            return f"{int(period) - 1:04d}"
+    if comparison == "MONTH_OVER_MONTH" and monthly:
+        year, month = int(monthly.group(1)), int(monthly.group(2))
+        previous_year, previous_month = (year - 1, 12) if month == 1 else (year, month - 1)
+        return f"{previous_year:04d}-{previous_month:02d}"
+    return None
 def _hold(
     claim: ClaimSchema,
     recorder: VerificationTraceRecorder,

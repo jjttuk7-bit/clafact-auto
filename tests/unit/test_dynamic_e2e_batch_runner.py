@@ -119,3 +119,26 @@ def test_dynamic_batch_records_claim_parse_hold_in_execution_trace() -> None:
     assert result["execution_trace"]["events"] == [{
         "stage": "CLAIM_PARSE", "status": "HOLD", "reason_code": "SLOT_AMBIGUOUS", "output_ref": None,
     }]
+
+
+def test_dynamic_batch_reparses_non_auto_claim_before_semantic_mapping() -> None:
+    original = _employment_record().model_copy(update={
+        "claim": _employment_record().claim.model_copy(update={"parse_status": "HOLD", "parse_reason": "OLD_PARSE_HOLD"})
+    })
+    reparsed: list[str] = []
+
+    def reparse(claim, _article_date):
+        reparsed.append(claim.claim_id)
+        return claim.model_copy(update={"parse_status": "AUTO_OK", "parse_reason": None})
+
+    result = run_dynamic_e2e_batch(
+        [original], _employment_concept(), [_employment_candidate()],
+        claim_reparser=reparse,
+        api_lookup=lambda _cell: [{
+            "TBL_ID": "DT_1DA7028S", "ITM_ID": "T30", "PRD_DE": "202412",
+            "B": "0", "J": "00", "DT": "28041", "LST_CHN_DE": "2025-01-10",
+        }],
+    )[0]
+
+    assert reparsed == ["C1"]
+    assert result["route_status"] == "AUTO"

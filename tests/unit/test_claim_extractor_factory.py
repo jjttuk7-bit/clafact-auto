@@ -88,3 +88,12 @@ def test_factory_wraps_openai_with_structured_hcx_fallback() -> None:
 def test_factory_rejects_unknown_provider_with_stable_error() -> None:
     with pytest.raises(ValueError, match=r"^CLAIM_PROVIDER_UNSUPPORTED:local$"):
         create_claim_extractor(Settings(claim_provider=" LOCAL ", hcx_api_key="test-key"))
+
+
+def test_factory_falls_back_to_openai_when_hcx_is_selected_without_hcx_key() -> None:
+    extractor = create_claim_extractor(
+        Settings(claim_provider="hcx", hcx_api_key=None, openai_api_key="openai-key", openai_model="gpt-test")
+    )
+
+    assert isinstance(extractor, OpenAIFunctionClaimExtractor)
+    assert extractor.api_key == "openai-key"
