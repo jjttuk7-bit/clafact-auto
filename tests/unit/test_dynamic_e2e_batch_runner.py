@@ -105,3 +105,17 @@ def test_dynamic_batch_caches_official_values_by_evidence_coordinate() -> None:
     )
 
     assert len(calls) == 1
+
+
+def test_dynamic_batch_records_claim_parse_hold_in_execution_trace() -> None:
+    record = _employment_record().model_copy(update={
+        "claim": _employment_record().claim.model_copy(update={"parse_status": "HUMAN_REVIEW", "parse_reason": "SLOT_AMBIGUOUS"})
+    })
+
+    result = run_dynamic_e2e_batch([record], _employment_concept(), [_employment_candidate()])[0]
+
+    assert result["route_status"] == "HOLD"
+    assert result["reason_code"] == "SLOT_AMBIGUOUS"
+    assert result["execution_trace"]["events"] == [{
+        "stage": "CLAIM_PARSE", "status": "HOLD", "reason_code": "SLOT_AMBIGUOUS", "output_ref": None,
+    }]

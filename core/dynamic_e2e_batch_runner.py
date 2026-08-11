@@ -14,6 +14,7 @@ from core.dynamic_kosis_verifier import verify_claim_against_kosis
 from core.kosis_fetcher import OfficialValueFetcher
 from core.kosis_live_catalog import KosisLiveCatalogSearch
 from core.kosis_openapi_transport import get_meta
+from core.pipeline_trace import PipelineTrace
 from core.semantic_normalizer import normalize_concept
 from schemas.candidate import KosisCandidateSchema
 from schemas.claim_registry import ClaimRegistryRecord
@@ -64,6 +65,21 @@ def run_dynamic_e2e_batch(
                 metadata_cache[cache_key] = []
         return metadata_cache[cache_key]
 
+    def early_hold(base: dict[str, Any], stage: str, reason_code: str) -> dict[str, Any]:
+        trace = PipelineTrace.for_claim(
+            base["claim_id"], preprocess_version="1.0", claim_schema_version="1.0"
+        ).hold(stage, reason_code)  # type: ignore[arg-type]
+        return {
+            **base, "route_status": "HOLD", "reason_code": reason_code,
+            "execution_trace": trace.model_dump(mode="json"),
+            "versions": {
+                "dataset_version": "unversioned", "preprocess_version": trace.preprocess_version,
+                "claim_schema_version": trace.claim_schema_version,
+                "semantic_standard_version": trace.semantic_standard_version,
+                "kosis_catalog_version": trace.kosis_catalog_version,
+                "matching_version": trace.matching_version, "calculation_version": trace.calculation_version,
+            },
+        }
     results: list[dict[str, Any]] = []
     for record in records:
         claim = record.claim
@@ -77,14 +93,14 @@ def run_dynamic_e2e_batch(
             "versions": {},
         }
         if claim.parse_status != "AUTO_OK":
-            results.append({**base, "route_status": "HOLD", "reason_code": claim.parse_reason or "CLAIM_PARSE_UNCERTAIN"})
+            results.append(early_hold(base, "CLAIM_PARSE", claim.parse_reason or "CLAIM_PARSE_UNCERTAIN"))
             continue
         if record.article_published_at is None:
-            results.append({**base, "route_status": "HOLD", "reason_code": "ARTICLE_DATE_REQUIRED"})
+            results.append(early_hold(base, "OFFICIAL_VALUE_FETCH", "ARTICLE_DATE_REQUIRED"))
             continue
         concept = normalize_concept(claim, standard_rows)
         if concept.status != "MATCHED":
-            results.append({**base, "route_status": "HOLD", "reason_code": "CONCEPT_NOT_FOUND"})
+            results.append(early_hold(base, "SEMANTIC_MAPPING", "CONCEPT_NOT_FOUND"))
             continue
         local_candidates = search_semantic_catalog(claim, concept, catalog_rows)
         if local_candidates or live_search is None:
