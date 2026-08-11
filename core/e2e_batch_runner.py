@@ -48,9 +48,9 @@ def run_e2e_batch(
                 "versions": {},
             }
             if record.claim.parse_status != "AUTO_OK":
-                base["route_status"] = record.claim.parse_status
-                base["reason_code"] = (
-                    f"PARSE_{record.claim.parse_reason or record.claim.parse_status}"
+                base["route_status"] = "HOLD"
+                base["reason_code"] = _parse_hold_reason(
+                    record.claim.parse_status, record.claim.parse_reason
                 )
                 results.append(_with_execution_trace(base))
                 continue
@@ -153,6 +153,13 @@ def _period(value: str | None) -> str | None:
     return f"{match.group(1)}-{int(match.group(2)):02d}" if match else value
 
 
+def _parse_hold_reason(parse_status: str, parse_reason: str | None) -> str:
+    """Preserve parser state in the reason while keeping final E2E routes AUTO/HOLD."""
+    if parse_status == "HUMAN_REVIEW":
+        return f"PARSE_HUMAN_REVIEW: {parse_reason or 'UNSPECIFIED'}"
+    return f"PARSE_{parse_reason or parse_status}"
+
+
 def _versions(profile: VerificationProfileSchema) -> dict[str, str]:
     return {
         name: getattr(profile, name)
@@ -191,3 +198,4 @@ def _batch_record_error(record: ClaimRegistryRecord, error: Exception) -> dict[s
         "snapshot_hash": "",
         "versions": {},
     })
+

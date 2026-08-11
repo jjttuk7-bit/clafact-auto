@@ -105,3 +105,18 @@ def test_e2e_batch_preserves_parse_hold_before_concept_or_profile_routing() -> N
 
     assert result[0]["route_status"] == "HOLD"
     assert result[0]["reason_code"] == "PARSE_MISSING_REQUIRED_SLOTS:time"
+
+
+def test_e2e_batch_normalizes_parser_human_review_to_final_hold() -> None:
+    record = _record().model_copy(
+        update={
+            "claim": _record().claim.model_copy(
+                update={"parse_status": "HUMAN_REVIEW", "parse_reason": "MULTIPLE_CLAIMS"}
+            )
+        }
+    )
+
+    result = run_e2e_batch([record], [], {})
+
+    assert result[0]["route_status"] == "HOLD"
+    assert result[0]["reason_code"] == "PARSE_HUMAN_REVIEW: MULTIPLE_CLAIMS"
