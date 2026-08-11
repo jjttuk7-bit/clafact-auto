@@ -77,11 +77,9 @@ def run_e2e_batch(
                 base["reason_code"] = evidence.reason_code
                 results.append(_with_execution_trace(base))
                 continue
-            plan_claim = record.claim
-            if plan_claim.calculation is None:
-                plan_claim = plan_claim.model_copy(
-                    update={"calculation": selection.profile.calculation_type}
-                )
+            plan_claim = record.claim.model_copy(
+                update={"calculation": selection.profile.calculation_type}
+            )
             plan = build_calculation_plan(plan_claim, evidence.evidence_cell)
             if plan is None:
                 base["reason_code"] = "CALCULATION_PLAN_UNRESOLVED"

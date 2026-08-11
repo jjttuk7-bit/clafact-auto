@@ -22,6 +22,18 @@ class VerificationProfileSchema(BaseModel):
         "RANK",
         "THRESHOLD",
     ]
+    accepted_claim_calculations: list[
+        Literal[
+            "DIRECT_VALUE",
+            "DIFFERENCE",
+            "GROWTH_RATE",
+            "RATIO",
+            "SHARE",
+            "MULTIPLE",
+            "RANK",
+            "THRESHOLD",
+        ]
+    ] = Field(default_factory=list)
     org_id: str = Field(min_length=1)
     tbl_id: str = Field(min_length=1)
     itm_id: str = Field(min_length=1)

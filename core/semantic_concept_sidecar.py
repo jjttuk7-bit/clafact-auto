@@ -6,6 +6,7 @@ import json
 from collections.abc import Iterable
 from pathlib import Path
 
+from core.cpi_growth_resolver import resolve_cpi_growth_plan
 from core.data_loader import SemanticStandardRecord
 from core.semantic_normalizer import normalize_concept
 from schemas.claim_registry import ClaimRegistryRecord
@@ -17,14 +18,21 @@ def build_concept_sidecar(
 ) -> list[dict[str, object]]:
     """Return sorted Concept mappings without mutating registry records."""
     standard_list = list(standards)
-    rows = [
-        {
-            "article_id": record.article_id,
-            "sentence_id": record.sentence_id,
-            "concept": normalize_concept(record.claim, standard_list).model_dump(mode="json"),
-        }
-        for record in records
-    ]
+    rows = []
+    for record in records:
+        registered_plan = resolve_cpi_growth_plan(record.claim)
+        concept = (
+            registered_plan.concept
+            if registered_plan is not None
+            else normalize_concept(record.claim, standard_list)
+        )
+        rows.append(
+            {
+                "article_id": record.article_id,
+                "sentence_id": record.sentence_id,
+                "concept": concept.model_dump(mode="json"),
+            }
+        )
     return sorted(rows, key=lambda row: (str(row["article_id"]), str(row["sentence_id"])))
 
 

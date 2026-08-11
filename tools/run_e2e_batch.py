@@ -2,12 +2,17 @@
 
 import argparse
 import json
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
+from config.settings import Settings
 from core.claim_registry_loader import load_claim_registry
 from core.e2e_batch_runner import run_e2e_batch, summarize_e2e_batch
+from core.kosis_api_adapter import build_kosis_api_lookup
 from core.verification_profile_loader import load_verification_profiles
 from schemas.concept import StandardConceptSchema
+from schemas.evidence import EvidenceCellSchema
 
 
 def run(
@@ -18,6 +23,7 @@ def run(
     *,
     additional_profile_paths: tuple[Path, ...] = (),
     snapshot_paths: tuple[Path, ...] = (),
+    api_lookup: Callable[[EvidenceCellSchema], list[dict[str, Any]]] | None = None,
 ) -> tuple[Path, Path]:
     registry = load_claim_registry(registry_path)
     profiles = [
@@ -31,7 +37,11 @@ def run(
         for row in concepts_payload
     }
     results = run_e2e_batch(
-        registry.records, profiles, concepts, snapshot_paths=snapshot_paths
+        registry.records,
+        profiles,
+        concepts,
+        snapshot_paths=snapshot_paths,
+        api_lookup=api_lookup,
     )
     output_dir.mkdir(parents=True, exist_ok=True)
     results_path = output_dir / "e2e_results.jsonl"
@@ -60,7 +70,14 @@ if __name__ == "__main__":
     parser.add_argument("output_dir", type=Path)
     parser.add_argument("--profile", dest="additional_profiles", type=Path, action="append", default=[])
     parser.add_argument("--snapshot", dest="snapshots", type=Path, action="append", default=[])
+    parser.add_argument("--live-kosis", action="store_true", help="Use the read-only KOSIS API for confirmed Profile coordinates.")
     arguments = parser.parse_args()
+    api_lookup = None
+    if arguments.live_kosis:
+        settings = Settings()
+        if not settings.kosis_api_key:
+            parser.error("--live-kosis requires KOSIS_API_KEY")
+        api_lookup = build_kosis_api_lookup(settings.kosis_api_key)
     run(
         arguments.registry_path,
         arguments.profiles_path,
@@ -68,4 +85,5 @@ if __name__ == "__main__":
         arguments.output_dir,
         additional_profile_paths=tuple(arguments.additional_profiles),
         snapshot_paths=tuple(arguments.snapshots),
+        api_lookup=api_lookup,
     )

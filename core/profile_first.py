@@ -44,7 +44,11 @@ def resolve_profile_first(
         return ProfileFirstResolution(
             status="HOLD", reason_code="PROFILE_COORDINATE_INCOMPLETE"
         )
-    if claim.calculation is not None and claim.calculation != profile.calculation_type:
+    if (
+        claim.calculation is not None
+        and claim.calculation != profile.calculation_type
+        and claim.calculation not in profile.accepted_claim_calculations
+    ):
         return ProfileFirstResolution(
             status="HOLD", reason_code="PROFILE_CALCULATION_CONFLICT"
         )

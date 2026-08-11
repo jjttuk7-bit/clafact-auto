@@ -20,3 +20,5 @@ class ClaimRegistryRecord(BaseModel):
     source_metadata: dict[str, str | None] = Field(default_factory=dict)
     claim: ClaimSchema
     review_status: Literal["UNREVIEWED", "IN_REVIEW", "APPROVED", "REJECTED"] = "UNREVIEWED"
+    slot_enrichment: dict[str, object] | None = None
+    deterministic_slot_enrichment: dict[str, object] | None = None

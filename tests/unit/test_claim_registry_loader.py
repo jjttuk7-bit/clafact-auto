@@ -51,3 +51,21 @@ def test_loader_reports_invalid_claim_schema(tmp_path: Path) -> None:
     assert [(error.line_number, error.reason_code) for error in result.errors] == [
         (1, "INVALID_REGISTRY_RECORD")
     ]
+
+
+def test_loader_preserves_derived_slot_enrichment_audit_metadata(tmp_path: Path) -> None:
+    path = tmp_path / "registry.jsonl"
+    path.write_text(
+        '{"article_id":"A1","sentence_id":"1","source_ref":"test-source",'
+        '"claim":{"claim_id":"registry:test:A1:1","source_sentence":"2024년 출생아 수는 24만2334명이었다.","parse_status":"AUTO_OK"},'
+        '"slot_enrichment":{"status":"ENRICHED","catalog_search_ready":true}}\n',
+        encoding="utf-8",
+    )
+
+    result = load_claim_registry(path)
+
+    assert result.errors == []
+    assert result.records[0].slot_enrichment == {
+        "status": "ENRICHED",
+        "catalog_search_ready": True,
+    }

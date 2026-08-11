@@ -182,3 +182,13 @@ def test_holds_when_declared_dimension_constraint_conflicts() -> None:
 
     assert result.status == "HOLD"
     assert result.reason_code == "PROFILE_DIMENSION_CONFLICT"
+
+
+def test_selects_precomputed_official_rate_profile_for_compatible_growth_claim() -> None:
+    profile = _profile(accepted_claim_calculations=["GROWTH_RATE"])
+
+    result = resolve_profile_first(
+        _claim(calculation="GROWTH_RATE"), _concept(), [profile]
+    )
+
+    assert result.status == "MATCHED"
