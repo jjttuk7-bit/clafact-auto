@@ -29,6 +29,7 @@ def get_parameter_data(
         "method": "getList", "apiKey": api_key, "format": "json", "jsonVD": "Y",
         "orgId": org_id, "tblId": table_id, "itmId": item_id, "prdSe": period_type,
         "startPrdDe": start_period, "endPrdDe": end_period,
+        "outputFields": "ORG_ID TBL_ID ITM_ID PRD_SE PRD_DE DT LST_CHN_DE",
     }
     params.update({f"objL{index}": code for index, code in enumerate(object_codes, start=1)})
     url = "https://kosis.kr/openapi/Param/statisticsParameterData.do?" + urlencode(params)

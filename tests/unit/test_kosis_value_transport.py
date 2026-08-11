@@ -24,6 +24,8 @@ def test_get_parameter_data_uses_explicit_coordinate(monkeypatch) -> None:
     assert rows == [{"DT": "109.67", "PRD_DE": "2025-05"}]
     assert "objL1=T10" in requested[0]
     assert "objL2=B01" in requested[0]
+    assert "outputFields=ORG_ID" in requested[0]
+    assert "LST_CHN_DE" in requested[0]
     assert "apiKey=secret" not in str(rows)
 
 
