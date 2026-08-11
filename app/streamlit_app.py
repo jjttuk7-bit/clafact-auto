@@ -404,7 +404,16 @@ if DEFAULT_INTERNAL_RUN_DIR.is_dir():
         status_columns[1].metric("자동 판정", operator_run.report.get("route_counts", {}).get("AUTO", 0))
         status_columns[2].metric("Profile 검토 묶음", len(operator_run.profile_queue))
         st.json(operator_run.report)
-        st.dataframe(operator_run.profile_queue)
+        reasons = sorted({str(row.get("reason_code", "UNSPECIFIED")) for row in operator_run.profile_queue})
+        selected_reason = st.selectbox("Profile 사유 필터", ["전체", *reasons])
+        max_rank = max((int(row.get("priority_rank", 0)) for row in operator_run.profile_queue), default=0)
+        selected_max_rank = st.number_input("최대 우선순위", min_value=1, max_value=max(1, max_rank), value=max(1, max_rank), step=1)
+        filtered_queue = [
+            row for row in operator_run.profile_queue
+            if (selected_reason == "전체" or row.get("reason_code") == selected_reason)
+            and int(row.get("priority_rank", 0)) <= selected_max_rank
+        ]
+        st.dataframe(filtered_queue)
         st.download_button("Profile 검토 큐 JSON 다운로드", data=json.dumps(operator_run.profile_queue, ensure_ascii=False, indent=2), file_name="profile_review_priority_queue.json", mime="application/json")
         export_columns = st.columns(2)
         csv_path = DEFAULT_INTERNAL_RUN_DIR / "claim_verification_results.csv"
@@ -417,4 +426,5 @@ if DEFAULT_INTERNAL_RUN_DIR.is_dir():
         st.error("내부 검증 실행 산출물을 읽을 수 없습니다.")
 else:
     st.info("아직 내부 검증 실행 산출물이 없습니다.")
+
 

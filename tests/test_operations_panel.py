@@ -13,3 +13,9 @@ def test_streamlit_single_claim_result_has_json_and_xlsx_downloads() -> None:
 
     assert "판정 결과 JSON 다운로드" in source
     assert "판정 결과 XLSX 다운로드" in source
+
+def test_streamlit_operator_panel_has_profile_reason_and_priority_filters() -> None:
+    source = Path("app/streamlit_app.py").read_text(encoding="utf-8")
+
+    assert "Profile 사유 필터" in source
+    assert "최대 우선순위" in source
