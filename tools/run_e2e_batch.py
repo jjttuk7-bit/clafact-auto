@@ -10,6 +10,7 @@ from config.settings import Settings
 from core.claim_registry_loader import load_claim_registry
 from core.e2e_batch_runner import run_e2e_batch, summarize_e2e_batch
 from core.kosis_api_adapter import build_kosis_api_lookup
+from core.profile_priority_queue import build_profile_priority_queue
 from core.verification_profile_loader import load_verification_profiles
 from schemas.concept import StandardConceptSchema
 from schemas.evidence import EvidenceCellSchema
@@ -48,6 +49,14 @@ def run(
     report_path = output_dir / "coverage_report.json"
     results_path.write_text(
         "".join(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n" for row in results),
+        encoding="utf-8",
+    )
+    profile_queue = build_profile_priority_queue(
+        results,
+        [record.model_dump(mode="json") for record in registry.records],
+    )
+    (output_dir / "profile_review_priority_queue.json").write_text(
+        json.dumps(profile_queue, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
     report = summarize_e2e_batch(results)
