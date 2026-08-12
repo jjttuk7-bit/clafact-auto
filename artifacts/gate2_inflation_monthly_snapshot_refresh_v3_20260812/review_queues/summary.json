@@ -1,0 +1,12 @@
+{
+  "queue_counts": {
+    "evidence": 38
+  },
+  "reason_counts": {
+    "NO_EVIDENCE_COORDINATE_CANDIDATE": 38
+  },
+  "route_counts": {
+    "HOLD": 38
+  },
+  "total_actionable": 38
+}

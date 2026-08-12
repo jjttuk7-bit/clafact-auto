@@ -19,6 +19,7 @@ def test_catalog_adapter_normalizes_official_item_metadata() -> None:
     assert result.item_codes == {'고용률': 'T1', '실업률': 'T2'}
     assert result.dimension_ids == {'지역': 'C1'}
     assert result.unit_names == ['%']
+    assert result.item_units == {'T1': '%', 'T2': '%'}
 
 def test_hydrate_candidate_replaces_catalog_items_with_official_codes() -> None:
     from core.kosis_catalog_adapter import OfficialTableStructure, hydrate_candidate

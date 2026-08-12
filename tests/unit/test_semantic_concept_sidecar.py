@@ -29,33 +29,3 @@ def test_sidecar_materializes_deterministic_matched_and_unresolved_concepts(tmp_
 
     assert [(row["article_id"], row["concept"]["status"]) for row in rows] == [("A1", "MATCHED"), ("A2", "UNRESOLVED")]
     assert json.loads(path.read_text(encoding="utf-8")) == rows
-
-
-def test_sidecar_uses_registered_cpi_detail_profile_before_general_standard() -> None:
-    record = ClaimRegistryRecord.model_validate({
-        "article_id": "A1",
-        "sentence_id": "S1",
-        "article_published_at": "2025-11-04",
-        "source_ref": "test",
-        "claim": {
-            "claim_id": "cpi-detail-1",
-            "source_sentence": "2025년 10월 배추 물가는 전년 동월 대비 34.5% 하락했다.",
-            "indicator": "배추 물가",
-            "value": -34.5,
-            "unit": "%",
-            "time": "2025년 10월",
-            "frequency": "월",
-            "calculation": "GROWTH_RATE",
-            "parse_status": "AUTO_OK",
-        },
-    })
-
-    rows = build_concept_sidecar([record], [])
-
-    assert rows[0]["concept"] == {
-        "concept_id": "CPI_DETAIL:A02A01701",
-        "canonical_name": "배추 소비자물가지수",
-        "standard_key": "cpi_detail:A02A01701",
-        "matched_alias": "배추 물가",
-        "status": "MATCHED",
-    }

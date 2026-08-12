@@ -38,15 +38,49 @@ def semantic_match(
 
 
 def _score(claim: ClaimSchema, candidate: KosisCandidateSchema) -> float:
-    indicator = _normalize(claim.indicator or "")
+    indicators = _indicator_variants(claim)
     labels = [_normalize(label) for label in [candidate.tbl_name, *candidate.core_item_names]]
-    label_score = max((SequenceMatcher(None, indicator, label).ratio() for label in labels), default=0.0)
+    label_score = max(
+        (_label_similarity(indicator, label) for indicator in indicators for label in labels),
+        default=0.0,
+    )
     compatibility = 0.0
     if claim.unit and any(compatible_units(claim.unit, unit) for unit in candidate.unit_names):
         compatibility += 0.1
-    if claim.frequency and claim.frequency == candidate.frequency:
+    if claim.frequency and claim.frequency in {
+        part.strip() for part in (candidate.frequency or "").split("|")
+    }:
         compatibility += 0.1
+    compatibility += _aggregate_scope_score(claim, candidate)
     return 0.8 * label_score + compatibility
+
+
+def _indicator_variants(claim: ClaimSchema) -> set[str]:
+    indicator = _normalize(claim.indicator or "")
+    variants = {indicator} if indicator else set()
+    if indicator.endswith("액"):
+        variants.add(f"{indicator[:-1]}금액")
+    for value in (claim.dimension or {}).values():
+        member = _normalize(value)
+        residual = indicator.replace(member, "") if member else indicator
+        if len(residual) >= 2:
+            variants.add(residual)
+    return variants
+
+
+def _aggregate_scope_score(claim: ClaimSchema, candidate: KosisCandidateSchema) -> float:
+    """Prefer explicitly total tables for dimensionless national aggregate Claims."""
+    if claim.dimension or claim.population:
+        return 0.0
+    if claim.region not in {None, "전국", "대한민국", "한국"}:
+        return 0.0
+    table_name = _normalize(candidate.tbl_name)
+    return 0.15 if any(token in table_name for token in ("총괄", "총계", "전체")) else 0.0
+
+def _label_similarity(indicator: str, label: str) -> float:
+    if len(indicator) >= 2 and indicator in label:
+        return 1.0
+    return SequenceMatcher(None, indicator, label).ratio()
 
 
 def _route(score: float, margin: float, minimum_score: float, min_margin: float) -> tuple[str, str]:

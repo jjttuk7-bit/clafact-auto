@@ -1,0 +1,12 @@
+{
+  "queue_counts": {
+    "verification": 10
+  },
+  "reason_counts": {
+    "CLAIM_PARSE_UNCERTAIN": 10
+  },
+  "route_counts": {
+    "HOLD": 10
+  },
+  "total_actionable": 10
+}

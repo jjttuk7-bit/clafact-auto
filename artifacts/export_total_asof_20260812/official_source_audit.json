@@ -1,0 +1,32 @@
+{
+  "article_published_at": "2025-02-12",
+  "article_time_official_release": {
+    "publisher": "산업통상자원부",
+    "registered_at": "2025-01-02",
+    "reported_export_usd_billion": 683.8,
+    "reported_yoy_percent": 8.2,
+    "url": "https://www.motie.go.kr/kor/article/ATCL4fcf3d8c6/401/view"
+  },
+  "claim_id": "A00555_19",
+  "decision": "Do not backdate the KOSIS final 2024 row. Keep HOLD because no versioned KOSIS row captured on or before the article date is available.",
+  "kosis_final_rows": [
+    {
+      "last_changed": "2024-03-04",
+      "period": "2023",
+      "value_thousand_usd": 632225824
+    },
+    {
+      "last_changed": "2025-02-20",
+      "period": "2024",
+      "value_thousand_usd": 683609488
+    }
+  ],
+  "official_table": {
+    "org_id": "134",
+    "source": "관세청",
+    "stat_id": "1976010",
+    "table_name": "수출입총괄",
+    "tbl_id": "DT_134001_001"
+  },
+  "snapshot_hash": "9745fae71fc0e2e35f55fdbeb38ab8d2ea4e8509533024cec9580395828f9a39"
+}

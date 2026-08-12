@@ -51,16 +51,15 @@ python -m tools.run_dynamic_e2e_batch <run_dir>/derived_registry.jsonl data/sema
 
 The batch maps every Claim at runtime, searches KOSIS when the local Catalog has no viable candidate, refreshes official ITM metadata, resolves evidence cells, fetches values through the KOSIS API, and calculates the verdict in Python. A missing or ambiguous input is retained as a stage-specific `HOLD`; it is never converted into a guessed table coordinate. The current acceptance decision and the historical 1,532nd-record boundary are documented in `docs/reference/INTERNAL_VALIDATION_MVP_ACCEPTANCE.md`.
 
-## Review queues and Profile changes
+## Review queues and KOSIS metadata improvement
 
-- Read `profile_review_priority_queue.json` before any Profile work. Each row is grouped by indicator, calculation, frequency, and unit; use the typed `review_queues/` artifacts for parse and other HOLD reasons.
-- Add a Profile only after recording its KOSIS table, item, every dimension code, unit, publication policy, and immutable official response hash in `data/verification_profiles/profile_evidence_v1.json`.
+- Read the typed `review_queues/` artifacts by stage-specific HOLD reason.
+- Improve Concept aliases or KOSIS Catalog metadata only after confirming the official table, item, dimensions, unit, and publication policy.
 - Re-run only the affected Claim family first. Inspect every resulting `AUTO` row; an AUTO result without an official value is a release blocker.
-- Keep unresolved country, product, age, region, or frequency scope as `HOLD`; never convert a catalog Top-1 candidate into a Profile without coordinate proof.
-
+- Keep unresolved country, product, age, region, or frequency scope as `HOLD`; never convert a catalog Top-1 candidate into an official coordinate without metadata proof.
 ## Transport failure and rollback
 
 - KOSIS API timeouts, network errors, and retryable HTTP-style error codes belong in the retry review queue. They are not evidence of a zero value or a mismatch.
-- If a new Profile changes an existing AUTO result unexpectedly, remove that new Profile document, keep its evidence artifact for audit, and restore the previous run manifest before re-running.
-- The operator console reads persisted artifacts only. It does not mutate Claims, Profiles, KOSIS snapshots, or verdicts.
+- If a KOSIS metadata change affects an existing AUTO result unexpectedly, retain its evidence artifact and restore the previous run manifest before re-running.
+- The operator console reads persisted artifacts only. It does not mutate Claims, KOSIS snapshots, or verdicts.
 

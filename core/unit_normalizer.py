@@ -1,7 +1,10 @@
 """Deterministic measurement-unit scale conversions."""
 
-_SCALE = {"명": 1.0, "천명": 1_000.0, "가구": 1.0, "천가구": 1_000.0}
-_ALIASES = {"person": "명", "persons": "명", "thousand persons": "천명"}
+_SCALE = {"명": 1.0, "천명": 1_000.0, "가구": 1.0, "천가구": 1_000.0, "달러": 1.0, "천달러": 1_000.0}
+_ALIASES = {
+    "person": "명", "persons": "명", "thousand persons": "천명",
+    "천불": "천달러", "천$": "천달러", "usd": "달러", "1,000 usd": "천달러", "thousand dollars": "천달러",
+}
 
 
 def _normalized(unit: str) -> str:

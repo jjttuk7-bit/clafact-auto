@@ -54,3 +54,18 @@ def test_semantic_match_normalizes_korean_whitespace_before_scoring() -> None:
     )
 
     assert result[0].route_status == "AUTO"
+
+
+def test_semantic_match_prefers_total_table_for_dimensionless_national_aggregate() -> None:
+    export_claim = claim(
+        source_sentence="지난해 수출은 전년 대비 8.2% 증가했다.", indicator="수출액",
+        unit="%", time="2024", frequency="년", region=None,
+        calculation="GROWTH_RATE", comparison={"type": "YEAR_OVER_YEAR"},
+    )
+    results = semantic_match(export_claim, [
+        candidate("DT_COSMETICS", "화장품 수입 및 수출액 현황", core_item_names=["수출액"], unit_names=["천불"], frequency="년"),
+        candidate("DT_TOTAL_TRADE", "수출입총괄", core_item_names=["수출금액"], unit_names=["천불"], frequency="월|년"),
+    ])
+
+    assert results[0].candidate_tbl_id == "DT_TOTAL_TRADE"
+    assert results[0].route_status == "AUTO"

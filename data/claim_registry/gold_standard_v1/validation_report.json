@@ -1,0 +1,44 @@
+{
+  "actual_count": 1542,
+  "claim_id_unique": true,
+  "claim_schema_version": "1.0",
+  "count_matches": true,
+  "expected_count": 1542,
+  "load_error_count": 0,
+  "preparsed": true,
+  "registry_version": "gold_standard_v1",
+  "slot_non_null_counts": {
+    "calculation": 1542,
+    "comparison": 1046,
+    "condition": 964,
+    "dimension": 402,
+    "frequency": 971,
+    "indicator": 1542,
+    "population": 106,
+    "region": 331,
+    "source_hint": 161,
+    "time": 971,
+    "unit": 1479,
+    "value": 1479
+  },
+  "slot_null_counts": {
+    "calculation": 0,
+    "comparison": 496,
+    "condition": 578,
+    "dimension": 1140,
+    "frequency": 571,
+    "indicator": 0,
+    "population": 1436,
+    "region": 1211,
+    "source_hint": 1381,
+    "time": 571,
+    "unit": 63,
+    "value": 63
+  },
+  "source_file": "CLAFACT_KOSIS_1542_Claim_12Slot_전수구조화_v1.xlsx",
+  "source_key_unique": true,
+  "source_refs": [
+    "gold_standard_v1"
+  ],
+  "source_sheet": "01_Claim_12Slot_전체"
+}

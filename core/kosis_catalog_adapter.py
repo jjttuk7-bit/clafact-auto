@@ -15,6 +15,7 @@ class OfficialTableStructure:
     unit_names: list[str]
     dimension_members: dict[str, list[str]] = field(default_factory=dict)
     dimension_member_codes: dict[str, dict[str, str]] = field(default_factory=dict)
+    item_units: dict[str, str] = field(default_factory=dict)
 
 
 class KosisCatalogAdapter:
@@ -35,6 +36,7 @@ def normalize_item_metadata(rows: Iterable[Mapping[str, object]], *, table_id: s
     dimension_members: dict[str, list[str]] = {}
     dimension_member_codes: dict[str, dict[str, str]] = {}
     unit_names: list[str] = []
+    item_units: dict[str, str] = {}
     for row in rows:
         if str(row.get("TBL_ID", "")) != table_id:
             raise ValueError("KOSIS item metadata response does not match requested table")
@@ -44,6 +46,8 @@ def normalize_item_metadata(rows: Iterable[Mapping[str, object]], *, table_id: s
         is_measurement_item = dimension_id == "ITEM" or bool(unit)
         if is_measurement_item and item_name and item_id:
             item_codes[item_name] = item_id
+            if unit:
+                item_units[item_id] = unit
         if dimension_name and dimension_id and dimension_id != "ITEM":
             dimension_ids[dimension_name] = dimension_id
         if not is_measurement_item and dimension_id and item_name and item_id:
@@ -51,8 +55,11 @@ def normalize_item_metadata(rows: Iterable[Mapping[str, object]], *, table_id: s
             dimension_member_codes.setdefault(dimension_id, {})[item_name] = item_id
         if unit and unit not in unit_names:
             unit_names.append(unit)
+    if not item_codes:
+        raise ValueError("KOSIS item metadata does not contain a measurement item")
     return OfficialTableStructure(
-        table_id, item_codes, dimension_ids, unit_names, dimension_members, dimension_member_codes
+        table_id, item_codes, dimension_ids, unit_names, dimension_members,
+        dimension_member_codes, item_units,
     )
 
 
@@ -69,6 +76,7 @@ def hydrate_candidate(candidate: KosisCandidateSchema, official_structure: Offic
             "dimension_members": official_structure.dimension_members,
             "dimension_member_codes": official_structure.dimension_member_codes,
             "unit_names": list(official_structure.unit_names),
+            "item_units": dict(official_structure.item_units),
             "metadata_status": "OFFICIAL_ITEM_METADATA_READY",
         }
     )

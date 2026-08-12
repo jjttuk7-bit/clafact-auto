@@ -1,4 +1,4 @@
-"""Profile-free KOSIS verification for structured Claims."""
+"""KOSIS verification for structured Claims."""
 
 from __future__ import annotations
 
@@ -37,8 +37,7 @@ def verify_claim_against_kosis(
 ) -> VerdictSchema:
     """Verify one already-structured Claim through the normal KOSIS pipeline.
 
-    Candidate metadata and the official value API, rather than a registered
-    verification profile, determine whether the Claim can be auto-verified.
+    Candidate metadata and the official value API determine whether the Claim can be auto-verified.
     """
     recorder = VerificationTraceRecorder(claim.claim_id).claim_parsed().concept_mapped().catalog_searched()
     guarded_candidates = [candidate for candidate in candidates if apply_hard_guard(claim, candidate).passed]
@@ -105,10 +104,12 @@ def verify_claim_against_kosis(
         CalculationPlan(calculation_type=calculation_type, required_cells=evidence_cells), official_values
     )
     recorder.calculation_completed()
-    claim_unit_value = (
-        calculated if calculation_type in {"GROWTH_RATE", "SHARE"}
-        else convert_value(calculated, cell.unit or "", claim.unit or "")
-    )
+    if calculation_type == "DIFFERENCE" and _is_percentage_point_unit(claim.unit):
+        claim_unit_value = _direction_checked_difference(calculated, claim)
+    elif calculation_type in {"GROWTH_RATE", "SHARE"}:
+        claim_unit_value = calculated
+    else:
+        claim_unit_value = convert_value(calculated, cell.unit or "", claim.unit or "")
     verdict = make_verdict(
         claim.claim_id, claim.value, official_values, claim_unit_value, tolerance=_claim_tolerance(claim)
     )
@@ -117,14 +118,24 @@ def verify_claim_against_kosis(
 
 
 
+def _is_percentage_point_unit(unit: str | None) -> bool:
+    return "".join((unit or "").split()).casefold() in {"%p", "%포인트", "퍼센트포인트"}
+
+
+def _direction_checked_difference(calculated: float, claim: ClaimSchema) -> float:
+    direction = ((claim.condition or {}).get("direction") or "").strip().upper()
+    actual_direction = "INCREASE" if calculated > 0 else "DECREASE"
+    return abs(calculated) if direction == actual_direction else -abs(calculated)
+
+
 def _calculation_cells(
     cell: EvidenceCellSchema, claim: ClaimSchema, calculation_type: str
 ) -> list[EvidenceCellSchema] | None:
     if calculation_type == "DIRECT_VALUE":
         return [cell]
-    if calculation_type != "GROWTH_RATE":
+    if calculation_type not in {"GROWTH_RATE", "DIFFERENCE"}:
         return None
-    comparison = (claim.comparison or {}).get("type")
+    comparison = _comparison_type(claim.comparison)
     comparison_period = _comparison_period(cell.prd_de, comparison)
     if comparison_period is None:
         return None
@@ -135,14 +146,35 @@ def _calculation_cells(
     return [cell, comparison_cell]
 
 
+def _comparison_type(comparison: dict[str, str] | None) -> str | None:
+    for value in (comparison or {}).values():
+        normalized = re.sub(r"[\s_-]+", "", value).casefold()
+        if normalized in {
+            "yearoveryear", "전년대비", "전년동월대비", "전년동월비", "전년비", "전년",
+        }:
+            return "YEAR_OVER_YEAR"
+        if normalized in {"monthovermonth", "전월대비", "전월비", "전월"}:
+            return "MONTH_OVER_MONTH"
+        if normalized in {"quarteroverquarter", "전분기대비", "전분기비", "전분기"}:
+            return "QUARTER_OVER_QUARTER"
+    return None
+
+
 def _comparison_period(period: str, comparison: str | None) -> str | None:
     monthly = re.fullmatch(r"(\d{4})-(\d{2})", period)
     annual = re.fullmatch(r"\d{4}", period)
+    quarterly = re.fullmatch(r"(\d{4})-Q([1-4])", period, re.IGNORECASE)
     if comparison == "YEAR_OVER_YEAR":
         if monthly:
             return f"{int(monthly.group(1)) - 1:04d}-{monthly.group(2)}"
         if annual:
             return f"{int(period) - 1:04d}"
+        if quarterly:
+            return f"{int(quarterly.group(1)) - 1:04d}-Q{quarterly.group(2)}"
+    if comparison == "QUARTER_OVER_QUARTER" and quarterly:
+        year, quarter = int(quarterly.group(1)), int(quarterly.group(2))
+        previous_year, previous_quarter = (year - 1, 4) if quarter == 1 else (year, quarter - 1)
+        return f"{previous_year:04d}-Q{previous_quarter}"
     if comparison == "MONTH_OVER_MONTH" and monthly:
         year, month = int(monthly.group(1)), int(monthly.group(2))
         previous_year, previous_month = (year - 1, 12) if month == 1 else (year, month - 1)

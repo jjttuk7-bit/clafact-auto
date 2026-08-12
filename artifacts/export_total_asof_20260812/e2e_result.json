@@ -1,0 +1,115 @@
+{
+  "article_id": "A00555",
+  "calculated_value": null,
+  "claim_id": "A00555_19",
+  "evidence_cells": [
+    {
+      "canonical_key": "ORG=134|TBL=DT_134001_001|ITM=T002|OBJ=13999000|MEMBER=데이터|PRD_SE=년|PRD_DE=2024",
+      "dimension_codes": {
+        "13999000": "DATA"
+      },
+      "dimension_members": {
+        "13999000": "데이터"
+      },
+      "itm_id": "T002",
+      "member_code": "데이터",
+      "obj_id": "13999000",
+      "org_id": "134",
+      "prd_de": "2024",
+      "prd_se": "년",
+      "status": "CONFIRMED",
+      "tbl_id": "DT_134001_001",
+      "unit": "천불"
+    },
+    {
+      "canonical_key": "ORG=134|TBL=DT_134001_001|ITM=T002|OBJ=13999000|MEMBER=데이터|PRD_SE=년|PRD_DE=2023",
+      "dimension_codes": {
+        "13999000": "DATA"
+      },
+      "dimension_members": {
+        "13999000": "데이터"
+      },
+      "itm_id": "T002",
+      "member_code": "데이터",
+      "obj_id": "13999000",
+      "org_id": "134",
+      "prd_de": "2023",
+      "prd_se": "년",
+      "status": "CONFIRMED",
+      "tbl_id": "DT_134001_001",
+      "unit": "천불"
+    }
+  ],
+  "evidence_values": [],
+  "execution_trace": {
+    "calculation_version": "1.0",
+    "claim_id": "A00555_19",
+    "claim_schema_version": "1.0",
+    "events": [
+      {
+        "output_ref": null,
+        "reason_code": null,
+        "stage": "CLAIM_PARSE",
+        "status": "PASS"
+      },
+      {
+        "output_ref": null,
+        "reason_code": null,
+        "stage": "SEMANTIC_MAPPING",
+        "status": "PASS"
+      },
+      {
+        "output_ref": null,
+        "reason_code": null,
+        "stage": "CATALOG_SEARCH",
+        "status": "PASS"
+      },
+      {
+        "output_ref": null,
+        "reason_code": null,
+        "stage": "HARD_GUARD",
+        "status": "PASS"
+      },
+      {
+        "output_ref": "margin=1.0",
+        "reason_code": null,
+        "stage": "SEMANTIC_MATCH",
+        "status": "PASS"
+      },
+      {
+        "output_ref": null,
+        "reason_code": null,
+        "stage": "EVIDENCE_CELL",
+        "status": "PASS"
+      },
+      {
+        "output_ref": null,
+        "reason_code": "AS_OF_UNAVAILABLE",
+        "stage": "OFFICIAL_VALUE_FETCH",
+        "status": "HOLD"
+      }
+    ],
+    "kosis_catalog_version": "1.0",
+    "matching_version": "1.0",
+    "preprocess_version": "1.0",
+    "route_status": "HOLD",
+    "semantic_standard_version": "1.0"
+  },
+  "kosis_discovery_snapshot_hash": "9745fae71fc0e2e35f55fdbeb38ab8d2ea4e8509533024cec9580395828f9a39",
+  "official_value": null,
+  "reason_code": "AS_OF_UNAVAILABLE",
+  "route_status": "HOLD",
+  "sentence_id": "19",
+  "snapshot_hash": "",
+  "source_sentence": "지난해 수출은 전년 대비 8.2% 증가하며 역대 최대 실적을 기록했다.",
+  "verdict": "UNDETERMINED",
+  "versions": {
+    "calculation_version": "1.0",
+    "claim_schema_version": "1.0",
+    "dataset_version": "unversioned",
+    "kosis_catalog_version": "1.0",
+    "matching_version": "1.0",
+    "preprocess_version": "1.0",
+    "semantic_standard_version": "1.0"
+  }
+}

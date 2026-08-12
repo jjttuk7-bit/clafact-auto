@@ -1,7 +1,7 @@
 [
   {"concept_id":"C000001","canonical_name":"재배면적","standard_key":"cultivated_area","aliases":["재배면적","과수원 면적"]},
   {"concept_id":"C000002","canonical_name":"농가 수","standard_key":"farm_household_count","aliases":["농가 수","농가수"]},
-  {"concept_id":"C000003","canonical_name":"수출액","standard_key":"export_value","aliases":["수출액","수출 금액"]},
+  {"concept_id":"C000003","canonical_name":"수출액","standard_key":"export_value","aliases":["수출액","수출 금액"],"kosis_search_terms":["수출입총괄","국가별 수출액 수입액","수출금액"]},
   {"concept_id":"C000004","canonical_name":"해외건설 수주실적","standard_key":"overseas_construction_orders","aliases":["해외건설 수주실적","해외건설 실적","해외건설"]},
   {"concept_id":"C000005","canonical_name":"건설투자","standard_key":"construction_investment","aliases":["건설투자"]},
   {"concept_id":"C000006","canonical_name":"건설수주액","standard_key":"construction_order_value","aliases":["건설수주액","건설 수주액","건설수주"]},
@@ -24,7 +24,7 @@
   {"concept_id":"C000023","canonical_name":"1인 가구 수","standard_key":"one_person_household_count","aliases":["1인 가구 수","1인가구 수"]},
   {"concept_id":"C000024","canonical_name":"외국인주민 수","standard_key":"foreign_resident_count","aliases":["외국인주민 수","외국인주민수"]},
   {"concept_id":"C000025","canonical_name":"소비자물가","standard_key":"consumer_price","aliases":["소비자물가","소비자 물가","소비자물가지수"]},
-  {"concept_id":"C000026","canonical_name":"물가상승률","standard_key":"inflation_rate","aliases":["물가상승률","물가 상승률","소비자물가 상승률"]},
+  {"concept_id":"C000026","canonical_name":"물가상승률","standard_key":"inflation_rate","aliases":["물가상승률","물가 상승률","소비자물가 상승률","가공식품 물가"],"kosis_search_terms":["소비자물가지수 품목별","소비자물가지수"]},
   {"concept_id":"C000027","canonical_name":"수입물가지수","standard_key":"import_price_index","aliases":["수입물가지수"]},
   {"concept_id":"C000028","canonical_name":"생활물가지수","standard_key":"living_price_index","aliases":["생활물가지수","생활물가 상승률"]},
   {"concept_id":"C000029","canonical_name":"생산자물가지수","standard_key":"producer_price_index","aliases":["생산자물가지수"]},

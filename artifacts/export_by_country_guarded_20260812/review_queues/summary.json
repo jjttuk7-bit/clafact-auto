@@ -1,0 +1,19 @@
+{
+  "queue_counts": {
+    "catalog": 46,
+    "evidence": 5,
+    "verification": 11
+  },
+  "reason_counts": {
+    "AS_OF_UNAVAILABLE": 1,
+    "CLAIM_PARSE_UNCERTAIN": 6,
+    "MISSING_COMPARISON_FOR_GROWTH_RATE": 1,
+    "NO_DATA": 3,
+    "NO_EVIDENCE_COORDINATE_CANDIDATE": 5,
+    "NO_HARD_GUARD_CANDIDATE": 46
+  },
+  "route_counts": {
+    "HOLD": 62
+  },
+  "total_actionable": 62
+}

@@ -58,10 +58,7 @@ def test_single_claim_preserves_parse_review_route_without_downstream_calls(
                 parse_status=parse_status, parse_reason=parse_reason,
             )
 
-    downstream_targets = (
-        "core.cpi_growth_resolver.resolve_cpi_growth_plan",
-        "core.growth_verdict.make_cpi_growth_verdict",
-        "core.semantic_normalizer.normalize_concept",
+    downstream_targets = (        "core.semantic_normalizer.normalize_concept",
         "core.catalog_search.search_semantic_catalog",
         "core.catalog_binding.apply_catalog_binding",
         "core.catalog_discovery.discover_catalog_candidates",
@@ -332,8 +329,10 @@ def test_streamlit_operator_panel_uses_configured_run_directory(monkeypatch, tmp
     (run_dir / "claim_verification_results.jsonl").write_text(
         '{"claim_id":"C1","route_status":"AUTO"}\n', encoding="utf-8"
     )
-    (run_dir / "profile_review_priority_queue.json").write_text(
-        '[{"priority_rank":1,"reason_code":"PROFILE_NOT_FOUND"}]', encoding="utf-8"
+    review_dir = run_dir / "review_queues"
+    review_dir.mkdir()
+    (review_dir / "parse.jsonl").write_text(
+        '{"claim_id":"C2","reason_code":"CLAIM_PARSE_UNCERTAIN"}\n', encoding="utf-8"
     )
     (run_dir / "claim_verification_results.csv").write_text("claim_id\nC1\n", encoding="utf-8")
     (run_dir / "claim_verification_results.xlsx").write_bytes(b"xlsx")

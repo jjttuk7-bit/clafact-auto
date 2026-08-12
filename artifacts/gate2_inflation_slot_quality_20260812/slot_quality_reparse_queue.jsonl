@@ -1,0 +1,23 @@
+{"claim_id": "A00581_4", "detected_modifier": "가공식품", "reason_code": "CLAIM_PARSE_UNCERTAIN", "source_sentence": "작년 11월만 해도 1.3%에 그쳤던 가공식품 물가 오름폭은 12월(2%)부터 두 달 연속 커져 작년 1월(3.2%) 이후 가장 높은 상승률을 기록했다."}
+{"claim_id": "A01190_12", "detected_modifier": "외식", "reason_code": "CLAIM_PARSE_UNCERTAIN", "source_sentence": "외식 물가는 지난 2월(3%)에 이어 지난달에도 3% 상승했는데, 생선회(5.4%)와 치킨(5.3%) 등 소비자들이 자주 찾는 외식 품목들의 가격이 크게 오르며 체감 물가상승률을 높였다."}
+{"claim_id": "A01204_9", "detected_modifier": "가공식품", "reason_code": "CLAIM_PARSE_UNCERTAIN", "source_sentence": "지난달 가공식품 물가는 전년 대비 3.1% 올랐는데, 이 같은 상승 폭은 2023년 12월(4.2%) 이후 최대치다."}
+{"claim_id": "A01204_13", "detected_modifier": "외식", "reason_code": "CLAIM_PARSE_UNCERTAIN", "source_sentence": "지난달 외식 물가 역시 전년 대비 3.0% 오르면서 2개월 연속 3% 상승을 기록했다."}
+{"claim_id": "A01584_1", "detected_modifier": "근원물가", "reason_code": "CLAIM_PARSE_UNCERTAIN", "source_sentence": "지난달 농산물과 석유류 등 가격 변동성이 큰 품목들을 제외해 물가의 기조적인 흐름을 보여주는 ‘근원물가’가 전년 동월 대비 2.4% 오르면서 작년 3월(2.4%) 이후 13개월 만에 상승폭이 가장 컸다."}
+{"claim_id": "A01584_13", "detected_modifier": "근원물가", "reason_code": "CLAIM_PARSE_UNCERTAIN", "source_sentence": "이로 인해 근원물가에 해당하는 ‘농산물 및 석유류 제외 지수’는 전년 동월 대비 2.4% 오르면서 작년 3월(2.4%) 이후 13개월 만에 가장 높은 상승폭을 보였다."}
+{"claim_id": "A01589_13", "detected_modifier": "근원물가", "reason_code": "CLAIM_PARSE_UNCERTAIN", "source_sentence": "농산물 및 석유류 등 가격 변동성이 큰 품목들을 제외하고 물가의 기조적인 흐름을 나타내는 ‘근원물가’는 1년 전보다 2.4% 오르면서 작년 3월(2.4%) 이후 13개월 만에 최대 상승 폭을 보였다."}
+{"claim_id": "A01629_3", "detected_modifier": "가공식품", "reason_code": "CLAIM_PARSE_UNCERTAIN", "source_sentence": "5일 통계청에 따르면, 지난달 가공식품 물가는 전년 동월 대비 4.1% 올라 2023년 12월(4.2%) 이후 1년 4개월 만에 가장 높은 상승률을 기록했다."}
+{"claim_id": "A01629_5", "detected_modifier": "가공식품", "reason_code": "CLAIM_PARSE_UNCERTAIN", "source_sentence": "가공식품 물가 상승률은 작년 11월 1.3%에 그쳤다가 12월(2%)부터 지난달까지 5개월 연속으로 상승 폭이 커졌다."}
+{"claim_id": "A01629_8", "detected_modifier": "외식", "reason_code": "CLAIM_PARSE_UNCERTAIN", "source_sentence": "같은 이유로 햄버거와 커피 등 외식 물가도 3.2% 올라 작년 3월 이후 1년 1개월 만에 가장 높은 상승률을 기록했다."}
+{"claim_id": "A01629_34", "detected_modifier": "외식", "reason_code": "CLAIM_PARSE_UNCERTAIN", "source_sentence": "전월세 등 주택 임대 가격 물가 지수나 내구재처럼 가격 변동성이 높지 않은 커피 외식 물가 상승률도 3.2%에 달했다."}
+{"claim_id": "A02010_8", "detected_modifier": "석유류", "reason_code": "CLAIM_PARSE_UNCERTAIN", "source_sentence": "석유류 물가는 작년 12월(1%)부터 상승하기 시작해 올 1월 상승폭이 7.3%까지 올랐다."}
+{"claim_id": "A02010_17", "detected_modifier": "가공식품", "reason_code": "CLAIM_PARSE_UNCERTAIN", "source_sentence": "가공식품 물가 상승률은 전달과 같은 4.1%를 기록, 2023년 12월(4.2%) 이후 가장 높은 수준으로 집계됐다."}
+{"claim_id": "A02167_21", "detected_modifier": "외식", "reason_code": "CLAIM_PARSE_UNCERTAIN", "source_sentence": "15일 통계청 국가 통계 포털에 따르면, 지난달 외식 부문 물가를 5년 전인 2020년 5월과 비교하면 24.8% 상승했다."}
+{"claim_id": "A02375_24", "detected_modifier": "외식", "reason_code": "CLAIM_PARSE_UNCERTAIN", "source_sentence": "지난달 외식 물가 상승률도 3.1%로 집계돼, 지난 2월(3%)부터 3달 연속 3%대 상승률을 보였다."}
+{"claim_id": "A02385_26", "detected_modifier": "가공식품", "reason_code": "CLAIM_PARSE_UNCERTAIN", "source_sentence": "지난달 가공식품 물가 상승 폭은 2023년 11월(5.1%) 이후 19개월 만에 최고다."}
+{"claim_id": "A02434_4", "detected_modifier": "가공식품", "reason_code": "CLAIM_PARSE_UNCERTAIN", "source_sentence": "통계청에 따르면, 지난달 가공식품 물가 상승률은 전년 대비 4.6%로, 2023년 11월(5.1%) 이후 19개월 만에 가장 높았다."}
+{"claim_id": "A02603_14", "detected_modifier": "공공서비스", "reason_code": "CLAIM_PARSE_UNCERTAIN", "source_sentence": "공공서비스 물가 상승률은 지난달 -3.6%였으나, 이달 상승 전환했다."}
+{"claim_id": "A02603_16", "detected_modifier": "개인 서비스", "reason_code": "CLAIM_PARSE_UNCERTAIN", "source_sentence": "개인 서비스 물가 상승률은 지난달 3.1%에서 2.9% 상승으로 상승폭을 축소했다."}
+{"claim_id": "A02605_33", "detected_modifier": "근원물가", "reason_code": "CLAIM_PARSE_UNCERTAIN", "source_sentence": "근원물가(식료품·에너지 제외 지수)는 전년 동월 대비 2.0% 올라 전월(1.3%)보다 오름폭이 확대됐다."}
+{"claim_id": "A02614_17", "detected_modifier": "주택, 수도, 전기 및 연료", "reason_code": "CLAIM_PARSE_UNCERTAIN", "source_sentence": "전월세를 포함한 주거비와 각종 공공요금 등이 포함된 '주택, 수도, 전기 및 연료' 물가는 16.7%, '의류 및 신발'은 16.2%로 평균 상승률과 거의 유사했다."}
+{"claim_id": "A02616_2", "detected_modifier": "식료품·비주류 음료", "reason_code": "CLAIM_PARSE_UNCERTAIN", "source_sentence": "국가데이터처에 따르면, 지난달 식료품·비주류 음료 물가는 5년 전(2020년 9월) 대비 22.9% 상승했다."}
+{"claim_id": "A02682_14", "detected_modifier": "석유류", "reason_code": "CLAIM_PARSE_UNCERTAIN", "source_sentence": "국제유가 상승세로 석유류 물가는 4.8% 상승하면서 지난 2월(6.3%) 이후 가장 높은 상승 폭을 보였다."}

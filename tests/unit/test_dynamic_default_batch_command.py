@@ -31,8 +31,8 @@ def test_default_batch_command_uses_dynamic_catalog_without_profiles(tmp_path) -
     result = json.loads(results_path.read_text(encoding="utf-8").strip())
     report = json.loads(report_path.read_text(encoding="utf-8"))
     assert result["route_status"] == "HOLD"
-    assert result["profile_id"] is None
-    assert report["profile_dependency"] == "none"
+    assert "profile_id" not in result
+    assert "profile_dependency" not in report
 
 
 def test_select_records_returns_a_stable_batch_range() -> None:

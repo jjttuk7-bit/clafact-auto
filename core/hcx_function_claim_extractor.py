@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import uuid
+from datetime import date
 from typing import Any
 from urllib.request import Request, urlopen
 
@@ -13,7 +14,7 @@ from core.claim_output_contract import (
     ClaimOutputPayload,
     emit_claim_tool_definition,
 )
-from core.hcx_claim_extractor import SYSTEM_PROMPT, _dotenv_value
+from core.hcx_claim_extractor import SYSTEM_PROMPT, _claim_input, _dotenv_value
 from schemas.claim import ClaimSchema
 
 
@@ -23,12 +24,14 @@ FUNCTION_SYSTEM_PROMPT = SYSTEM_PROMPT.replace(
 )
 
 
-def build_function_claim_request(sentence: str) -> dict[str, object]:
+def build_function_claim_request(
+    sentence: str, *, article_published_at: date | None = None
+) -> dict[str, object]:
     """Build a Function Calling request that exposes only emit_claim."""
     return {
         "messages": [
             {"role": "system", "content": FUNCTION_SYSTEM_PROMPT},
-            {"role": "user", "content": sentence},
+            {"role": "user", "content": _claim_input(sentence, article_published_at)},
         ],
         "temperature": 0,
         "maxCompletionTokens": 1024,
@@ -68,13 +71,13 @@ class HcxFunctionClaimExtractor:
         self.api_key = api_key or os.getenv("HCX_API_KEY") or _dotenv_value("HCX_API_KEY")
         self.model = model
 
-    def extract(self, sentence: str) -> ClaimSchema:
+    def extract(self, sentence: str, *, article_published_at: date | None = None) -> ClaimSchema:
         if not self.api_key:
             raise RuntimeError("HCX_API_KEY is not configured")
 
         request = Request(
             f"https://clovastudio.stream.ntruss.com/v3/chat-completions/{self.model}",
-            data=json.dumps(build_function_claim_request(sentence)).encode(),
+            data=json.dumps(build_function_claim_request(sentence, article_published_at=article_published_at)).encode(),
             headers={
                 "Authorization": f"Bearer {self.api_key}",
                 "X-NCP-CLOVASTUDIO-REQUEST-ID": str(uuid.uuid4()),

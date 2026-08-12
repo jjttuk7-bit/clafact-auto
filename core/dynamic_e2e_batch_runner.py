@@ -1,4 +1,4 @@
-"""Profile-free batch execution over the shared dynamic KOSIS engine."""
+"""Batch execution over the shared dynamic KOSIS engine."""
 
 from __future__ import annotations
 
@@ -11,10 +11,14 @@ from typing import Any
 from core.catalog_discovery import build_catalog_discovery_queries, discover_catalog_candidates
 from core.catalog_metadata_refresh import refresh_item_metadata
 from core.catalog_search import search_semantic_catalog
+from core.claim_slot_quality import assess_claim_slot_quality
+from core.hard_guard import apply_hard_guard
 from core.data_loader import SemanticStandardRecord
 from core.dynamic_kosis_verifier import verify_claim_against_kosis
+from core.export_claim_scope import classify_export_claim_scope
 from core.kosis_fetcher import OfficialValueFetcher
 from core.kosis_live_catalog import KosisLiveCatalogSearch
+from core.kosis_discovery_snapshot import DiscoverySnapshot, SnapshotCatalogSearch, SnapshotValueLookup
 from core.kosis_openapi_transport import get_meta
 from core.pipeline_trace import PipelineTrace
 from core.semantic_normalizer import normalize_concept
@@ -33,12 +37,14 @@ def run_dynamic_e2e_batch(
     api_lookup: Callable[[EvidenceCellSchema], list[dict[str, Any]]] | None = None,
     kosis_api_key: str | None = None,
     live_search: KosisLiveCatalogSearch | None = None,
+    discovery_snapshot: DiscoverySnapshot | None = None,
+    refresh_discovery_snapshot: bool = False,
     claim_reparser: Callable[[ClaimSchema, date], ClaimSchema] | None = None,
     reparse_workers: int = 1,
 ) -> list[dict[str, Any]]:
     """Run structured Claims through shared mapping, KOSIS discovery, and verdict stages.
 
-    No verification profile is accepted or consulted. KOSIS ITM metadata is cached per
+    KOSIS ITM metadata is cached per
     official table so a batch never repeats the same metadata request for every Claim.
     """
     materialized_records = list(records)
@@ -60,6 +66,12 @@ def run_dynamic_e2e_batch(
 
     catalog_rows = list(catalog)
     standard_rows = list(standard_concepts)
+    snapshot_search = (
+        SnapshotCatalogSearch(discovery_snapshot, live_search, refresh=refresh_discovery_snapshot)
+        if discovery_snapshot is not None
+        else live_search
+    )
+    snapshot_hash = discovery_snapshot.content_hash if discovery_snapshot is not None else None
     value_cache: dict[str, list[dict[str, Any]]] = {}
 
     def cached_api_lookup(cell: EvidenceCellSchema) -> list[dict[str, Any]]:
@@ -69,22 +81,43 @@ def run_dynamic_e2e_batch(
             value_cache[cell.canonical_key] = api_lookup(cell)
         return value_cache[cell.canonical_key]
 
+    value_lookup = (
+        SnapshotValueLookup(discovery_snapshot, cached_api_lookup if api_lookup is not None else None, refresh=refresh_discovery_snapshot)
+        if discovery_snapshot is not None
+        else (cached_api_lookup if api_lookup is not None else None)
+    )
     fetcher = OfficialValueFetcher(
         snapshot_paths,
-        api_lookup=cached_api_lookup if api_lookup is not None else None,
-        prefer_api=api_lookup is not None,
+        api_lookup=value_lookup,
+        prefer_api=value_lookup is not None,
     )
-    metadata_cache: dict[tuple[str, str], list[dict[str, object]]] = {}
+    metadata_cache: dict[tuple[str, str, str], list[dict[str, object]]] = {}
     live_candidate_cache: dict[tuple[str, ...], list[KosisCandidateSchema]] = {}
     def cached_metadata_fetcher(
         _api_key: str, org_id: str, table_id: str, **kwargs: Any
     ) -> list[dict[str, object]]:
-        cache_key = (org_id, table_id)
+        meta_type = str(kwargs.get("meta_type", "ITM")).upper()
+        cache_key = (org_id, table_id, meta_type)
         if cache_key not in metadata_cache:
-            try:
-                metadata_cache[cache_key] = list(get_meta(_api_key, org_id, table_id, **kwargs))
-            except RuntimeError:
+            frozen_metadata = (
+                discovery_snapshot.metadata_for(org_id, table_id, meta_type=meta_type)
+                if discovery_snapshot is not None
+                else None
+            )
+            if frozen_metadata is not None:
+                metadata_cache[cache_key] = frozen_metadata
+            elif discovery_snapshot is not None and not refresh_discovery_snapshot:
                 metadata_cache[cache_key] = []
+            else:
+                try:
+                    fetched = get_meta(_api_key, org_id, table_id, **kwargs)
+                    metadata_cache[cache_key] = list(fetched) if isinstance(fetched, list) else [fetched]
+                    if discovery_snapshot is not None:
+                        discovery_snapshot.record_metadata(
+                            org_id, table_id, metadata_cache[cache_key], meta_type=meta_type
+                        )
+                except RuntimeError:
+                    metadata_cache[cache_key] = []
         return metadata_cache[cache_key]
 
     def early_hold(base: dict[str, Any], stage: str, reason_code: str) -> dict[str, Any]:
@@ -94,6 +127,7 @@ def run_dynamic_e2e_batch(
         return {
             **base, "route_status": "HOLD", "reason_code": reason_code,
             "execution_trace": trace.model_dump(mode="json"),
+            "kosis_discovery_snapshot_hash": snapshot_hash,
             "versions": {
                 "dataset_version": "unversioned", "preprocess_version": trace.preprocess_version,
                 "claim_schema_version": trace.claim_schema_version,
@@ -115,13 +149,32 @@ def run_dynamic_e2e_batch(
             "article_id": record.article_id,
             "sentence_id": record.sentence_id,
             "claim_id": claim.claim_id,
-            "profile_id": None,
+            "source_sentence": claim.source_sentence,
             "official_value": None,
             "snapshot_hash": "",
             "versions": {},
+            "kosis_discovery_snapshot_hash": snapshot_hash,
         }
         if claim.parse_status != "AUTO_OK":
             results.append(early_hold(base, "CLAIM_PARSE", claim.parse_reason or "CLAIM_PARSE_UNCERTAIN"))
+            continue
+        export_scope = classify_export_claim_scope(claim, record.article_published_at)
+        if export_scope.reason_code is not None:
+            held = early_hold(base, "CLAIM_PARSE", export_scope.reason_code)
+            held["export_scope"] = {
+                "route": export_scope.route,
+                "reason_code": export_scope.reason_code,
+            }
+            results.append(held)
+            continue
+        slot_quality = assess_claim_slot_quality(claim)
+        if slot_quality.status == "HOLD":
+            held = early_hold(base, "CLAIM_PARSE", slot_quality.reason_code or "CLAIM_PARSE_UNCERTAIN")
+            held["slot_quality"] = {
+                "reason_code": slot_quality.reason_code,
+                "detected_modifier": slot_quality.detected_modifier,
+            }
+            results.append(held)
             continue
         if record.article_published_at is None:
             results.append(early_hold(base, "OFFICIAL_VALUE_FETCH", "ARTICLE_DATE_REQUIRED"))
@@ -131,19 +184,23 @@ def run_dynamic_e2e_batch(
             results.append(early_hold(base, "SEMANTIC_MAPPING", "CONCEPT_NOT_FOUND"))
             continue
         local_candidates = search_semantic_catalog(claim, concept, catalog_rows)
-        if local_candidates or live_search is None:
+        local_guarded = [candidate for candidate in local_candidates if apply_hard_guard(claim, candidate).passed]
+        if (local_guarded and not concept.kosis_search_terms) or snapshot_search is None:
             candidates = local_candidates
         else:
             search_query = tuple(build_catalog_discovery_queries(claim, concept))
             if search_query not in live_candidate_cache:
-                live_candidate_cache[search_query] = discover_catalog_candidates(
-                    claim, concept, local_candidates, live_search
-                )
+                discovered = discover_catalog_candidates(claim, concept, [], snapshot_search)
+                by_key = {(candidate.org_id, candidate.tbl_id): candidate for candidate in local_candidates}
+                for candidate in discovered:
+                    by_key.setdefault((candidate.org_id, candidate.tbl_id), candidate)
+                live_candidate_cache[search_query] = list(by_key.values())
             candidates = live_candidate_cache[search_query]
         candidates = refresh_item_metadata(
             candidates,
             kosis_api_key,
             metadata_fetcher=cached_metadata_fetcher,
+            allow_without_api_key=discovery_snapshot is not None,
         )
         verdict = verify_claim_against_kosis(
             claim, concept, candidates, article_date=record.article_published_at, official_fetcher=fetcher
@@ -168,4 +225,8 @@ def run_dynamic_e2e_batch(
                 "calculation_version": verdict.calculation_version,
             },
         })
+    if discovery_snapshot is not None:
+        final_snapshot_hash = discovery_snapshot.content_hash
+        for result in results:
+            result['kosis_discovery_snapshot_hash'] = final_snapshot_hash
     return results

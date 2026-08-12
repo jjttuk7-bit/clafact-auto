@@ -6,7 +6,6 @@ import json
 from collections.abc import Iterable
 from pathlib import Path
 
-from core.cpi_growth_resolver import resolve_cpi_growth_plan
 from core.data_loader import SemanticStandardRecord
 from core.semantic_normalizer import normalize_concept
 from schemas.claim_registry import ClaimRegistryRecord
@@ -20,12 +19,7 @@ def build_concept_sidecar(
     standard_list = list(standards)
     rows = []
     for record in records:
-        registered_plan = resolve_cpi_growth_plan(record.claim)
-        concept = (
-            registered_plan.concept
-            if registered_plan is not None
-            else normalize_concept(record.claim, standard_list)
-        )
+        concept = normalize_concept(record.claim, standard_list)
         rows.append(
             {
                 "article_id": record.article_id,

@@ -32,4 +32,8 @@ def test_resolve_relative_time_keeps_unresolved_relative_time_without_article_da
         parse_status="AUTO_OK",
     )
 
-    assert resolve_relative_time(claim, None).time == "지난달"
+    result = resolve_relative_time(claim, None)
+
+    assert result.time == "지난달"
+    assert result.parse_status == "HOLD"
+    assert result.parse_reason == "ARTICLE_DATE_REQUIRED_FOR_RELATIVE_TIME"

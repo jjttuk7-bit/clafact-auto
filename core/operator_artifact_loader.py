@@ -11,7 +11,7 @@ class OperatorRunArtifact:
     run_dir: Path
     report: dict[str, Any]
     results: list[dict[str, Any]]
-    profile_queue: list[dict[str, Any]]
+    review_queue: list[dict[str, Any]]
     review_summary: dict[str, Any]
     review_queues: dict[str, list[dict[str, Any]]]
 
@@ -28,17 +28,12 @@ def load_operator_run(run_dir: Path) -> OperatorRunArtifact:
             run_dir, "claim_verification_results.jsonl", "e2e_results.jsonl"
         )
     )
-    priority_queue_path = run_dir / "profile_review_priority_queue.json"
-    profile_queue = (
-        json.loads(priority_queue_path.read_text(encoding="utf-8"))
-        if priority_queue_path.is_file()
-        else _read_jsonl(run_dir / "review_queues" / "profile.jsonl")
-    )
-    if not isinstance(report, dict) or not isinstance(profile_queue, list):
-        raise ValueError("OPERATOR_ARTIFACT_INVALID")
     review_queues = _read_review_queues(run_dir / "review_queues")
+    review_queue = [row for queue_rows in review_queues.values() for row in queue_rows]
+    if not isinstance(report, dict):
+        raise ValueError("OPERATOR_ARTIFACT_INVALID")
     review_summary = _read_review_summary(run_dir / "review_queues", review_queues)
-    return OperatorRunArtifact(run_dir, report, results, profile_queue, review_summary, review_queues)
+    return OperatorRunArtifact(run_dir, report, results, review_queue, review_summary, review_queues)
 
 
 def _read_jsonl(path: Path) -> list[dict[str, Any]]:

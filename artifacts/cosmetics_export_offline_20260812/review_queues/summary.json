@@ -1,0 +1,12 @@
+{
+  "queue_counts": {
+    "verification": 1
+  },
+  "reason_counts": {
+    "AS_OF_UNAVAILABLE": 1
+  },
+  "route_counts": {
+    "HOLD": 1
+  },
+  "total_actionable": 1
+}

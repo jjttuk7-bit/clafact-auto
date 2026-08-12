@@ -1,0 +1,22 @@
+{
+  "queue_counts": {
+    "catalog": 318,
+    "concept": 15,
+    "evidence": 286,
+    "verification": 918
+  },
+  "reason_counts": {
+    "AMBIGUOUS_MARGIN": 76,
+    "AS_OF_UNAVAILABLE": 6,
+    "CLAIM_PARSE_UNCERTAIN": 731,
+    "CONCEPT_NOT_FOUND": 15,
+    "MISSING_COMPARISON_FOR_GROWTH_RATE": 54,
+    "NO_DATA": 51,
+    "NO_EVIDENCE_COORDINATE_CANDIDATE": 286,
+    "NO_HARD_GUARD_CANDIDATE": 318
+  },
+  "route_counts": {
+    "HOLD": 1537
+  },
+  "total_actionable": 1537
+}

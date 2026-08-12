@@ -1,4 +1,5 @@
 import json
+from datetime import date
 
 import pytest
 from pydantic import ValidationError
@@ -69,3 +70,9 @@ def test_structured_response_accepts_explicit_nulls_for_optional_slots() -> None
 
     assert claim.dimension is None
     assert claim.condition is None
+
+def test_structured_request_includes_article_date_context() -> None:
+    body = build_structured_claim_request(
+        "지난달 고용률은 70%였다.", article_published_at=date(2025, 4, 5)
+    )
+    assert json.loads(body["messages"][1]["content"])["article_published_at"] == "2025-04-05"

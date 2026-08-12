@@ -1,0 +1,14 @@
+{
+  "queue_counts": {
+    "catalog": 15,
+    "verification": 23
+  },
+  "reason_counts": {
+    "CLAIM_PARSE_UNCERTAIN": 23,
+    "NO_HARD_GUARD_CANDIDATE": 15
+  },
+  "route_counts": {
+    "HOLD": 38
+  },
+  "total_actionable": 38
+}

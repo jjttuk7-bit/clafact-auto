@@ -95,6 +95,7 @@ def _matched(concept: SemanticStandardRecord, label: str) -> StandardConceptSche
         canonical_name=concept.canonical_name,
         standard_key=concept.standard_key,
         matched_alias=label,
+        kosis_search_terms=list(concept.kosis_search_terms),
         status="MATCHED",
     )
 

@@ -40,3 +40,115 @@ def test_refresh_hydrates_dimension_member_codes_from_official_itm_metadata() ->
 
     assert refreshed[0].dimension_members == {"B": ["계"], "J": ["계"]}
     assert refreshed[0].dimension_member_codes == {"B": {"계": "0"}, "J": {"계": "00"}}
+
+def test_refresh_combines_official_item_and_period_metadata() -> None:
+    from core.catalog_metadata_refresh import refresh_item_metadata
+
+    def fetcher(api_key, org_id, table_id, *, meta_type, retries, timeout_seconds):
+        if meta_type == "PRD":
+            return [{"PRD_SE": "월", "STRT_PRD_DE": "1975.01", "END_PRD_DE": "2026.07"}]
+        return [
+            {"ORG_ID": org_id, "TBL_ID": table_id, "OBJ_ID": "ITEM", "OBJ_NM": "항목", "ITM_ID": "T", "ITM_NM": "소비자물가지수", "UNIT_NM": "2020=100"},
+            {"ORG_ID": org_id, "TBL_ID": table_id, "OBJ_ID": "I", "OBJ_NM": "품목별", "ITM_ID": "B01", "ITM_NM": "가공식품"},
+        ]
+
+    refreshed = refresh_item_metadata(
+        [KosisCandidateSchema(org_id="101", tbl_id="DT_CPI", tbl_name="품목별 소비자물가지수", metadata_status="LIVE_SEARCH_UNRESOLVED")],
+        "secret", metadata_fetcher=fetcher,
+    )[0]
+
+    assert refreshed.frequency == "월"
+    assert refreshed.start_period == "1975.01"
+    assert refreshed.end_period == "2026.07"
+    assert refreshed.dimension_member_codes == {"I": {"가공식품": "B01"}}
+
+
+def test_refresh_infers_period_frequency_from_official_period_format_when_label_is_mojibake() -> None:
+    from core.catalog_metadata_refresh import refresh_item_metadata
+
+    def fetcher(api_key, org_id, table_id, *, meta_type, retries, timeout_seconds):
+        if meta_type == "PRD":
+            return [
+                {"PRD_SE": "Пљ", "STRT_PRD_DE": "1975.01", "END_PRD_DE": "2026.07"},
+                {"PRD_SE": "КаБт", "STRT_PRD_DE": "1975 1/4", "END_PRD_DE": "2026 2/4"},
+                {"PRD_SE": "Гт", "STRT_PRD_DE": "1975", "END_PRD_DE": "2025"},
+            ]
+        return [{"ORG_ID": org_id, "TBL_ID": table_id, "OBJ_ID": "ITEM", "OBJ_NM": "항목", "ITM_ID": "T", "ITM_NM": "소비자물가지수", "UNIT_NM": "2020=100"}]
+
+    refreshed = refresh_item_metadata(
+        [KosisCandidateSchema(org_id="101", tbl_id="DT_CPI", tbl_name="소비자물가지수", metadata_status="LIVE_SEARCH_UNRESOLVED")],
+        "secret", metadata_fetcher=fetcher,
+    )[0]
+
+    assert refreshed.frequency == "월|분기|년"
+    assert refreshed.metadata_status == "OFFICIAL_METADATA_READY"
+
+
+def test_period_metadata_never_upgrades_candidate_without_official_item_metadata() -> None:
+    from core.catalog_metadata_refresh import refresh_item_metadata
+
+    def fetcher(api_key, org_id, table_id, *, meta_type, retries, timeout_seconds):
+        if meta_type == "PRD":
+            return [{"PRD_SE": "M", "STRT_PRD_DE": "1975.01", "END_PRD_DE": "2026.07"}]
+        raise RuntimeError("ITM unavailable")
+
+    refreshed = refresh_item_metadata(
+        [KosisCandidateSchema(org_id="101", tbl_id="DT_CPI", tbl_name="CPI", metadata_status="LIVE_SEARCH_UNRESOLVED")],
+        "secret", metadata_fetcher=fetcher,
+    )[0]
+
+    assert refreshed.frequency == "월"
+    assert refreshed.metadata_status == "LIVE_SEARCH_UNRESOLVED"
+
+
+def test_refresh_respects_candidate_metadata_budget_and_preserves_unfetched_rows() -> None:
+    from core.catalog_metadata_refresh import refresh_item_metadata
+
+    calls: list[tuple[str, str]] = []
+
+    def fetcher(api_key, org_id, table_id, *, meta_type, retries, timeout_seconds):
+        calls.append((table_id, meta_type))
+        if meta_type == "PRD":
+            return [{"PRD_SE": "년", "STRT_PRD_DE": "2020", "END_PRD_DE": "2024"}]
+        return [{
+            "ORG_ID": org_id, "TBL_ID": table_id, "OBJ_ID": "ITEM",
+            "OBJ_NM": "항목", "ITM_ID": "T", "ITM_NM": "수출액", "UNIT_NM": "천$",
+        }]
+
+    candidates = [
+        KosisCandidateSchema(org_id="145", tbl_id=f"DT_{index}", tbl_name=str(index), metadata_status="LIVE_SEARCH_UNRESOLVED")
+        for index in range(3)
+    ]
+
+    refreshed = refresh_item_metadata(
+        candidates, "secret", metadata_fetcher=fetcher, max_candidates=1,
+    )
+
+    assert calls == [("DT_0", "ITM"), ("DT_0", "PRD")]
+    assert refreshed[0].metadata_status == "OFFICIAL_METADATA_READY"
+    assert refreshed[1:] == candidates[1:]
+
+def test_refresh_default_budget_limits_live_metadata_requests_to_eight_candidates() -> None:
+    from core.catalog_metadata_refresh import refresh_item_metadata
+
+    calls: list[tuple[str, str]] = []
+
+    def fetcher(api_key, org_id, table_id, *, meta_type, retries, timeout_seconds):
+        calls.append((table_id, meta_type))
+        if meta_type == "PRD":
+            return [{"PRD_SE": "년", "STRT_PRD_DE": "2020", "END_PRD_DE": "2024"}]
+        return [{
+            "ORG_ID": org_id, "TBL_ID": table_id, "OBJ_ID": "ITEM",
+            "OBJ_NM": "항목", "ITM_ID": "T", "ITM_NM": "수출액", "UNIT_NM": "천$",
+        }]
+
+    candidates = [
+        KosisCandidateSchema(org_id="145", tbl_id=f"DT_{index}", tbl_name=str(index), metadata_status="LIVE_SEARCH_UNRESOLVED")
+        for index in range(9)
+    ]
+
+    refreshed = refresh_item_metadata(candidates, "secret", metadata_fetcher=fetcher)
+
+    assert len(calls) == 16
+    assert refreshed[7].metadata_status == "OFFICIAL_METADATA_READY"
+    assert refreshed[8] == candidates[8]

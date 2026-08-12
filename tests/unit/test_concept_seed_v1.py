@@ -19,12 +19,12 @@ def _claim(indicator: str) -> ClaimSchema:
     )
 
 
-def test_concept_seed_v1_contains_exactly_31_unique_verified_concepts() -> None:
+def test_concept_seed_v1_contains_exactly_37_unique_verified_concepts() -> None:
     concepts = load_standard_concepts(SEED_PATH)
 
-    assert len(concepts) == 31
-    assert len({concept.concept_id for concept in concepts}) == 31
-    assert len({concept.standard_key for concept in concepts}) == 31
+    assert len(concepts) == 37
+    assert len({concept.concept_id for concept in concepts}) == 37
+    assert len({concept.standard_key for concept in concepts}) == 37
 
 
 def test_concept_seed_v1_maps_representative_claim_indicators() -> None:
@@ -33,6 +33,12 @@ def test_concept_seed_v1_maps_representative_claim_indicators() -> None:
     assert normalize_concept(_claim("수출액"), concepts).standard_key == "export_value"
     assert normalize_concept(_claim("국내총생산(GDP)"), concepts).standard_key == "gross_domestic_product"
     assert normalize_concept(_claim("1인 가구 수"), concepts).standard_key == "one_person_household_count"
+
+def test_export_value_concept_uses_official_total_trade_search_vocabulary() -> None:
+    concepts = load_standard_concepts(SEED_PATH)
+    result = normalize_concept(_claim("수출액"), concepts)
+    assert result.kosis_search_terms[0] == "수출입총괄"
+    assert "국가별 수출액 수입액" in result.kosis_search_terms
 
 
 def test_concept_seed_v1_keeps_employment_binding_compatible_standard_key() -> None:

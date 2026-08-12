@@ -1,0 +1,20 @@
+{
+  "auto_count": 0,
+  "reason_counts": {
+    "AS_OF_UNAVAILABLE": 1,
+    "EXPORT_ANNUAL_SCOPE_UNCONFIRMED": 1,
+    "EXPORT_COMPARISON_REQUIRED": 2,
+    "EXPORT_DIMENSION_REQUIRED": 25,
+    "EXPORT_FORECAST_CLAIM": 3,
+    "EXPORT_PARTIAL_PERIOD": 46,
+    "EXPORT_TIME_SLOT_MISMATCH": 2
+  },
+  "route_counts": {
+    "DIMENSION_SPECIFIC": 25,
+    "DOWNSTREAM_HOLD": 1,
+    "FORECAST": 3,
+    "PARTIAL_PERIOD": 46,
+    "SLOT_MISMATCH": 5
+  },
+  "total": 80
+}

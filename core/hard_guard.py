@@ -6,13 +6,18 @@ import re
 
 from schemas.candidate import HardGuardResult, KosisCandidateSchema
 from schemas.claim import ClaimSchema
+from core.claim_dimensions import dimension_member_values
 from core.unit_normalizer import compatible_units
 
 
 def apply_hard_guard(claim: ClaimSchema, candidate: KosisCandidateSchema) -> HardGuardResult:
     """Reject candidates with non-negotiable slot conflicts."""
     reject_codes: list[str] = []
-    if candidate.metadata_status == "LIVE_SEARCH_UNRESOLVED":
+    if candidate.metadata_status == "LIVE_SEARCH_UNRESOLVED" or (
+        claim.frequency
+        and candidate.metadata_status == "OFFICIAL_ITEM_METADATA_READY"
+        and not candidate.frequency
+    ):
         reject_codes.append("METADATA_INCOMPLETE")
     if _frequency_conflict(claim, candidate):
         reject_codes.append("FREQUENCY_CONFLICT")
@@ -24,6 +29,8 @@ def apply_hard_guard(claim: ClaimSchema, candidate: KosisCandidateSchema) -> Har
         reject_codes.append("SEX_DIMENSION_REQUIRED")
     if _region_conflict(claim, candidate):
         reject_codes.append("REGION_GRANULARITY_CONFLICT")
+    if _dimension_member_conflict(claim, candidate):
+        reject_codes.append("DIMENSION_MEMBER_CONFLICT")
     if _time_not_available(claim, candidate):
         reject_codes.append("TIME_NOT_AVAILABLE")
     if _forecast_claim(claim):
@@ -36,6 +43,8 @@ def _frequency_conflict(claim: ClaimSchema, candidate: KosisCandidateSchema) -> 
 
 
 def _unit_conflict(claim: ClaimSchema, candidate: KosisCandidateSchema) -> bool:
+    if claim.calculation == "DIFFERENCE" and _key(claim.unit or "") in {"%p", "%포인트", "퍼센트포인트"}:
+        return not any(_key(unit) in {"%", "퍼센트"} for unit in candidate.unit_names)
     if claim.calculation in {"GROWTH_RATE", "SHARE", "RATIO", "MULTIPLE"}:
         return False
     return bool(claim.unit and candidate.unit_names and not any(compatible_units(claim.unit, unit) for unit in candidate.unit_names))
@@ -53,6 +62,17 @@ def _region_conflict(claim: ClaimSchema, candidate: KosisCandidateSchema) -> boo
     if not claim.region or claim.region in {"전국", "대한민국", "한국"}:
         return False
     return not any(_has_dimension(candidate, token) for token in ("시도", "지역", "행정", "읍면"))
+
+
+def _dimension_member_conflict(claim: ClaimSchema, candidate: KosisCandidateSchema) -> bool:
+    if not claim.dimension or not candidate.dimension_members:
+        return False
+    official_members = {_key(member) for members in candidate.dimension_members.values() for member in members}
+    table_scope = _key(candidate.tbl_name)
+    return any(
+        (member := _key(value)) not in official_members and member not in table_scope
+        for value in dimension_member_values(claim.dimension)
+    )
 
 
 def _time_not_available(claim: ClaimSchema, candidate: KosisCandidateSchema) -> bool:

@@ -19,6 +19,7 @@ def test_load_standard_concepts_reads_structured_seed_data(tmp_path) -> None:
                     "canonical_name": "고용률",
                     "standard_key": "employment_rate",
                     "aliases": ["고용률", "취업률"],
+                    "kosis_search_terms": ["경제활동인구 고용률"],
                 }
             ]
         ),
@@ -29,6 +30,7 @@ def test_load_standard_concepts_reads_structured_seed_data(tmp_path) -> None:
 
     assert concepts[0].concept_id == "C001"
     assert concepts[0].aliases == ("고용률", "취업률")
+    assert concepts[0].kosis_search_terms == ("경제활동인구 고용률",)
 
 
 def test_normalize_catalog_record_parses_json_and_delimited_metadata() -> None:

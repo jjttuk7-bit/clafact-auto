@@ -1,0 +1,17 @@
+{
+  "country_table_coordinates": 8,
+  "reason_counts": {
+    "AS_OF_UNAVAILABLE": 3,
+    "MISSING_COMPARISON_FOR_GROWTH_RATE": 1,
+    "NO_DATA": 3,
+    "NO_EVIDENCE_COORDINATE_CANDIDATE": 5,
+    "NO_HARD_GUARD_CANDIDATE": 49,
+    "OUTSIDE_TOLERANCE": 1
+  },
+  "resolved_coordinates": 8,
+  "route_counts": {
+    "AUTO": 1,
+    "HOLD": 61
+  },
+  "total": 62
+}

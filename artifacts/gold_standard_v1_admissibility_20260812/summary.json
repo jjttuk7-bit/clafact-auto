@@ -1,0 +1,18 @@
+{
+  "reason_counts": {
+    "FORECAST_OR_CONDITIONAL": 43,
+    "INDICATOR_UNRESOLVED": 6,
+    "KOSIS_STAGE_REACHED": 71,
+    "MISSING_REQUIRED_SLOT": 187,
+    "MULTI_CLAIM": 146,
+    "RANGE_VALUE": 103,
+    "RELATIVE_TIME_UNRESOLVED": 41,
+    "SOURCE_CONTEXT_UNRESOLVED": 96
+  },
+  "route_counts": {
+    "CONTEXT_REQUIRED": 143,
+    "STRUCTURAL_HOLD": 479,
+    "VERIFIABLE": 71
+  },
+  "total": 693
+}

@@ -1,0 +1,16 @@
+{
+  "hold_reason_counts": {
+    "AS_OF_UNAVAILABLE": 1,
+    "CLAIM_PARSE_UNCERTAIN": 6,
+    "MISSING_COMPARISON_FOR_GROWTH_RATE": 1,
+    "NO_DATA": 3,
+    "NO_EVIDENCE_COORDINATE_CANDIDATE": 5,
+    "NO_HARD_GUARD_CANDIDATE": 46
+  },
+  "kosis_discovery_snapshot_hash": "74d2769114d28e30c38457fa33ff70c36609029319493f345bb3b41c5b4bf4b2",
+  "registry_load_errors": [],
+  "route_counts": {
+    "HOLD": 62
+  },
+  "total_records": 62
+}

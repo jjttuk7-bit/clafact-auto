@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class StandardConceptSchema(BaseModel):
@@ -12,5 +12,6 @@ class StandardConceptSchema(BaseModel):
     canonical_name: str
     standard_key: str
     matched_alias: str | None = None
+    kosis_search_terms: list[str] = Field(default_factory=list)
     status: Literal["MATCHED", "NEW_CANDIDATE", "UNRESOLVED"]
 

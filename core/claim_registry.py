@@ -93,7 +93,7 @@ def build_registry_records(
 
         source_sentence = _required_text(row, "sentence")
         claim = ClaimSchema(
-            claim_id=f"registry:{source_ref}:{article_id}:{sentence_id}",
+            claim_id=_optional_text(row, "claim_id") or f"registry:{source_ref}:{article_id}:{sentence_id}",
             source_sentence=source_sentence,
             indicator=_optional_text(row, "claim_indicator", "indicator"),
             value=_optional_number(row, "claim_value", "value"),
@@ -103,6 +103,9 @@ def build_registry_records(
             region=_optional_text(row, "claim_region", "region"),
             population=_optional_text(row, "claim_population", "population"),
             dimension=_optional_dimension(row),
+            comparison=_optional_mapping(row, "comparison"),
+            calculation=_optional_calculation(row),
+            condition=_optional_mapping(row, "condition"),
             source_hint=_optional_text(row, "source_hint"),
             parse_status=_parse_status(row),
         )
@@ -110,7 +113,7 @@ def build_registry_records(
             ClaimRegistryRecord(
                 article_id=article_id,
                 sentence_id=sentence_id,
-                article_published_at=_optional_date(row, "article_published_at", "작성일"),
+                article_published_at=_optional_date(row, "article_published_at", "article_date", "작성일"),
                 source_ref=source_ref,
                 source_metadata={
                     str(name): _optional_value(value) for name, value in row.items()
@@ -214,6 +217,32 @@ def _optional_number(row: Mapping[str, Any], *keys: str) -> float | None:
 def _optional_dimension(row: Mapping[str, Any]) -> dict[str, str] | None:
     value = _optional_text(row, "claim_dimension", "dimension")
     return {"raw": value} if value is not None else None
+
+
+def _optional_mapping(row: Mapping[str, Any], *keys: str) -> dict[str, str] | None:
+    value = _optional_text(row, *keys)
+    if value is None:
+        return None
+    try:
+        decoded = json.loads(value)
+    except json.JSONDecodeError:
+        return {"raw": value}
+    if not isinstance(decoded, dict):
+        return {"raw": value}
+    return {str(key): str(item) for key, item in decoded.items() if item is not None}
+
+
+def _optional_calculation(row: Mapping[str, Any]) -> str | None:
+    value = _optional_text(row, "calculation")
+    if value is None:
+        return None
+    try:
+        decoded = json.loads(value)
+    except json.JSONDecodeError:
+        return value
+    if isinstance(decoded, dict) and decoded.get("type") is not None:
+        return str(decoded["type"])
+    return value
 
 
 def _optional_date(row: Mapping[str, Any], *keys: str) -> date | None:

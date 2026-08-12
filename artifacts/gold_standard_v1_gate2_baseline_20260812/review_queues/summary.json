@@ -1,0 +1,16 @@
+{
+  "queue_counts": {
+    "catalog": 311,
+    "concept": 15,
+    "evidence": 523
+  },
+  "reason_counts": {
+    "CONCEPT_NOT_FOUND": 15,
+    "NO_EVIDENCE_COORDINATE_CANDIDATE": 523,
+    "NO_HARD_GUARD_CANDIDATE": 311
+  },
+  "route_counts": {
+    "HOLD": 849
+  },
+  "total_actionable": 849
+}

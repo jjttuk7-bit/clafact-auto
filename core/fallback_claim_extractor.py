@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import date
+
 from core.claim_parser import StructuredClaimExtractor
 from core.openai_function_claim_extractor import (
     OpenAIContractError,
@@ -22,12 +24,14 @@ class FallbackClaimExtractor:
         self.fallback = fallback
         self.last_provider = "unavailable"
 
-    def extract(self, source_sentence: str) -> ClaimSchema:
+    def extract(
+        self, source_sentence: str, *, article_published_at: date | None = None
+    ) -> ClaimSchema:
         self.last_provider = "unavailable"
         try:
-            claim = self.primary.extract(source_sentence)
+            claim = self.primary.extract(source_sentence, article_published_at=article_published_at)
         except (OpenAITransientError, OpenAIContractError):
-            claim = self.fallback.extract(source_sentence)
+            claim = self.fallback.extract(source_sentence, article_published_at=article_published_at)
             self.last_provider = "hcx"
             return claim
 

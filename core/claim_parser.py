@@ -3,16 +3,20 @@
 from __future__ import annotations
 
 import re
+from datetime import date
 from hashlib import sha256
 from typing import Protocol
 
+from core.claim_time_resolver import resolve_relative_time
 from schemas.claim import ClaimSchema
 
 
 class StructuredClaimExtractor(Protocol):
     """External interpretation adapter that must return a validated schema object."""
 
-    def extract(self, source_sentence: str) -> ClaimSchema:
+    def extract(
+        self, source_sentence: str, *, article_published_at: date | None = None
+    ) -> ClaimSchema:
         """Return only a Pydantic ClaimSchema, never an unstructured response."""
 
 
@@ -20,7 +24,10 @@ _AUTO_REQUIRED_SLOTS = ("indicator", "value", "unit", "time")
 
 
 def parse_claim(
-    source_sentence: str, extractor: StructuredClaimExtractor | None = None
+    source_sentence: str,
+    extractor: StructuredClaimExtractor | None = None,
+    *,
+    article_published_at: date | None = None,
 ) -> ClaimSchema:
     """Parse a sentence using structured output and conservatively route uncertainty."""
     normalized_source = source_sentence.strip()
@@ -36,7 +43,11 @@ def parse_claim(
             parse_reason="STRUCTURED_EXTRACTOR_NOT_CONFIGURED",
         )
 
-    extracted = extractor.extract(normalized_source)
+    extracted = (
+        extractor.extract(normalized_source, article_published_at=article_published_at)
+        if article_published_at is not None
+        else extractor.extract(normalized_source)
+    )
     if not isinstance(extracted, ClaimSchema):
         raise TypeError("Structured extractor must return ClaimSchema")
 
@@ -49,6 +60,9 @@ def parse_claim(
     claim = _with_standard_unit(claim)
     claim = _with_explicit_decrease_sign(claim, normalized_source)
     claim = _with_standard_month(claim)
+    claim = resolve_relative_time(claim, article_published_at)
+    if claim.parse_status != "AUTO_OK":
+        return claim
 
     missing_slots = [slot for slot in _AUTO_REQUIRED_SLOTS if getattr(claim, slot) is None]
     if missing_slots:

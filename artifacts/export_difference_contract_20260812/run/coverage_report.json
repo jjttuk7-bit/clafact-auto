@@ -1,0 +1,11 @@
+{
+  "hold_reason_counts": {
+    "CLAIM_PARSE_UNCERTAIN": 1
+  },
+  "kosis_discovery_snapshot_hash": "74d2769114d28e30c38457fa33ff70c36609029319493f345bb3b41c5b4bf4b2",
+  "registry_load_errors": [],
+  "route_counts": {
+    "HOLD": 1
+  },
+  "total_records": 1
+}

@@ -133,3 +133,40 @@ def test_registry_build_from_source_writes_a_reproducible_artifact(tmp_path) -> 
 
     assert jsonl_path.name == "claim_registry.jsonl"
     assert json.loads(report_path.read_text(encoding="utf-8"))["count_matches"] is True
+
+
+def test_registry_builder_preserves_all_gold_standard_slots_and_claim_id() -> None:
+    records, _ = build_registry_records(
+        [
+            {
+                "article_id": "A00001",
+                "sentence_id": "3",
+                "article_date": "2025-04-01",
+                "sentence": "2025년 3월 취업자 수는 전년 동월보다 13만5000명 늘었다.",
+                "claim_id": "A00001_3",
+                "indicator": "취업자 수",
+                "value": 135000,
+                "unit": "명",
+                "time": "2025-03",
+                "frequency": "M",
+                "region": "전국",
+                "population": "15세 이상",
+                "dimension": "성별:전체",
+                "comparison": '{"기준":"전년 동월 대비","방향":"증가"}',
+                "calculation": '{"type":"DIFFERENCE"}',
+                "condition": '{"계절조정":"원계열"}',
+                "source_hint": "통계청",
+                "parse_status": "AUTO_OK",
+            }
+        ],
+        source_ref="gold_standard_v1",
+        expected_count=1,
+    )
+
+    claim = records[0].claim
+    assert claim.claim_id == "A00001_3"
+    assert claim.comparison == {"기준": "전년 동월 대비", "방향": "증가"}
+    assert claim.calculation == "DIFFERENCE"
+    assert claim.condition == {"계절조정": "원계열"}
+    assert claim.dimension == {"raw": "성별:전체"}
+    assert records[0].article_published_at == date(2025, 4, 1)

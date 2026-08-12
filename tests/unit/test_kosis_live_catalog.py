@@ -71,3 +71,30 @@ def test_live_catalog_search_parses_kosis_legacy_unquoted_json() -> None:
     assert [(item.org_id, item.tbl_id, item.tbl_name) for item in candidates] == [
         ("122", "DT_TRADE", "수출액")
     ]
+
+
+def test_live_catalog_preserves_official_available_period_range() -> None:
+    candidate = KosisLiveCatalogSearch(
+        "secret",
+        opener=lambda *_, **__: _Response([{
+            "ORG_ID": "101", "TBL_ID": "DT_CPI", "TBL_NM": "소비자물가지수",
+            "STRT_PRD_DE": "1975", "END_PRD_DE": "2026",
+        }]),
+    ).search("소비자물가지수")[0]
+
+    assert candidate.start_period == "1975"
+    assert candidate.end_period == "2026"
+
+
+def test_live_catalog_retries_one_transient_empty_result() -> None:
+    calls = 0
+
+    def opener(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        return _Response([] if calls == 1 else [{"ORG_ID": "101", "TBL_ID": "DT_CPI", "TBL_NM": "CPI"}])
+
+    candidates = KosisLiveCatalogSearch("secret", opener=opener).search("CPI")
+
+    assert [candidate.tbl_id for candidate in candidates] == ["DT_CPI"]
+    assert calls == 2

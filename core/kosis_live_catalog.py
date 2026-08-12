@@ -44,15 +44,24 @@ class KosisLiveCatalogSearch:
             }
         )
         request = Request(f"{self._endpoint}?{params}", headers={"Accept": "application/json", "User-Agent": "CLAFACT-AUTO/0.1"})
-        try:
-            with self._opener(request, timeout=10) as response:
-                payload = _decode_kosis_payload(response.read())
-        except (OSError, UnicodeDecodeError, RuntimeError):
-            return []
-        rows = payload if isinstance(payload, list) else payload.get("data", []) if isinstance(payload, dict) else []
-        if not isinstance(rows, list):
-            return []
-        return [candidate for row in rows if isinstance(row, dict) if (candidate := _candidate_from_row(row)) is not None]
+        for _attempt in range(2):
+            try:
+                with self._opener(request, timeout=10) as response:
+                    payload = _decode_kosis_payload(response.read())
+            except (OSError, UnicodeDecodeError, RuntimeError):
+                continue
+            rows = payload if isinstance(payload, list) else payload.get("data", []) if isinstance(payload, dict) else []
+            if not isinstance(rows, list):
+                continue
+            candidates = [
+                candidate
+                for row in rows
+                if isinstance(row, dict)
+                if (candidate := _candidate_from_row(row)) is not None
+            ]
+            if candidates:
+                return candidates
+        return []
 
 
 def _candidate_from_row(row: dict[str, Any]) -> KosisCandidateSchema | None:
@@ -65,6 +74,8 @@ def _candidate_from_row(row: dict[str, Any]) -> KosisCandidateSchema | None:
         org_id=org_id,
         tbl_id=table_id,
         tbl_name=table_name,
+        start_period=_optional_text(row.get("STRT_PRD_DE")),
+        end_period=_optional_text(row.get("END_PRD_DE")),
         source_stat_id=_optional_text(row.get("STAT_ID")),
         source_name=_optional_text(row.get("ORG_NM")),
         metadata_status="LIVE_SEARCH_UNRESOLVED",

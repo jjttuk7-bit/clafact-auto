@@ -18,7 +18,6 @@ from core.claim_parser import parse_claim
 from core.claim_result_export import export_verdict_json_bytes, export_verdict_xlsx_bytes
 from core.claim_extractor_factory import create_claim_extractor
 from core.secret_fingerprint import describe_secret_fingerprint
-from core.claim_time_resolver import resolve_relative_time
 from core.calculator import calculate
 from core.catalog_binding import apply_catalog_binding
 from core.catalog_discovery import discover_catalog_candidates, has_unresolved_live_metadata
@@ -53,6 +52,8 @@ DATA_ROOT = Path("data")
 DEFAULT_INTERNAL_RUN_DIR = Path(os.environ.get("CLAFACT_INTERNAL_RUN_DIR", PROJECT_ROOT / "artifacts" / "internal_validation_mvp_e2e_structured_20260811"))
 STANDARD_PATH = DATA_ROOT / "semantic_standard" / "concept_seed_v1.json"
 CATALOG_PATH = DATA_ROOT / "kosis_catalog" / "catalog_350.json"
+GOLD_STANDARD_REGISTRY_PATH = DATA_ROOT / "claim_registry" / "gold_standard_v1" / "claim_registry.jsonl"
+GOLD_STANDARD_REPORT_PATH = DATA_ROOT / "claim_registry" / "gold_standard_v1" / "validation_report.json"
 SNAPSHOT_PATHS = [
     DATA_ROOT / "kosis_snapshots" / "goldset_pilot.json",
     DATA_ROOT / "kosis_snapshots" / "official_goldset_asof_v3.json",
@@ -103,7 +104,11 @@ def _parse_article_date(value: str) -> date | None:
 
 def _verify_batch_claim(sentence: str, article_date: date, settings: Settings) -> VerdictSchema:
     """Parse a batch sentence, then use the same dynamic KOSIS engine as the UI."""
-    claim = resolve_relative_time(parse_claim(sentence, create_claim_extractor(settings)), article_date)
+    claim = parse_claim(
+        sentence,
+        create_claim_extractor(settings),
+        article_published_at=article_date,
+    )
     if claim.parse_status != "AUTO_OK":
         recorder = VerificationTraceRecorder(claim.claim_id).claim_parsed()
         return attach_trace(make_verdict(claim.claim_id, claim.value, [], None), recorder.build()).model_copy(
@@ -160,18 +165,18 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
     try:
         article_date = _parse_article_date(article_date_text)
         extractor = create_claim_extractor(settings)
-        claim = parse_claim(sentence, extractor)
+        claim = parse_claim(
+            sentence, extractor, article_published_at=article_date
+        )
         actual_provider = getattr(extractor, "last_provider", None)
         actual_provider_label = {
             "openai": "OpenAI",
             "hcx": "HCX",
         }.get(actual_provider, selected_provider_display_label)
         st.metric("실제 주장 추출기", actual_provider_label)
-        claim = resolve_relative_time(claim, article_date)
         ui_trace = VerificationTraceRecorder(claim.claim_id).claim_parsed()
         requires_parse_review = claim.parse_status != "AUTO_OK"
         if requires_parse_review:
-            growth_verdict = None
             concept = None
             candidates = []
             matches = []
@@ -183,7 +188,6 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
                 }
             )
         else:
-            growth_verdict = None
             concept = normalize_concept(claim, load_standard_concepts(STANDARD_PATH))
             candidates = _find_catalog_candidates(claim, concept, settings)
             matches = []
@@ -290,6 +294,10 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
 st.divider()
 st.subheader("크롤링 뉴스 배치 검증")
 st.caption("기사형: article_id, published_at, body · 문장형: article_id, sentence · 선택 열: title, source_url · 업로드 파일은 저장하지 않습니다.")
+st.caption("신규 기사는 OpenAI 12슬롯 파싱 후 같은 동적 KOSIS 엔진으로 검증됩니다.")
+if GOLD_STANDARD_REPORT_PATH.is_file():
+    gold_report = json.loads(GOLD_STANDARD_REPORT_PATH.read_text(encoding="utf-8"))
+    st.info(f"Canonical Registry: gold_standard_v1 · {gold_report.get('actual_count', 0):,}건 · 재파싱 없이 동적 KOSIS 배치 실행 가능")
 batch_default_date_text = st.text_input("배치 기본 기사 기준일 (선택)", placeholder="문장형 파일에 기사일이 없을 때만 입력 · 예: 2025-04-09")
 uploaded_file = st.file_uploader("크롤링 뉴스 파일 업로드", type=["csv", "xlsx", "json"])
 if st.button("배치 검증 실행", type="primary", disabled=uploaded_file is None):
@@ -351,7 +359,7 @@ if DEFAULT_INTERNAL_RUN_DIR.is_dir():
         status_columns = st.columns(3)
         status_columns[0].metric("실행 Claim", len(operator_run.results))
         status_columns[1].metric("자동 판정", operator_run.report.get("route_counts", {}).get("AUTO", 0))
-        status_columns[2].metric("보류 검토 묶음", len(operator_run.profile_queue))
+        status_columns[2].metric("보류 검토 묶음", len(operator_run.review_queue))
         st.json(operator_run.report)
         if operator_run.review_queues:
             st.subheader("유형별 검토 큐")
@@ -363,17 +371,17 @@ if DEFAULT_INTERNAL_RUN_DIR.is_dir():
                     file_name=f"{queue_type}_review_queue.json",
                     mime="application/json",
                 )
-        reasons = sorted({str(row.get("reason_code", "UNSPECIFIED")) for row in operator_run.profile_queue})
+        reasons = sorted({str(row.get("reason_code", "UNSPECIFIED")) for row in operator_run.review_queue})
         selected_reason = st.selectbox("보류 사유 필터", ["전체", *reasons])
-        max_rank = max((int(row.get("priority_rank", 0)) for row in operator_run.profile_queue), default=0)
+        max_rank = max((int(row.get("priority_rank", 0)) for row in operator_run.review_queue), default=0)
         selected_max_rank = st.number_input("최대 우선순위", min_value=1, max_value=max(1, max_rank), value=max(1, max_rank), step=1)
         filtered_queue = [
-            row for row in operator_run.profile_queue
+            row for row in operator_run.review_queue
             if (selected_reason == "전체" or row.get("reason_code") == selected_reason)
             and int(row.get("priority_rank", 0)) <= selected_max_rank
         ]
         st.dataframe(filtered_queue)
-        st.download_button("보류 검토 큐 JSON 다운로드", data=json.dumps(operator_run.profile_queue, ensure_ascii=False, indent=2), file_name="profile_review_priority_queue.json", mime="application/json")
+        st.download_button("보류 검토 큐 JSON 다운로드", data=json.dumps(operator_run.review_queue, ensure_ascii=False, indent=2), file_name="review_queue.json", mime="application/json")
         export_columns = st.columns(2)
         csv_path = DEFAULT_INTERNAL_RUN_DIR / "claim_verification_results.csv"
         xlsx_path = DEFAULT_INTERNAL_RUN_DIR / "claim_verification_results.xlsx"

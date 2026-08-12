@@ -1,0 +1,15 @@
+{
+  "hold_reason_counts": {
+    "CLAIM_PARSE_UNCERTAIN": 693,
+    "CONCEPT_NOT_FOUND": 15,
+    "NO_EVIDENCE_COORDINATE_CANDIDATE": 523,
+    "NO_HARD_GUARD_CANDIDATE": 311
+  },
+  "kosis_discovery_snapshot_hash": "007187eeb0fba9b41fdf72b845f1cd39817fa4ea7ce1fd1497c1852b4572cb8b",
+  "profile_dependency": "none",
+  "registry_load_errors": [],
+  "route_counts": {
+    "HOLD": 1542
+  },
+  "total_records": 1542
+}

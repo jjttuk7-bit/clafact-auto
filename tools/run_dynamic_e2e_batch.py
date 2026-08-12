@@ -1,4 +1,4 @@
-"""Compatibility entry point for the standard profile-free E2E batch command."""
+"""Compatibility entry point for the standard dynamic KOSIS batch command."""
 
 from tools.run_e2e_batch import main
 

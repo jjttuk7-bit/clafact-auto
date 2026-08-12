@@ -1,4 +1,4 @@
-"""Run the standard profile-free E2E batch pipeline."""
+"""Run the standard dynamic KOSIS E2E batch pipeline."""
 
 from __future__ import annotations
 
@@ -14,11 +14,11 @@ from config.settings import Settings
 from core.claim_extractor_factory import create_claim_extractor
 from core.claim_parser import parse_claim
 from core.claim_registry_loader import load_claim_registry
-from core.claim_time_resolver import resolve_relative_time
 from core.data_loader import load_kosis_catalog, load_standard_concepts
 from core.dynamic_e2e_batch_runner import run_dynamic_e2e_batch
 from core.kosis_api_adapter import build_kosis_api_lookup
 from core.kosis_live_catalog import KosisLiveCatalogSearch
+from core.kosis_discovery_snapshot import DiscoverySnapshot
 from core.review_queue_builder import build_review_queues
 from schemas.claim import ClaimSchema
 from schemas.evidence import EvidenceCellSchema
@@ -44,6 +44,8 @@ def run(
     kosis_api_key: str | None = None,
     live_search: KosisLiveCatalogSearch | None = None,
     claim_reparser: Callable[[ClaimSchema, date], ClaimSchema] | None = None,
+    discovery_snapshot: DiscoverySnapshot | None = None,
+    refresh_discovery_snapshot: bool = False,
     reparse_workers: int = 1,
     start: int = 0,
     limit: int | None = None,
@@ -58,6 +60,8 @@ def run(
         api_lookup=api_lookup,
         kosis_api_key=kosis_api_key,
         live_search=live_search,
+        discovery_snapshot=discovery_snapshot,
+        refresh_discovery_snapshot=refresh_discovery_snapshot,
         claim_reparser=claim_reparser,
         reparse_workers=reparse_workers,
     )
@@ -87,7 +91,7 @@ def run(
         "total_records": len(results),
         "route_counts": dict(sorted(routes.items())),
         "hold_reason_counts": dict(sorted(reasons.items())),
-        "profile_dependency": "none",
+        "kosis_discovery_snapshot_hash": discovery_snapshot.content_hash if discovery_snapshot else None,
         "registry_load_errors": [error.model_dump() for error in registry.errors],
     }
     report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -102,7 +106,10 @@ def main() -> None:
     parser.add_argument("--catalog", type=Path, default=Path("data/kosis_catalog/catalog_350.json"))
     parser.add_argument("--snapshot", action="append", type=Path, default=[])
     parser.add_argument("--live-kosis", action="store_true")
+    parser.add_argument("--discovery-snapshot", type=Path, help="Versioned KOSIS candidate/metadata Snapshot JSON.")
+    parser.add_argument("--refresh-discovery-snapshot", action="store_true", help="Explicitly collect missing KOSIS candidate/metadata into --discovery-snapshot.")
     parser.add_argument("--skip-reparse-holds", action="store_true", help="Keep prior non-AUTO parse results without re-running 12-slot parsing.")
+    parser.add_argument("--preparsed-registry", action="store_true", help="Require the canonical gold_standard_v1 Registry and never reparse its validated 12-slot Claims.")
     parser.add_argument("--reparse-workers", type=int, default=5, help="Maximum concurrent Structured Output reparses.")
     parser.add_argument("--start", type=int, default=0, help="Zero-based Registry record offset for a resumable run.")
     parser.add_argument("--limit", type=int, help="Maximum Registry records in this resumable run.")
@@ -111,13 +118,33 @@ def main() -> None:
     settings = Settings()
     if args.live_kosis and not settings.kosis_api_key:
         parser.error("--live-kosis requires KOSIS_API_KEY")
+    if args.refresh_discovery_snapshot and (not args.discovery_snapshot or not args.live_kosis):
+        parser.error("--refresh-discovery-snapshot requires --discovery-snapshot and --live-kosis")
+    if args.discovery_snapshot and not args.discovery_snapshot.is_file() and not args.refresh_discovery_snapshot:
+        parser.error("--discovery-snapshot must exist unless refresh mode is enabled")
+    discovery_snapshot = None
+    if args.discovery_snapshot:
+        discovery_snapshot = (
+            DiscoverySnapshot.load(args.discovery_snapshot)
+            if args.discovery_snapshot.is_file()
+            else DiscoverySnapshot.empty("unversioned")
+        )
     api_lookup = build_kosis_api_lookup(settings.kosis_api_key) if args.live_kosis else None
+    if args.preparsed_registry:
+        registry_check = load_claim_registry(args.registry_path)
+        source_refs = {record.source_ref for record in registry_check.records}
+        if registry_check.errors or source_refs != {"gold_standard_v1"}:
+            parser.error("--preparsed-registry requires a valid gold_standard_v1 Registry")
     claim_reparser = None
-    if not args.skip_reparse_holds:
+    if not args.skip_reparse_holds and not args.preparsed_registry:
         extractor = create_claim_extractor(settings)
 
         def claim_reparser(claim: ClaimSchema, article_date: date) -> ClaimSchema:
-            return resolve_relative_time(parse_claim(claim.source_sentence, extractor), article_date)
+            return parse_claim(
+                claim.source_sentence,
+                extractor,
+                article_published_at=article_date,
+            )
 
     results_path, report_path = run(
         args.registry_path,
@@ -128,11 +155,19 @@ def main() -> None:
         api_lookup=api_lookup,
         kosis_api_key=settings.kosis_api_key if args.live_kosis else None,
         live_search=KosisLiveCatalogSearch(settings.kosis_api_key) if args.live_kosis else None,
+        discovery_snapshot=discovery_snapshot,
+        refresh_discovery_snapshot=args.refresh_discovery_snapshot,
         claim_reparser=claim_reparser,
         reparse_workers=max(1, args.reparse_workers),
 
     )
-    print(json.dumps({"results_path": str(results_path), "report_path": str(report_path)}, ensure_ascii=False))
+    if args.refresh_discovery_snapshot and discovery_snapshot is not None and args.discovery_snapshot is not None:
+        discovery_snapshot.write(args.discovery_snapshot)
+    print(json.dumps({
+        "results_path": str(results_path),
+        "report_path": str(report_path),
+        "kosis_discovery_snapshot_hash": discovery_snapshot.content_hash if discovery_snapshot else None,
+    }, ensure_ascii=False))
 
 
 if __name__ == "__main__":

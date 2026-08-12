@@ -4,6 +4,7 @@ import json
 import os
 import re
 import uuid
+from datetime import date
 from urllib.request import Request, urlopen
 
 from core.claim_output_contract import ClaimOutputPayload, claim_output_json_schema
@@ -21,12 +22,14 @@ SYSTEM_PROMPT = (
 )
 
 
-def build_structured_claim_request(sentence: str) -> dict[str, object]:
+def build_structured_claim_request(
+    sentence: str, *, article_published_at: date | None = None
+) -> dict[str, object]:
     """Build an HCX Structured Outputs request for the complete Claim contract."""
     return {
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": sentence},
+            {"role": "user", "content": _claim_input(sentence, article_published_at)},
         ],
         "temperature": 0,
         "maxCompletionTokens": 1024,
@@ -36,6 +39,12 @@ def build_structured_claim_request(sentence: str) -> dict[str, object]:
             "schema": claim_output_json_schema(),
         },
     }
+
+
+def _claim_input(sentence: str, article_published_at: date | None) -> str:
+    if article_published_at is None:
+        return sentence
+    return json.dumps({"source_sentence": sentence, "article_published_at": article_published_at.isoformat()}, ensure_ascii=False)
 
 
 def parse_structured_claim_content(content: str) -> ClaimSchema:
@@ -61,11 +70,11 @@ class HcxClaimExtractor:
         self.api_key = api_key or os.getenv("HCX_API_KEY") or _dotenv_value("HCX_API_KEY")
         self.model = model
 
-    def extract(self, sentence: str) -> ClaimSchema:
+    def extract(self, sentence: str, *, article_published_at: date | None = None) -> ClaimSchema:
         if not self.api_key:
             raise RuntimeError("HCX_API_KEY is not configured")
 
-        body = build_structured_claim_request(sentence)
+        body = build_structured_claim_request(sentence, article_published_at=article_published_at)
         request = Request(
             f"https://clovastudio.stream.ntruss.com/v3/chat-completions/{self.model}",
             data=json.dumps(body).encode(),

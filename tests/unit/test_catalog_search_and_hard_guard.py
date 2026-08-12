@@ -147,3 +147,85 @@ def test_hard_guard_treats_korean_annual_aliases_as_compatible() -> None:
     result = apply_hard_guard(claim(frequency="연", region="전국"), candidate(frequency="년"))
 
     assert result.passed is True
+
+def test_hard_guard_requires_claim_dimension_member_in_official_metadata() -> None:
+    cpi_claim = claim(
+        source_sentence="지난달 가공식품 물가는 전년 대비 3.1% 올랐다.",
+        indicator="가공식품 물가", frequency="월", region=None,
+        dimension={"품목": "가공식품"}, calculation="GROWTH_RATE",
+    )
+    wrong = candidate(
+        tbl_id="WRONG", frequency="월",
+        dimension_names=["품목별"], dimension_members={"I": ["신선식품"]},
+        metadata_status="OFFICIAL_ITEM_METADATA_READY",
+    )
+    correct = wrong.model_copy(update={
+        "tbl_id": "DT_1J22112",
+        "dimension_members": {"I": ["가공식품", "신선식품"]},
+    })
+
+    assert apply_hard_guard(cpi_claim, wrong).reject_codes == ["DIMENSION_MEMBER_CONFLICT"]
+    assert apply_hard_guard(cpi_claim, correct).passed is True
+
+
+def test_hard_guard_rejects_official_item_metadata_without_required_period_metadata() -> None:
+    incomplete = candidate(
+        frequency=None, metadata_status="OFFICIAL_ITEM_METADATA_READY",
+    )
+
+    assert apply_hard_guard(claim(frequency="월", region="전국"), incomplete).reject_codes == ["METADATA_INCOMPLETE"]
+
+
+def test_hard_guard_unwraps_raw_json_dimension_before_official_member_check() -> None:
+    country_claim = claim(
+        source_sentence="지난해 대미 수출액은 1277억8600만달러였다.",
+        indicator="수출액", value=127_786_000_000, unit="달러", time="2024",
+        frequency="Y", region=None,
+        dimension={"raw": '{"교역상대국": ["미국"]}'},
+        calculation="DIRECT_VALUE",
+    )
+    country_table = candidate(
+        tbl_id="DT_COUNTRY_EXPORT", tbl_name="국가별 수출액, 수입액",
+        core_item_names=["수출액"], unit_names=["천달러"], frequency="년",
+        dimension_names=["국가별"], dimension_members={"NARA": ["미국", "중국"]},
+    )
+
+    assert apply_hard_guard(country_claim, country_table).passed is True
+
+def test_hard_guard_accepts_claim_dimension_bound_by_official_table_name() -> None:
+    from core.hard_guard import apply_hard_guard
+
+    claim = ClaimSchema(
+        claim_id="COSMETICS",
+        source_sentence="지난해 화장품 수출액은 68억달러였다.",
+        indicator="수출액",
+        value=6_800_000_000,
+        unit="달러",
+        time="2024",
+        frequency="Y",
+        dimension={"raw": '{"품목": ["화장품"]}'},
+        calculation="DIRECT_VALUE",
+        parse_status="AUTO_OK",
+    )
+    candidate = KosisCandidateSchema(
+        org_id="145",
+        tbl_id="DT_145011_A006",
+        tbl_name="화장품 수입 및 수출액 현황",
+        core_item_ids=["T002"],
+        core_item_names=["수출액"],
+        dimension_ids=["13999000"],
+        dimension_names=["가상분류"],
+        dimension_members={"13999000": ["데이터"]},
+        dimension_member_codes={"13999000": {"데이터": "DATA"}},
+        unit_names=["천$"],
+        item_units={"T002": "천$"},
+        frequency="년",
+        start_period="1995",
+        end_period="2024",
+        metadata_status="OFFICIAL_METADATA_READY",
+    )
+
+    result = apply_hard_guard(claim, candidate)
+
+    assert result.passed is True
+    assert "DIMENSION_MEMBER_CONFLICT" not in result.reject_codes

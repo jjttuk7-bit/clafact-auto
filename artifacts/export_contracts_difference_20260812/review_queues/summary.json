@@ -1,0 +1,16 @@
+{
+  "queue_counts": {
+    "evidence": 2,
+    "verification": 60
+  },
+  "reason_counts": {
+    "AS_OF_UNAVAILABLE": 1,
+    "CLAIM_PARSE_UNCERTAIN": 56,
+    "NO_DATA": 3,
+    "NO_EVIDENCE_COORDINATE_CANDIDATE": 2
+  },
+  "route_counts": {
+    "HOLD": 62
+  },
+  "total_actionable": 62
+}

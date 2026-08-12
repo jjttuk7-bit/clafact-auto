@@ -1,0 +1,18 @@
+{
+  "total_records": 38,
+  "reason_counts": {
+    "CLAIM_PARSE_UNCERTAIN": 23,
+    "NO_HARD_GUARD_CANDIDATE": 15
+  },
+  "slot_quality_reparse_count": 23,
+  "modifiers": {
+    "가공식품": 7,
+    "개인 서비스": 1,
+    "공공서비스": 1,
+    "근원물가": 4,
+    "석유류": 2,
+    "식료품·비주류 음료": 1,
+    "외식": 6,
+    "주택, 수도, 전기 및 연료": 1
+  }
+}

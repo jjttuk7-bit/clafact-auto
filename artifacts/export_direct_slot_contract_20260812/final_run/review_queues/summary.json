@@ -1,0 +1,13 @@
+{
+  "queue_counts": {
+    "verification": 19
+  },
+  "reason_counts": {
+    "AS_OF_UNAVAILABLE": 1,
+    "CLAIM_PARSE_UNCERTAIN": 18
+  },
+  "route_counts": {
+    "HOLD": 19
+  },
+  "total_actionable": 19
+}

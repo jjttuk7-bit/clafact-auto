@@ -1,0 +1,33 @@
+{
+  "run_scope": "targeted_slot_quality_reparse",
+  "target_count": 23,
+  "target_claim_ids": [
+    "A00581_4",
+    "A01190_12",
+    "A01204_9",
+    "A01204_13",
+    "A01584_1",
+    "A01584_13",
+    "A01589_13",
+    "A01629_3",
+    "A01629_5",
+    "A01629_8",
+    "A01629_34",
+    "A02010_8",
+    "A02010_17",
+    "A02167_21",
+    "A02375_24",
+    "A02385_26",
+    "A02434_4",
+    "A02603_14",
+    "A02603_16",
+    "A02605_33",
+    "A02614_17",
+    "A02616_2",
+    "A02682_14"
+  ],
+  "source_registry": "data\\claim_registry\\gold_standard_v1\\claim_registry.jsonl",
+  "source_registry_mutated": false,
+  "forced_parse_status": "HOLD",
+  "forced_parse_reason": "TARGETED_SLOT_QUALITY_REPARSE"
+}

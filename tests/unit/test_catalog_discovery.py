@@ -1,4 +1,4 @@
-from core.catalog_discovery import discover_catalog_candidates, has_unresolved_live_metadata
+from core.catalog_discovery import build_catalog_discovery_queries, discover_catalog_candidates, has_unresolved_live_metadata, rank_discovered_candidates
 from core.kosis_live_catalog import KosisLiveCatalogSearch
 from schemas.candidate import KosisCandidateSchema
 from schemas.claim import ClaimSchema
@@ -70,4 +70,61 @@ def test_discovery_queries_concept_with_region_population_and_dimension_context(
     })
 
     assert discover_catalog_candidates(claim, concept, [], Search()) == []  # type: ignore[arg-type]
-    assert queries == ["취업자 수", "취업자 수 서울", "취업자 수 15세 이상", "취업자 수 사과"]
+    assert queries == ["서울 취업자 수", "15세 이상 취업자 수", "사과 취업자 수", "취업자 수"]
+
+def test_discovery_uses_concept_kosis_search_terms_before_news_labels() -> None:
+    concept = _concept().model_copy(update={
+        "canonical_name": "물가상승률",
+        "matched_alias": "가공식품 물가",
+        "kosis_search_terms": ["소비자물가지수 품목별", "소비자물가지수"],
+    })
+    queries = build_catalog_discovery_queries(_claim(), concept)
+
+    assert queries[:2] == ["소비자물가지수 품목별", "소비자물가지수"]
+    assert "가공식품 물가" in queries
+
+
+def test_rank_discovered_candidates_prefers_table_matching_official_terms_and_dimension() -> None:
+    claim = _claim().model_copy(update={"dimension": {"품목": "가공식품"}})
+    concept = _concept().model_copy(update={
+        "canonical_name": "물가상승률",
+        "kosis_search_terms": ["소비자물가지수 품목별", "소비자물가지수"],
+    })
+    candidates = [
+        KosisCandidateSchema(org_id="101", tbl_id="GENERIC", tbl_name="소비자물가지수", metadata_status="LIVE_SEARCH_UNRESOLVED"),
+        KosisCandidateSchema(org_id="101", tbl_id="ITEM", tbl_name="품목별 소비자물가지수", metadata_status="LIVE_SEARCH_UNRESOLVED"),
+    ]
+
+    assert [item.tbl_id for item in rank_discovered_candidates(claim, concept, candidates)] == ["ITEM", "GENERIC"]
+
+
+def test_discovery_prioritizes_raw_dimension_value_before_generic_export_queries() -> None:
+    claim = _claim().model_copy(update={
+        "indicator": "수출액",
+        "dimension": {"raw": '{"품목": ["화장품"]}'},
+    })
+    concept = _concept().model_copy(update={
+        "canonical_name": "수출액",
+        "kosis_search_terms": ["수출입총괄", "국가별 수출액 수입액", "수출금액"],
+    })
+
+    queries = build_catalog_discovery_queries(claim, concept)
+
+    assert queries[0] == "화장품 수출액"
+    assert queries.index("화장품 수출입총괄") < queries.index("수출입총괄")
+
+
+def test_rank_uses_unwrapped_raw_dimension_values() -> None:
+    claim = _claim().model_copy(update={"dimension": {"raw": '{"품목": ["화장품"]}'}})
+    concept = _concept().model_copy(update={
+        "canonical_name": "수출액",
+        "kosis_search_terms": ["수출입총괄"],
+    })
+    candidates = [
+        KosisCandidateSchema(org_id="360", tbl_id="A_GENERIC", tbl_name="수출액 현황", metadata_status="LIVE_SEARCH_UNRESOLVED"),
+        KosisCandidateSchema(org_id="145", tbl_id="Z_COSMETICS", tbl_name="화장품 수출액 현황", metadata_status="LIVE_SEARCH_UNRESOLVED"),
+    ]
+
+    ranked = rank_discovered_candidates(claim, concept, candidates)
+
+    assert [candidate.tbl_id for candidate in ranked] == ["Z_COSMETICS", "A_GENERIC"]

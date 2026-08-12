@@ -213,3 +213,47 @@ def test_resolve_evidence_cell_uses_base_indicator_for_growth_rate_claim() -> No
 
     assert cell.status == "CONFIRMED"
     assert cell.itm_id == "T"
+
+def test_resolve_evidence_cell_maps_export_value_to_official_export_amount_item() -> None:
+    cell = resolve_evidence_cell(
+        claim(
+            source_sentence="지난해 수출은 전년 대비 8.2% 증가했다.", indicator="수출액",
+            unit="%", time="2024", frequency="Y", region=None,
+            comparison={"type": "YEAR_OVER_YEAR"}, calculation="GROWTH_RATE",
+        ),
+        candidate(
+            org_id="134", tbl_id="DT_134001_001", tbl_name="수출입총괄",
+            core_item_ids=["T002"], core_item_names=["수출금액"],
+            dimension_ids=["13999000"], dimension_names=["가상분류"],
+            dimension_members={"13999000": ["데이터"]},
+            dimension_member_codes={"13999000": {"데이터": "DATA"}},
+            unit_names=["건", "천불"], item_units={"T002": "천불"}, frequency="월|년",
+        ),
+    )
+
+    assert cell.status == "CONFIRMED"
+    assert cell.itm_id == "T002"
+    assert cell.prd_se == "년"
+
+def test_resolve_country_export_from_json_encoded_raw_dimension() -> None:
+    cell = resolve_evidence_cell(
+        claim(
+            source_sentence="지난해 대미 수출액은 1277억8600만달러였다.",
+            indicator="수출액", value=127_786_000_000, unit="달러", time="2024",
+            frequency="Y", region=None,
+            dimension={"raw": '{"교역상대국": ["미국"]}'}, calculation="DIRECT_VALUE",
+        ),
+        candidate(
+            org_id="360", tbl_id="DT_1R11006_FRM101", tbl_name="국가별 수출액, 수입액",
+            core_item_ids=["13103103829T1"], core_item_names=["수출액"],
+            dimension_ids=["13101103829E"], dimension_names=["국가별"],
+            dimension_members={"13101103829E": ["계", "미국", "중국"]},
+            dimension_member_codes={"13101103829E": {"계": "13102103829E.00", "미국": "13102103829E.US", "중국": "13102103829E.CN"}},
+            unit_names=["천달러"], item_units={"13103103829T1": "천달러"}, frequency="월|분기|년",
+        ),
+    )
+
+    assert cell.status == "CONFIRMED"
+    assert cell.dimension_members == {"13101103829E": "미국"}
+    assert cell.dimension_codes == {"13101103829E": "13102103829E.US"}
+    assert cell.prd_se == "년"

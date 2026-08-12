@@ -1,5 +1,6 @@
 import json
 from dataclasses import dataclass
+from datetime import date
 
 import pytest
 
@@ -13,6 +14,21 @@ class FakeStructuredExtractor:
     response: ClaimSchema
 
     def extract(self, source_sentence: str) -> ClaimSchema:
+        return self.response
+
+
+@dataclass
+class FakeContextualExtractor:
+    response: ClaimSchema
+    received_article_date: date | None = None
+
+    def extract(
+        self,
+        source_sentence: str,
+        *,
+        article_published_at: date | None = None,
+    ) -> ClaimSchema:
+        self.received_article_date = article_published_at
         return self.response
 
 
@@ -107,6 +123,30 @@ def test_parse_claim_normalizes_iso_month_to_korean_month() -> None:
     )
 
     assert result.time == "2025년 10월"
+
+
+def test_parse_claim_uses_article_date_to_resolve_target_last_month() -> None:
+    extractor = FakeContextualExtractor(
+        auto_claim(indicator="가공식품 물가", value=3.1, unit="%", time="지난달", frequency="M", comparison={"type": "YEAR_OVER_YEAR"}, calculation="GROWTH_RATE")
+    )
+    result = parse_claim(
+        "지난달 가공식품 물가는 전년 대비 3.1% 올랐다.", extractor, article_published_at=date(2025, 4, 5)
+    )
+    assert extractor.received_article_date == date(2025, 4, 5)
+    assert result.time == "2025년 3월"
+    assert result.frequency == "월"
+    assert result.parse_status == "AUTO_OK"
+
+
+def test_parse_claim_keeps_historical_reference_out_of_target_time() -> None:
+    extractor = FakeContextualExtractor(
+        auto_claim(indicator="가공식품 물가", value=3.1, unit="%", time="지난달", comparison={"type": "YEAR_OVER_YEAR", "reference_period": "2023년 12월"}, calculation="GROWTH_RATE")
+    )
+    result = parse_claim(
+        "지난달 가공식품 물가는 전년 대비 3.1% 올라 2023년 12월 이후 최대였다.", extractor, article_published_at=date(2025, 4, 5)
+    )
+    assert result.time == "2025년 3월"
+    assert result.comparison == {"type": "YEAR_OVER_YEAR", "reference_period": "2023년 12월"}
 
 
 @pytest.mark.parametrize(("source_sentence", "value"), [("2025년 10월 소비자물가는 2.4% 상승했다.", 2.4), ("2025년 10월 배추 물가는 -34.5% 하락했다.", -34.5)])

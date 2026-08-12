@@ -1,0 +1,26 @@
+{
+  "hold_reason_counts": {
+    "AMBIGUOUS_MARGIN": 76,
+    "AS_OF_UNAVAILABLE": 1,
+    "CLAIM_PARSE_UNCERTAIN": 731,
+    "CONCEPT_NOT_FOUND": 15,
+    "EXPORT_ANNUAL_SCOPE_UNCONFIRMED": 2,
+    "EXPORT_COMPARISON_REQUIRED": 2,
+    "EXPORT_DIMENSION_REQUIRED": 29,
+    "EXPORT_FORECAST_CLAIM": 3,
+    "EXPORT_PARTIAL_PERIOD": 48,
+    "EXPORT_TIME_SLOT_MISMATCH": 2,
+    "MISSING_COMPARISON_FOR_GROWTH_RATE": 27,
+    "NO_DATA": 23,
+    "NO_EVIDENCE_COORDINATE_CANDIDATE": 264,
+    "NO_HARD_GUARD_CANDIDATE": 318,
+    "OUTSIDE_TOLERANCE": 1
+  },
+  "kosis_discovery_snapshot_hash": "11636cfaa72601c541ff42515b9b9abb7f2197efa86ba2d27ba83147e13c4b7f",
+  "registry_load_errors": [],
+  "route_counts": {
+    "AUTO": 1,
+    "HOLD": 1541
+  },
+  "total_records": 1542
+}

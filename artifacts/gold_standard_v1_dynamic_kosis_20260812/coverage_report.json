@@ -1,0 +1,21 @@
+{
+  "hold_reason_counts": {
+    "AMBIGUOUS_MARGIN": 118,
+    "AS_OF_UNAVAILABLE": 10,
+    "CLAIM_PARSE_UNCERTAIN": 693,
+    "CONCEPT_NOT_FOUND": 15,
+    "LOW_SEMANTIC_SCORE": 47,
+    "MISSING_COMPARISON_FOR_GROWTH_RATE": 51,
+    "NO_DATA": 51,
+    "NO_EVIDENCE_COORDINATE_CANDIDATE": 344,
+    "NO_HARD_GUARD_CANDIDATE": 208,
+    "OUTSIDE_TOLERANCE": 5
+  },
+  "profile_dependency": "none",
+  "registry_load_errors": [],
+  "route_counts": {
+    "AUTO": 5,
+    "HOLD": 1537
+  },
+  "total_records": 1542
+}

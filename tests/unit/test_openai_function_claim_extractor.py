@@ -4,6 +4,7 @@ import copy
 import json
 import socket
 import traceback
+from datetime import date
 from io import BytesIO
 from typing import Any
 from urllib.error import HTTPError, URLError
@@ -112,6 +113,14 @@ def test_build_request_contains_only_concise_instructions_and_sentence_input() -
         "parallel_tool_calls",
     }
     assert [tool["name"] for tool in request["tools"]] == ["emit_claim"]
+
+
+def test_build_request_includes_article_date_as_claim_parsing_context() -> None:
+    sentence = "지난달 가공식품 물가는 전년 대비 3.1% 올랐다."
+    request = build_openai_claim_request(sentence, "gpt-5.6-luna", article_published_at=date(2025, 4, 5))
+    assert json.loads(request["input"]) == {"source_sentence": sentence, "article_published_at": "2025-04-05"}
+    assert "target time" in request["instructions"]
+    assert "comparison.reference_period" in request["instructions"]
 
 
 def test_parse_accepts_one_emit_claim_function_call_with_json_arguments() -> None:
@@ -436,3 +445,50 @@ def test_contract_error_does_not_expose_full_provider_payload() -> None:
         parse_openai_emit_claim_response(provider_payload)
 
     assert "private provider body" not in str(caught.value)
+
+
+def test_build_request_defines_complete_threshold_condition_contract() -> None:
+    instructions = build_openai_claim_request(
+        "지난해 화장품 수출액은 100억달러 이상이었다.",
+        "gpt-5.6-luna",
+    )["instructions"]
+
+    assert "condition.operator" in instructions
+    assert "condition.threshold_value" in instructions
+    assert "condition.threshold_unit" in instructions
+    assert "GT, GTE, LT, or LTE" in instructions
+
+
+def test_build_request_defines_complete_rank_condition_contract() -> None:
+    instructions = build_openai_claim_request(
+        "지난해 대미 자동차 수출액은 품목 중 1위였다.",
+        "gpt-5.6-luna",
+    )["instructions"]
+
+    assert "condition.rank_value" in instructions
+    assert "condition.order" in instructions
+    assert "condition.population_scope" in instructions
+    assert "DESC or ASC" in instructions
+
+def test_build_request_defines_complete_growth_rate_contract() -> None:
+    instructions = build_openai_claim_request(
+        "올해 1분기 수출액은 전년 동기보다 6.5% 증가했다.",
+        "gpt-5.6-luna",
+    )["instructions"]
+
+    assert "GROWTH_RATE comparison.type" in instructions
+    assert "YEAR_OVER_YEAR, MONTH_OVER_MONTH, or QUARTER_OVER_QUARTER" in instructions
+    assert "condition.direction" in instructions
+    assert "INCREASE or DECREASE" in instructions
+    assert "single target" in instructions
+
+def test_build_request_defines_complete_difference_contract() -> None:
+    instructions = build_openai_claim_request(
+        "수출 비중은 19.8%로 전년보다 0.6%포인트 줄었다.",
+        "gpt-5.6-luna",
+    )["instructions"]
+
+    assert "DIFFERENCE comparison.current_value" in instructions
+    assert "comparison.reference_value" in instructions
+    assert "comparison.operand_unit" in instructions
+    assert "absolute difference" in instructions

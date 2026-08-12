@@ -1,0 +1,20 @@
+{
+  "hold_reason_counts": {
+    "AMBIGUOUS_MARGIN": 76,
+    "AS_OF_UNAVAILABLE": 6,
+    "CLAIM_PARSE_UNCERTAIN": 731,
+    "CONCEPT_NOT_FOUND": 15,
+    "MISSING_COMPARISON_FOR_GROWTH_RATE": 54,
+    "NO_DATA": 51,
+    "NO_EVIDENCE_COORDINATE_CANDIDATE": 286,
+    "NO_HARD_GUARD_CANDIDATE": 318,
+    "OUTSIDE_TOLERANCE": 5
+  },
+  "kosis_discovery_snapshot_hash": "11636cfaa72601c541ff42515b9b9abb7f2197efa86ba2d27ba83147e13c4b7f",
+  "registry_load_errors": [],
+  "route_counts": {
+    "AUTO": 5,
+    "HOLD": 1537
+  },
+  "total_records": 1542
+}

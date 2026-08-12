@@ -75,6 +75,7 @@ def test_normalize_concept_does_not_force_ambiguous_similarity_match() -> None:
     [
         ("총인구", "total_population"),
         ("소비자물가 상승률", "inflation_rate"),
+        ("가공식품 물가", "inflation_rate"),
         ("전산업생산", "all_industry_production_index"),
         ("건설수주", "construction_order_value"),
         ("광공업생산", "mining_manufacturing_production_index"),

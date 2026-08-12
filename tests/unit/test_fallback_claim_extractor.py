@@ -1,3 +1,5 @@
+from datetime import date
+
 import pytest
 
 from core.fallback_claim_extractor import FallbackClaimExtractor
@@ -15,9 +17,13 @@ class FakeExtractor:
         self.result = result
         self.error = error
         self.calls = 0
+        self.article_published_at: date | None = None
 
-    def extract(self, source_sentence: str) -> ClaimSchema:
+    def extract(
+        self, source_sentence: str, *, article_published_at: date | None = None
+    ) -> ClaimSchema:
         self.calls += 1
+        self.article_published_at = article_published_at
         if self.error is not None:
             raise self.error
         assert self.result is not None
@@ -98,3 +104,12 @@ def test_fallback_failure_propagates_and_provider_remains_unavailable() -> None:
     assert primary.calls == 1
     assert fallback.calls == 1
     assert extractor.last_provider == "unavailable"
+
+
+def test_article_date_context_is_forwarded_to_primary_extractor() -> None:
+    primary = FakeExtractor(result=claim())
+    extractor = FallbackClaimExtractor(primary=primary, fallback=FakeExtractor(result=claim()))
+
+    extractor.extract("원문", article_published_at=date(2025, 4, 5))
+
+    assert primary.article_published_at == date(2025, 4, 5)

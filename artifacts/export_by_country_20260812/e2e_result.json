@@ -1,0 +1,97 @@
+{
+  "article_id": "A00312",
+  "calculated_value": null,
+  "claim_id": "A00312_4",
+  "evidence_cells": [
+    {
+      "canonical_key": "ORG=360|TBL=DT_1R11006_FRM101|ITM=13103103829T1|OBJ=13101103829E|MEMBER=미국|PRD_SE=년|PRD_DE=2024",
+      "dimension_codes": {
+        "13101103829E": "13102103829E.US"
+      },
+      "dimension_members": {
+        "13101103829E": "미국"
+      },
+      "itm_id": "13103103829T1",
+      "member_code": "미국",
+      "obj_id": "13101103829E",
+      "org_id": "360",
+      "prd_de": "2024",
+      "prd_se": "년",
+      "status": "CONFIRMED",
+      "tbl_id": "DT_1R11006_FRM101",
+      "unit": "천달러"
+    }
+  ],
+  "evidence_values": [],
+  "execution_trace": {
+    "calculation_version": "1.0",
+    "claim_id": "A00312_4",
+    "claim_schema_version": "1.0",
+    "events": [
+      {
+        "output_ref": null,
+        "reason_code": null,
+        "stage": "CLAIM_PARSE",
+        "status": "PASS"
+      },
+      {
+        "output_ref": null,
+        "reason_code": null,
+        "stage": "SEMANTIC_MAPPING",
+        "status": "PASS"
+      },
+      {
+        "output_ref": null,
+        "reason_code": null,
+        "stage": "CATALOG_SEARCH",
+        "status": "PASS"
+      },
+      {
+        "output_ref": null,
+        "reason_code": null,
+        "stage": "HARD_GUARD",
+        "status": "PASS"
+      },
+      {
+        "output_ref": "margin=1.0",
+        "reason_code": null,
+        "stage": "SEMANTIC_MATCH",
+        "status": "PASS"
+      },
+      {
+        "output_ref": null,
+        "reason_code": null,
+        "stage": "EVIDENCE_CELL",
+        "status": "PASS"
+      },
+      {
+        "output_ref": null,
+        "reason_code": "AS_OF_UNAVAILABLE",
+        "stage": "OFFICIAL_VALUE_FETCH",
+        "status": "HOLD"
+      }
+    ],
+    "kosis_catalog_version": "1.0",
+    "matching_version": "1.0",
+    "preprocess_version": "1.0",
+    "route_status": "HOLD",
+    "semantic_standard_version": "1.0"
+  },
+  "kosis_discovery_snapshot_hash": "74d2769114d28e30c38457fa33ff70c36609029319493f345bb3b41c5b4bf4b2",
+  "official_value": null,
+  "reason_code": "AS_OF_UNAVAILABLE",
+  "route_status": "HOLD",
+  "sentence_id": "4",
+  "snapshot_hash": "",
+  "source_sentence": "하지만 23일 한국무역협회의 ‘대미 가공단계별 수출’ 분석 자료에 따르면, 지난해 대미 수출액 1277억8600만달러 가운데 절반이 넘는 653억9900만달러(51.2%)가 중간재인 것으로 나타났다.",
+  "verdict": "UNDETERMINED",
+  "versions": {
+    "calculation_version": "1.0",
+    "claim_schema_version": "1.0",
+    "dataset_version": "unversioned",
+    "kosis_catalog_version": "1.0",
+    "matching_version": "1.0",
+    "preprocess_version": "1.0",
+    "semantic_standard_version": "1.0"
+  }
+}

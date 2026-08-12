@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import copy
+import json
+from datetime import date
 
 import pytest
 from pydantic import ValidationError
@@ -121,3 +123,9 @@ def test_invalid_claim_arguments_are_rejected_by_pydantic(mutate_arguments) -> N
 
     with pytest.raises(ValidationError):
         parse_emit_claim_tool_call(_payload(arguments))
+
+def test_function_request_includes_article_date_context() -> None:
+    body = build_function_claim_request(
+        "지난달 고용률은 70%였다.", article_published_at=date(2025, 4, 5)
+    )
+    assert json.loads(body["messages"][1]["content"])["article_published_at"] == "2025-04-05"

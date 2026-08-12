@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import socket
+from datetime import date
 from pathlib import Path
 from typing import Any, Callable
 from urllib.error import HTTPError, URLError
@@ -24,20 +25,25 @@ OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses"
 OPENAI_TIMEOUT_SECONDS = 20
 
 OPENAI_CLAIM_INSTRUCTIONS = (
-    "Extract exactly one Korean numerical news claim from the input. "
-    "Call emit_claim exactly once; never fetch or invent KOSIS values. "
-    "Fill these 12 semantic slots only when stated or directly inferable: "
-    "indicator (what is measured), value, unit, time, frequency, region, "
-    "population, dimension, comparison, calculation, condition, source_hint. "
-    "Resolve relative time only when the supplied text makes it unambiguous; otherwise leave it null. "
-    "Keep item, age, sex, industry, or product qualifiers in dimension or population rather than indicator. "
-    "Use comparison for YEAR_OVER_YEAR, MONTH_OVER_MONTH, QUARTER_OVER_QUARTER, "
-    "PART_TO_WHOLE, or explicit reference periods and direction. "
-    "Set calculation to one of DIRECT_VALUE, GROWTH_RATE, DIFFERENCE, SHARE, "
-    "MULTIPLE, RANK, or THRESHOLD according to the verdict target. "
-    "A claim is one independently verifiable verdict target, not every number in a sentence. "
-    "Use AUTO_OK only for one clear factual claim with sufficient slots; use HOLD or HUMAN_REVIEW "
-    "for missing context, forecasts, entity-specific statistics, ranges, or multiple targets."
+    "Extract exactly one Korean numerical news claim. Call emit_claim exactly once; "
+    "never fetch or invent KOSIS values. Fill these 12 semantic slots only when stated "
+    "or directly inferable: indicator, value, unit, time, frequency, region, population, "
+    "dimension, comparison, calculation, condition, source_hint. "
+    "The time slot is the claim target time; put historical benchmarks in "
+    "comparison.reference_period. Preserve relative target time when article_published_at "
+    "is supplied; Python resolves it. Put item, age, sex, industry, product, and trade-partner "
+    "qualifiers in dimension or population, not indicator. "
+    "Set calculation to DIRECT_VALUE, GROWTH_RATE, DIFFERENCE, SHARE, PART_TO_WHOLE, MULTIPLE, RANK, or THRESHOLD. "
+    "For GROWTH_RATE comparison.type must be YEAR_OVER_YEAR, MONTH_OVER_MONTH, or "
+    "QUARTER_OVER_QUARTER; condition.direction must be INCREASE or DECREASE. Emit a single target; "
+    "split or HOLD sentences containing multiple independently verifiable rates. "
+    "For DIFFERENCE comparison.current_value and comparison.reference_value must be numeric; "
+    "set comparison.operand_unit and make value their absolute difference. "
+    "For THRESHOLD set condition.operator to GT, GTE, LT, or LTE; set numeric "
+    "condition.threshold_value and matching condition.threshold_unit. "
+    "For RANK set condition.rank_value, condition.order as DESC or ASC, and "
+    "condition.population_scope; require exactly one ranked item. "
+    "Use AUTO_OK only for one clear factual claim with sufficient slots; otherwise use HOLD or HUMAN_REVIEW."
 )
 Transport = Callable[..., Any]
 _OPENAI_API_KEY_OMITTED = object()
@@ -63,12 +69,19 @@ class OpenAIContractError(OpenAIClaimExtractorError):
     """Raised when a provider response violates the strict claim contract."""
 
 
-def build_openai_claim_request(sentence: str, model: str) -> dict[str, object]:
+def build_openai_claim_request(
+    sentence: str, model: str, *, article_published_at: date | None = None
+) -> dict[str, object]:
     """Build a Responses API request exposing only the strict emit_claim tool."""
+    claim_input = (
+        json.dumps({"source_sentence": sentence, "article_published_at": article_published_at.isoformat()}, ensure_ascii=False)
+        if article_published_at is not None
+        else sentence
+    )
     return {
         "model": model,
         "instructions": OPENAI_CLAIM_INSTRUCTIONS,
-        "input": sentence,
+        "input": claim_input,
         "tools": [openai_emit_claim_tool_definition()],
         "tool_choice": {
             "type": "function",
@@ -127,13 +140,13 @@ class OpenAIFunctionClaimExtractor:
         self.model = model
         self._transport = transport or urlopen
 
-    def extract(self, sentence: str) -> ClaimSchema:
+    def extract(self, sentence: str, *, article_published_at: date | None = None) -> ClaimSchema:
         if not self.api_key:
             raise OpenAIConfigurationError("OPENAI_API_KEY_NOT_CONFIGURED")
 
         request = Request(
             OPENAI_RESPONSES_URL,
-            data=json.dumps(build_openai_claim_request(sentence, self.model)).encode(),
+            data=json.dumps(build_openai_claim_request(sentence, self.model, article_published_at=article_published_at)).encode(),
             headers={
                 "Authorization": f"Bearer {self.api_key}",
                 "Content-Type": "application/json",

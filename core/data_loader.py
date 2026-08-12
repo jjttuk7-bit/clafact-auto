@@ -19,6 +19,7 @@ class SemanticStandardRecord:
     canonical_name: str
     standard_key: str
     aliases: tuple[str, ...]
+    kosis_search_terms: tuple[str, ...] = ()
 
 
 def load_standard_concepts(path: Path) -> list[SemanticStandardRecord]:
@@ -30,6 +31,7 @@ def load_standard_concepts(path: Path) -> list[SemanticStandardRecord]:
             canonical_name=_required_string(record, "canonical_name"),
             standard_key=_required_string(record, "standard_key"),
             aliases=tuple(_string_list(record.get("aliases", []))),
+            kosis_search_terms=tuple(_string_list(record.get("kosis_search_terms", []))),
         )
         for record in records
     ]
