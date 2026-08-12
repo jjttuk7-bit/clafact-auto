@@ -97,8 +97,8 @@ def test_period_metadata_never_upgrades_candidate_without_official_item_metadata
         "secret", metadata_fetcher=fetcher,
     )[0]
 
-    assert refreshed.frequency == "월"
-    assert refreshed.metadata_status == "LIVE_SEARCH_UNRESOLVED"
+    assert refreshed.frequency is None
+    assert refreshed.metadata_status == "OFFICIAL_ITEM_METADATA_UNAVAILABLE"
 
 
 def test_refresh_respects_candidate_metadata_budget_and_preserves_unfetched_rows() -> None:
@@ -152,3 +152,30 @@ def test_refresh_default_budget_limits_live_metadata_requests_to_eight_candidate
     assert len(calls) == 16
     assert refreshed[7].metadata_status == "OFFICIAL_METADATA_READY"
     assert refreshed[8] == candidates[8]
+
+
+def test_refresh_passes_configured_request_retry_and_timeout_budget() -> None:
+    from core.catalog_metadata_refresh import refresh_item_metadata
+
+    request_budgets: list[tuple[int, int]] = []
+
+    def fetcher(api_key, org_id, table_id, *, meta_type, retries, timeout_seconds):
+        request_budgets.append((retries, timeout_seconds))
+        return []
+
+    candidate = KosisCandidateSchema(
+        org_id="145",
+        tbl_id="DT_EXPORT",
+        tbl_name="수출액",
+        metadata_status="LIVE_SEARCH_UNRESOLVED",
+    )
+
+    refresh_item_metadata(
+        [candidate],
+        "secret",
+        metadata_fetcher=fetcher,
+        retries=1,
+        timeout_seconds=10,
+    )
+
+    assert request_budgets == [(1, 10)]

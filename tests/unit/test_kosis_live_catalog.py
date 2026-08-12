@@ -98,3 +98,19 @@ def test_live_catalog_retries_one_transient_empty_result() -> None:
 
     assert [candidate.tbl_id for candidate in candidates] == ["DT_CPI"]
     assert calls == 2
+
+
+def test_live_catalog_records_transport_failure_without_exposing_exception() -> None:
+    def opener(*args, **kwargs):
+        raise OSError("secret response detail")
+
+    search = KosisLiveCatalogSearch(
+        "secret",
+        opener=opener,
+        max_attempts=1,
+        timeout_seconds=5,
+    )
+
+    assert search.search("수출액") == []
+    assert search.attempted_queries == 1
+    assert search.failed_queries == 1

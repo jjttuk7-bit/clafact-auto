@@ -24,16 +24,23 @@ class KosisLiveCatalogSearch:
         *,
         opener: Callable[..., Any] = urlopen,
         endpoint: str = KOSIS_SEARCH_URL,
+        max_attempts: int = 2,
+        timeout_seconds: int = 10,
     ) -> None:
         self._api_key = api_key
         self._opener = opener
         self._endpoint = endpoint
+        self._max_attempts = max(1, max_attempts)
+        self._timeout_seconds = max(1, timeout_seconds)
+        self.attempted_queries = 0
+        self.failed_queries = 0
 
     def search(self, query: str, *, result_count: int = 20) -> list[KosisCandidateSchema]:
         """Return official table identities; selection metadata remains intentionally unresolved."""
         normalized_query = query.strip()
         if not self._api_key or not normalized_query or result_count <= 0:
             return []
+        self.attempted_queries += 1
         params = urlencode(
             {
                 "method": "getList",
@@ -44,12 +51,14 @@ class KosisLiveCatalogSearch:
             }
         )
         request = Request(f"{self._endpoint}?{params}", headers={"Accept": "application/json", "User-Agent": "CLAFACT-AUTO/0.1"})
-        for _attempt in range(2):
+        transport_succeeded = False
+        for _attempt in range(self._max_attempts):
             try:
-                with self._opener(request, timeout=10) as response:
+                with self._opener(request, timeout=self._timeout_seconds) as response:
                     payload = _decode_kosis_payload(response.read())
             except (OSError, UnicodeDecodeError, RuntimeError):
                 continue
+            transport_succeeded = True
             rows = payload if isinstance(payload, list) else payload.get("data", []) if isinstance(payload, dict) else []
             if not isinstance(rows, list):
                 continue
@@ -61,6 +70,8 @@ class KosisLiveCatalogSearch:
             ]
             if candidates:
                 return candidates
+        if not transport_succeeded:
+            self.failed_queries += 1
         return []
 
 

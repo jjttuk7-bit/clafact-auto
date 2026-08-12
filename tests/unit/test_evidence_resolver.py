@@ -257,3 +257,37 @@ def test_resolve_country_export_from_json_encoded_raw_dimension() -> None:
     assert cell.dimension_members == {"13101103829E": "미국"}
     assert cell.dimension_codes == {"13101103829E": "13102103829E.US"}
     assert cell.prd_se == "년"
+
+
+def test_resolve_evidence_cell_normalizes_korean_quarter_to_kosis_period_key() -> None:
+    cell = resolve_evidence_cell(
+        claim(
+            source_sentence="2024년 1분기 중고차 수출액은 증가했다.",
+            indicator="수출액",
+            value=31,
+            unit="%",
+            time="2024년 1분기",
+            frequency="분기",
+            region=None,
+            dimension={"상품": "중고차"},
+            comparison={"type": "YEAR_OVER_YEAR"},
+            calculation="GROWTH_RATE",
+        ),
+        candidate(
+            org_id="360",
+            tbl_id="DT_ITEM_EXPORT",
+            tbl_name="품목별 수출액",
+            core_item_ids=["T1"],
+            core_item_names=["수출액"],
+            dimension_ids=["C1"],
+            dimension_names=["상품"],
+            dimension_members={"C1": ["중고차"]},
+            dimension_member_codes={"C1": {"중고차": "USED_CAR"}},
+            unit_names=["천달러"],
+            item_units={"T1": "천달러"},
+            frequency="분기",
+        ),
+    )
+
+    assert cell.status == "CONFIRMED"
+    assert cell.prd_de == "2024-Q1"

@@ -137,6 +137,12 @@ def _period_key(value: str | None) -> str:
     match = re.search(r"(?P<year>\d{4})\s*년?\s*(?P<month>\d{1,2})\s*월", value)
     if match:
         return f"{match.group('year')}-{int(match.group('month')):02d}"
+    quarter = re.search(
+        r"(?P<year>\d{4})\s*년?\s*(?P<quarter>[1-4])\s*분기",
+        value,
+    )
+    if quarter:
+        return f"{quarter.group('year')}-Q{quarter.group('quarter')}"
     return value.replace("년", "").strip()
 
 

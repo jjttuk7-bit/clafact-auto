@@ -18,6 +18,8 @@ def refresh_item_metadata(
     metadata_fetcher: Callable[..., Iterable[Mapping[str, object]]] = get_meta,
     allow_without_api_key: bool = False,
     max_candidates: int | None = 8,
+    retries: int = 2,
+    timeout_seconds: int = 20,
 ) -> list[KosisCandidateSchema]:
     """Hydrate at most the ranked candidate budget; preserve the remaining identities."""
     materialized = list(candidates)
@@ -30,15 +32,26 @@ def refresh_item_metadata(
     hydrated = hydrate_candidates_from_official_metadata(
         refreshable,
         lambda org_id, table_id: metadata_fetcher(
-            fetcher_key, org_id, table_id, meta_type="ITM", retries=2, timeout_seconds=20,
+            fetcher_key,
+            org_id,
+            table_id,
+            meta_type="ITM",
+            retries=retries,
+            timeout_seconds=timeout_seconds,
         ),
     )
     refreshed: list[KosisCandidateSchema] = []
     for candidate in hydrated:
+        if candidate.metadata_status not in {
+            "OFFICIAL_ITEM_METADATA_READY",
+            "OFFICIAL_METADATA_READY",
+        }:
+            refreshed.append(candidate)
+            continue
         try:
             period_rows = list(metadata_fetcher(
                 fetcher_key, candidate.org_id, candidate.tbl_id,
-                meta_type="PRD", retries=2, timeout_seconds=20,
+                meta_type="PRD", retries=retries, timeout_seconds=timeout_seconds,
             ))
             refreshed.append(_with_period_metadata(candidate, period_rows))
         except (RuntimeError, TypeError, ValueError):

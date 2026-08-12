@@ -26,13 +26,93 @@ def test_discovery_queries_structured_indicator_only_when_local_is_empty() -> No
 
 
 def test_discovery_preserves_local_structural_candidate_without_live_request() -> None:
-    local = KosisCandidateSchema(org_id="101", tbl_id="DT_LOCAL", tbl_name="로컬", metadata_status="STRUCTURAL_READY")
+    local = KosisCandidateSchema(
+        org_id="101",
+        tbl_id="DT_LOCAL",
+        tbl_name="로컬",
+        core_item_ids=["T"],
+        core_item_names=["가공식품 물가"],
+        unit_names=["%"],
+        metadata_status="OFFICIAL_METADATA_READY",
+    )
 
     class Search:
         def search(self, query: str):
             raise AssertionError("live search should not run")
 
     assert discover_catalog_candidates(_claim(), _concept(), [local], Search()) == [local]  # type: ignore[arg-type]
+
+
+def test_discovery_expands_live_search_when_local_candidates_miss_claim_dimension() -> None:
+    queries: list[str] = []
+    claim = _claim().model_copy(
+        update={
+            "indicator": "수출액",
+            "dimension": {"상품": "중고차"},
+            "calculation": "GROWTH_RATE",
+        }
+    )
+    concept = _concept().model_copy(
+        update={
+            "canonical_name": "수출액",
+            "kosis_search_terms": ["수출입총괄", "수출금액"],
+        }
+    )
+    local = KosisCandidateSchema(
+        org_id="101",
+        tbl_id="DT_GENERIC_EXPORT",
+        tbl_name="수출입총괄",
+        metadata_status="STRUCTURAL_READY",
+    )
+    live = KosisCandidateSchema(
+        org_id="145",
+        tbl_id="DT_USED_CAR_EXPORT",
+        tbl_name="중고차 수출액",
+        metadata_status="LIVE_SEARCH_UNRESOLVED",
+    )
+
+    class Search:
+        def search(self, query: str):
+            queries.append(query)
+            return [live] if query == "중고차 수출액" else []
+
+    result = discover_catalog_candidates(claim, concept, [local], Search())  # type: ignore[arg-type]
+
+    assert queries[0] == "중고차 수출액"
+    assert [candidate.tbl_id for candidate in result] == [
+        "DT_USED_CAR_EXPORT",
+        "DT_GENERIC_EXPORT",
+    ]
+
+
+def test_discovery_keeps_dimension_compatible_local_candidate_without_live_request() -> None:
+    claim = _claim().model_copy(
+        update={
+            "indicator": "수출액",
+            "dimension": {"상품": "중고차"},
+            "calculation": "GROWTH_RATE",
+        }
+    )
+    concept = _concept().model_copy(update={"canonical_name": "수출액"})
+    local = KosisCandidateSchema(
+        org_id="145",
+        tbl_id="DT_LOCAL_USED_CAR",
+        tbl_name="품목별 수출액",
+        dimension_ids=["C1"],
+        dimension_names=["상품"],
+        dimension_members={"C1": ["중고차", "승용차"]},
+        dimension_member_codes={"C1": {"중고차": "USED", "승용차": "CAR"}},
+        core_item_ids=["T"],
+        core_item_names=["수출액"],
+        unit_names=["천달러"],
+        metadata_status="OFFICIAL_METADATA_READY",
+    )
+
+    class Search:
+        def search(self, query: str):
+            raise AssertionError("dimension-compatible local metadata should be reused")
+
+    assert discover_catalog_candidates(claim, concept, [local], Search()) == [local]  # type: ignore[arg-type]
 
 
 def test_unresolved_live_metadata_is_reportable() -> None:
@@ -70,7 +150,129 @@ def test_discovery_queries_concept_with_region_population_and_dimension_context(
     })
 
     assert discover_catalog_candidates(claim, concept, [], Search()) == []  # type: ignore[arg-type]
-    assert queries == ["서울 취업자 수", "15세 이상 취업자 수", "사과 취업자 수", "취업자 수"]
+    assert queries == [
+        "서울 15세 이상 사과 취업자 수",
+        "사과 취업자 수",
+        "15세 이상 취업자 수",
+        "서울 취업자 수",
+        "취업자 수",
+    ]
+
+
+def test_discovery_respects_live_query_budget_in_ranked_query_order() -> None:
+    queries: list[str] = []
+
+    class Search:
+        def search(self, query: str):
+            queries.append(query)
+            return []
+
+    claim = _claim().model_copy(
+        update={
+            "indicator": "수출액",
+            "region": "서울",
+            "population": "사업체",
+            "dimension": {"상품": "중고차"},
+        }
+    )
+    concept = _concept().model_copy(update={"canonical_name": "수출액"})
+
+    discover_catalog_candidates(
+        claim,
+        concept,
+        [],
+        Search(),  # type: ignore[arg-type]
+        max_live_queries=2,
+    )
+
+    assert queries == ["서울 사업체 중고차 수출액", "중고차 수출액"]
+
+
+def test_discovery_budget_preserves_population_in_combined_query() -> None:
+    queries: list[str] = []
+
+    class Search:
+        def search(self, query: str):
+            queries.append(query)
+            return []
+
+    claim = _claim().model_copy(
+        update={
+            "indicator": "취업자 수",
+            "region": "서울",
+            "population": "15세 이상",
+            "dimension": {"성별": "여자"},
+        }
+    )
+    concept = _concept().model_copy(update={"canonical_name": "취업자 수"})
+
+    discover_catalog_candidates(
+        claim,
+        concept,
+        [],
+        Search(),  # type: ignore[arg-type]
+        max_live_queries=1,
+    )
+
+    assert queries == ["서울 15세 이상 여자 취업자 수"]
+
+
+def test_discovery_combines_region_population_and_all_dimensions_first() -> None:
+    queries: list[str] = []
+
+    class Search:
+        def search(self, query: str):
+            queries.append(query)
+            return []
+
+    claim = _claim().model_copy(
+        update={
+            "indicator": "취업자 수",
+            "region": "서울",
+            "population": "15세 이상",
+            "dimension": {"성별": "여자", "산업": "제조업"},
+        }
+    )
+    concept = _concept().model_copy(update={"canonical_name": "취업자 수"})
+
+    discover_catalog_candidates(
+        claim,
+        concept,
+        [],
+        Search(),  # type: ignore[arg-type]
+        max_live_queries=1,
+    )
+
+    assert queries == ["서울 15세 이상 여자 제조업 취업자 수"]
+
+
+def test_discovery_combines_region_and_population_without_dimension_first() -> None:
+    queries: list[str] = []
+
+    class Search:
+        def search(self, query: str):
+            queries.append(query)
+            return []
+
+    claim = _claim().model_copy(
+        update={
+            "indicator": "취업자 수",
+            "region": "서울",
+            "population": "15세 이상",
+            "dimension": None,
+        }
+    )
+    concept = _concept().model_copy(update={"canonical_name": "취업자 수"})
+
+    discover_catalog_candidates(
+        claim,
+        concept,
+        [],
+        Search(),  # type: ignore[arg-type]
+        max_live_queries=1,
+    )
+
+    assert queries == ["서울 15세 이상 취업자 수"]
 
 def test_discovery_uses_concept_kosis_search_terms_before_news_labels() -> None:
     concept = _concept().model_copy(update={

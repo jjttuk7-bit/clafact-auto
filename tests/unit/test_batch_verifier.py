@@ -12,6 +12,7 @@ from core.batch_verifier import (
     load_articles,
     verify_articles,
 )
+from core.operational_error import OperationalStageError
 from schemas.verdict import VerdictSchema
 
 
@@ -82,6 +83,23 @@ def test_verify_articles_converts_verifier_failure_to_hold() -> None:
 
     assert result.claim_rows[0].route_status == "HOLD"
     assert result.claim_rows[0].reason_code == "BATCH_VERIFIER_ERROR"
+
+
+def test_verify_articles_preserves_operational_stage_and_diagnostic_reference() -> None:
+    article = BatchArticle(
+        "A1",
+        date(2025, 4, 9),
+        "2025년 3월 취업자 수는 2858만9000명이었다.",
+    )
+    result = verify_articles(
+        [article],
+        lambda sentence, _: (_ for _ in ()).throw(
+            OperationalStageError("KOSIS_CATALOG", "diag12345678")
+        ),
+    )
+
+    assert result.claim_rows[0].route_status == "HOLD"
+    assert result.claim_rows[0].reason_code == "KOSIS_CATALOG_ERROR:diag12345678"
 
 
 def test_export_batch_xlsx_has_claim_summary_and_review_sheets() -> None:

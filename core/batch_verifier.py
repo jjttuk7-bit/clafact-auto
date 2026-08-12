@@ -16,6 +16,7 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill
 
 from core.article_preprocessor import preprocess_article
+from core.operational_error import OperationalStageError
 from schemas.verdict import VerdictSchema
 
 _REQUIRED_COLUMNS = {"article_id", "published_at", "body"}
@@ -113,6 +114,14 @@ def verify_articles(articles: Iterable[BatchArticle], verifier: Verifier) -> Bat
             try:
                 verdict = verifier(sentence, article.published_at)
                 claim_rows.append(_claim_row(article, sentence, verdict))
+            except OperationalStageError as error:
+                claim_rows.append(
+                    _hold_row(
+                        article,
+                        sentence,
+                        f"{error.stage}_ERROR:{error.diagnostic_id}",
+                    )
+                )
             except Exception:
                 claim_rows.append(_hold_row(article, sentence))
     return BatchVerificationResult(claim_rows=claim_rows, article_rows=_summaries(materialized, claim_rows))
@@ -223,8 +232,12 @@ def _claim_row(article: BatchArticle, sentence: str, verdict: VerdictSchema) -> 
     )
 
 
-def _hold_row(article: BatchArticle, sentence: str) -> BatchClaimResult:
-    return BatchClaimResult(article.article_id, article.published_at, sentence, "batch_error", "UNDETERMINED", "HOLD", "BATCH_VERIFIER_ERROR", None, None, None, None, None, article.source_url)
+def _hold_row(
+    article: BatchArticle,
+    sentence: str,
+    reason_code: str = "BATCH_VERIFIER_ERROR",
+) -> BatchClaimResult:
+    return BatchClaimResult(article.article_id, article.published_at, sentence, "batch_error", "UNDETERMINED", "HOLD", reason_code, None, None, None, None, None, article.source_url)
 
 
 def _summaries(articles: list[BatchArticle], rows: list[BatchClaimResult]) -> list[BatchArticleSummary]:

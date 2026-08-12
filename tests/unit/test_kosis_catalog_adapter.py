@@ -68,4 +68,7 @@ def test_hydrate_candidates_preserves_candidate_when_official_metadata_fails() -
         [candidate], lambda _org_id, _table_id: (_ for _ in ()).throw(RuntimeError('unavailable'))
     )
 
-    assert hydrated == [candidate]
+    assert hydrated[0].model_copy(
+        update={"metadata_status": candidate.metadata_status}
+    ) == candidate
+    assert hydrated[0].metadata_status == "OFFICIAL_ITEM_METADATA_UNAVAILABLE"

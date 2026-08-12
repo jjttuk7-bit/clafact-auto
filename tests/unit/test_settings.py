@@ -143,7 +143,7 @@ def test_settings_loads_main_repository_env_when_running_from_worktree(tmp_path,
 
     assert Settings().openai_api_key == "main-key"
 
-def test_settings_prefers_main_repository_env_over_inherited_key_in_worktree(tmp_path, monkeypatch) -> None:
+def test_settings_preserves_inherited_key_over_main_repository_env_in_worktree(tmp_path, monkeypatch) -> None:
     repository_root = tmp_path / "repository"
     worktree_root = repository_root / ".worktrees" / "validation"
     worktree_root.mkdir(parents=True)
@@ -151,4 +151,4 @@ def test_settings_prefers_main_repository_env_over_inherited_key_in_worktree(tmp
     monkeypatch.setattr(settings_module, "_ENV_PATH", worktree_root / ".env")
     monkeypatch.setenv("OPENAI_API_KEY", "inherited-key")
 
-    assert Settings().openai_api_key == "main-key"
+    assert Settings().openai_api_key == "inherited-key"

@@ -40,6 +40,7 @@ from core.verdict_engine import make_verdict
 from core.ui_labels import translate_status
 from core.verdict_explainer import explain_verdict
 from core.operator_artifact_loader import load_operator_run
+from core.operational_error import OperationalStageError, run_operational_stage
 from core.claim_verification_service import VerificationTraceRecorder
 from core.verification_trace import attach_trace
 from schemas.candidate import KosisCandidateSchema
@@ -68,9 +69,42 @@ def _find_catalog_candidates(
 ) -> list[KosisCandidateSchema]:
     """Prefer registered structural metadata; search KOSIS only for missing tables."""
     local = search_semantic_catalog(claim, concept, load_kosis_catalog(CATALOG_PATH))
-    live_search = KosisLiveCatalogSearch(settings.kosis_api_key) if settings.kosis_api_key else None
-    discovered = discover_catalog_candidates(claim, concept, local, live_search)
-    return refresh_item_metadata(discovered, settings.kosis_api_key)
+    live_search = (
+        KosisLiveCatalogSearch(
+            settings.kosis_api_key,
+            max_attempts=1,
+            timeout_seconds=5,
+        )
+        if settings.kosis_api_key
+        else None
+    )
+    discovered = discover_catalog_candidates(
+        claim,
+        concept,
+        local,
+        live_search,
+        max_live_queries=3,
+    )
+    if (
+        live_search is not None
+        and live_search.attempted_queries > 0
+        and live_search.failed_queries == live_search.attempted_queries
+    ):
+        raise RuntimeError("KOSIS_CATALOG_UNAVAILABLE")
+    refreshed = refresh_item_metadata(
+        discovered,
+        settings.kosis_api_key,
+        max_candidates=2,
+        retries=1,
+        timeout_seconds=5,
+    )
+    attempted = refreshed[:2]
+    if attempted and all(
+        candidate.metadata_status == "OFFICIAL_ITEM_METADATA_UNAVAILABLE"
+        for candidate in attempted
+    ):
+        raise RuntimeError("KOSIS_METADATA_UNAVAILABLE")
+    return refreshed
 
 
 def _official_fetcher(settings: Settings) -> OfficialValueFetcher:
@@ -104,10 +138,17 @@ def _parse_article_date(value: str) -> date | None:
 
 def _verify_batch_claim(sentence: str, article_date: date, settings: Settings) -> VerdictSchema:
     """Parse a batch sentence, then use the same dynamic KOSIS engine as the UI."""
-    claim = parse_claim(
-        sentence,
-        create_claim_extractor(settings),
-        article_published_at=article_date,
+    extractor = run_operational_stage(
+        "CLAIM_PARSE",
+        lambda: create_claim_extractor(settings),
+    )
+    claim = run_operational_stage(
+        "CLAIM_PARSE",
+        lambda: parse_claim(
+            sentence,
+            extractor,
+            article_published_at=article_date,
+        ),
     )
     if claim.parse_status != "AUTO_OK":
         recorder = VerificationTraceRecorder(claim.claim_id).claim_parsed()
@@ -118,14 +159,23 @@ def _verify_batch_claim(sentence: str, article_date: date, settings: Settings) -
                 "explanation": "Claim parsing requires human review.",
             }
         )
-    concept = normalize_concept(claim, load_standard_concepts(STANDARD_PATH))
-    candidates = _find_catalog_candidates(claim, concept, settings)
-    return verify_claim_against_kosis(
-        claim,
-        concept,
-        candidates,
-        article_date=article_date,
-        official_fetcher=_official_fetcher(settings),
+    concept = run_operational_stage(
+        "SEMANTIC_MAPPING",
+        lambda: normalize_concept(claim, load_standard_concepts(STANDARD_PATH)),
+    )
+    candidates = run_operational_stage(
+        "KOSIS_CATALOG",
+        lambda: _find_catalog_candidates(claim, concept, settings),
+    )
+    return run_operational_stage(
+        "VERIFICATION",
+        lambda: verify_claim_against_kosis(
+            claim,
+            concept,
+            candidates,
+            article_date=article_date,
+            official_fetcher=_official_fetcher(settings),
+        ),
     )
 st.set_page_config(page_title="CLAFACT-AUTO", layout="wide")
 st.title("CLAFACT-AUTO")
@@ -164,9 +214,17 @@ article_date_text = st.text_input("기사 기준일 (YYYY-MM-DD)", placeholder="
 if st.button("자동 검증 실행", type="primary") and sentence.strip():
     try:
         article_date = _parse_article_date(article_date_text)
-        extractor = create_claim_extractor(settings)
-        claim = parse_claim(
-            sentence, extractor, article_published_at=article_date
+        extractor = run_operational_stage(
+            "CLAIM_PARSE",
+            lambda: create_claim_extractor(settings),
+        )
+        claim = run_operational_stage(
+            "CLAIM_PARSE",
+            lambda: parse_claim(
+                sentence,
+                extractor,
+                article_published_at=article_date,
+            ),
         )
         actual_provider = getattr(extractor, "last_provider", None)
         actual_provider_label = {
@@ -188,8 +246,17 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
                 }
             )
         else:
-            concept = normalize_concept(claim, load_standard_concepts(STANDARD_PATH))
-            candidates = _find_catalog_candidates(claim, concept, settings)
+            concept = run_operational_stage(
+                "SEMANTIC_MAPPING",
+                lambda: normalize_concept(
+                    claim,
+                    load_standard_concepts(STANDARD_PATH),
+                ),
+            )
+            candidates = run_operational_stage(
+                "KOSIS_CATALOG",
+                lambda: _find_catalog_candidates(claim, concept, settings),
+            )
             matches = []
 
         st.subheader("기사 주장")
@@ -214,12 +281,15 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
             verdict = make_verdict(claim.claim_id, claim.value, [], None)
             st.warning("보류: 기사 기준일이 없어 사후 개정값을 차단할 수 없습니다.")
         else:
-            verdict = verify_claim_against_kosis(
-                claim,
-                concept,
-                candidates,
-                article_date=article_date,
-                official_fetcher=_official_fetcher(settings),
+            verdict = run_operational_stage(
+                "VERIFICATION",
+                lambda: verify_claim_against_kosis(
+                    claim,
+                    concept,
+                    candidates,
+                    article_date=article_date,
+                    official_fetcher=_official_fetcher(settings),
+                ),
             )
             evidence_cells = verdict.evidence_cells
             if evidence_cells:
@@ -237,10 +307,17 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
         verdict_columns[1].metric("경로", translate_status(verdict.route_status))
         verdict_columns[2].metric("기사값", verdict.claim_value if verdict.claim_value is not None else "-")
         verdict_columns[3].metric("KOSIS 공식값", verdict.calculated_value if verdict.calculated_value is not None else "-")
-        verdict_explanation = explain_verdict(
-            verdict,
-            api_key=settings.openai_api_key if settings.llm_verdict_explanation_enabled else None,
-            model=settings.openai_model,
+        verdict_explanation = run_operational_stage(
+            "VERDICT_EXPLANATION",
+            lambda: explain_verdict(
+                verdict,
+                api_key=(
+                    settings.openai_api_key
+                    if settings.llm_verdict_explanation_enabled
+                    else None
+                ),
+                model=settings.openai_model,
+            ),
         )
         st.subheader("판정 설명")
         explanation_source = "AI 자연어 설명" if verdict_explanation.source == "LLM" else "규칙 기반 설명"
@@ -289,6 +366,8 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
         )
     except _InvalidArticleDateError:
         st.error("보류: 기사 기준일은 YYYY-MM-DD 형식이어야 합니다.")
+    except OperationalStageError as error:
+        st.error(f"보류: {error.safe_message}")
     except Exception as error:
         st.error(f"보류: {type(error).__name__}")
 st.divider()

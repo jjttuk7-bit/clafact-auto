@@ -6,6 +6,7 @@ from collections.abc import Iterable
 import re
 
 from core.claim_dimensions import dimension_member_values, normalized_dimension_members
+from core.hard_guard import apply_hard_guard
 from core.kosis_live_catalog import KosisLiveCatalogSearch
 from schemas.candidate import KosisCandidateSchema
 from schemas.claim import ClaimSchema
@@ -17,20 +18,65 @@ def discover_catalog_candidates(
     concept: StandardConceptSchema,
     local_candidates: Iterable[KosisCandidateSchema],
     live_search: KosisLiveCatalogSearch | None,
+    *,
+    max_live_queries: int | None = None,
 ) -> list[KosisCandidateSchema]:
     """Use local structural metadata first, then a read-only KOSIS table search."""
     local = list(local_candidates)
-    if local or live_search is None:
+    if live_search is None or (local and _local_candidates_cover_claim_context(claim, local)):
         return local
-    discovered: list[KosisCandidateSchema] = []
-    seen: set[tuple[str, str]] = set()
-    for query in build_catalog_discovery_queries(claim, concept):
+    discovered = list(local)
+    seen: set[tuple[str, str]] = {
+        (candidate.org_id, candidate.tbl_id) for candidate in local
+    }
+    queries = build_catalog_discovery_queries(claim, concept)
+    if max_live_queries is not None:
+        queries = queries[:max(0, max_live_queries)]
+    for query in queries:
         for candidate in live_search.search(query):
             key = (candidate.org_id, candidate.tbl_id)
             if key not in seen:
                 seen.add(key)
                 discovered.append(candidate)
     return rank_discovered_candidates(claim, concept, discovered)
+
+
+def _local_candidates_cover_claim_context(
+    claim: ClaimSchema, candidates: Iterable[KosisCandidateSchema]
+) -> bool:
+    """Return true when at least one local table represents every Claim dimension member."""
+    requested_members = [
+        _normalized_text(value)
+        for value in dimension_member_values(claim.dimension)
+        if _normalized_text(value)
+    ]
+    for candidate in candidates:
+        if candidate.metadata_status == "LIVE_SEARCH_UNRESOLVED":
+            continue
+        if not apply_hard_guard(claim, candidate).passed:
+            continue
+        if not candidate.core_item_ids or not candidate.unit_names:
+            continue
+        if claim.frequency and not candidate.frequency:
+            continue
+        if not requested_members:
+            return True
+        represented = {
+            _normalized_text(member)
+            for members in candidate.dimension_members.values()
+            for member in members
+        }
+        coded = {
+            _normalized_text(member)
+            for codes in candidate.dimension_member_codes.values()
+            for member in codes
+        }
+        if all(
+            member in represented and member in coded
+            for member in requested_members
+        ):
+            return True
+    return False
 
 
 def rank_discovered_candidates(
@@ -79,21 +125,24 @@ def build_catalog_discovery_queries(
     bases = _unique_texts((*concept.kosis_search_terms, concept.canonical_name, claim.indicator, concept.matched_alias))
     if not bases:
         return []
-    qualifiers = _unique_texts(
-        value
-        for value in (
-            claim.region if claim.region not in {"전국", "대한민국", "한국"} else None,
-            claim.population,
-            *dimension_member_values(claim.dimension),
-        )
-    )
+    dimension_values = _unique_texts(dimension_member_values(claim.dimension))
+    region = claim.region if claim.region not in {"전국", "대한민국", "한국"} else None
+    qualifiers = _unique_texts((*dimension_values, claim.population, region))
     contextual_bases = _unique_texts((claim.indicator, concept.canonical_name, bases[0]))
+    combined_context = " ".join(
+        filter(None, (region, claim.population, *dimension_values))
+    )
+    combined_queries = (
+        f"{combined_context} {base}"
+        for base in contextual_bases
+        if combined_context
+    )
     contextual_queries = (
         f"{qualifier} {base}"
         for qualifier in qualifiers
         for base in contextual_bases
     )
-    return _unique_texts((*contextual_queries, *bases))
+    return _unique_texts((*combined_queries, *contextual_queries, *bases))
 
 
 def _unique_texts(values: Iterable[str | None]) -> list[str]:

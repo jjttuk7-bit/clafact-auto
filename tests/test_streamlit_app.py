@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import subprocess
 import sys
+import runpy
 from contextlib import ExitStack
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -9,7 +10,10 @@ from unittest.mock import MagicMock, patch
 import pytest
 from streamlit.testing.v1 import AppTest
 
+import config.settings as settings_module
 from schemas.claim import ClaimSchema
+from schemas.candidate import KosisCandidateSchema
+from schemas.concept import StandardConceptSchema
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -25,6 +29,7 @@ def _set_provider_environment(
     openai_api_key: str = "",
     hcx_extraction_mode: str = "structured_output",
 ) -> None:
+    monkeypatch.setattr(settings_module, "_ENV_PATH", Path("missing-test.env"))
     monkeypatch.setenv("CLAFACT_CLAIM_PROVIDER", claim_provider)
     monkeypatch.setenv("KOSIS_API_KEY", kosis_api_key)
     monkeypatch.setenv("HCX_API_KEY", hcx_api_key)
@@ -35,6 +40,54 @@ def _set_provider_environment(
 
 def _metric_values(app: AppTest) -> dict[str, str]:
     return {metric.label: metric.value for metric in app.metric}
+
+
+def test_single_claim_catalog_hydration_uses_interactive_candidate_budget() -> None:
+    candidate = KosisCandidateSchema(
+        org_id="145",
+        tbl_id="DT_EXPORT",
+        tbl_name="중고차 수출액",
+        metadata_status="LIVE_SEARCH_UNRESOLVED",
+    )
+    claim = ClaimSchema(
+        claim_id="EXPORT-Q1",
+        source_sentence="2024년 1분기 중고차 수출액은 증가했다.",
+        indicator="수출액",
+        value=31,
+        unit="%",
+        time="2024년 1분기",
+        frequency="분기",
+        dimension={"상품": "중고차"},
+        parse_status="AUTO_OK",
+    )
+    concept = StandardConceptSchema(
+        concept_id="C000003",
+        canonical_name="수출액",
+        standard_key="export_value",
+        status="MATCHED",
+    )
+    settings = MagicMock(kosis_api_key="secret")
+
+    with ExitStack() as stack:
+        stack.enter_context(
+            patch("core.catalog_search.search_semantic_catalog", return_value=[candidate])
+        )
+        stack.enter_context(
+            patch("core.catalog_discovery.discover_catalog_candidates", return_value=[candidate])
+        )
+        refresh = stack.enter_context(
+            patch("core.catalog_metadata_refresh.refresh_item_metadata", return_value=[candidate])
+        )
+        namespace = runpy.run_path(str(APP_PATH), run_name="__catalog_budget_test__")
+        namespace["_find_catalog_candidates"](claim, concept, settings)
+
+    refresh.assert_called_once_with(
+        [candidate],
+        "secret",
+        max_candidates=2,
+        retries=1,
+        timeout_seconds=5,
+    )
 
 @pytest.mark.parametrize(
     ("parse_status", "parse_reason"),
@@ -48,7 +101,7 @@ def test_single_claim_preserves_parse_review_route_without_downstream_calls(
     class FakeExtractor:
         last_provider = "openai"
 
-        def extract(self, source_sentence: str) -> ClaimSchema:
+        def extract(self, source_sentence: str, *, article_published_at=None) -> ClaimSchema:
             return ClaimSchema(
                 claim_id="review-claim", source_sentence=source_sentence,
                 indicator="고용률", value=70, unit="%", time="2024", frequency="YEAR",
@@ -140,7 +193,11 @@ def test_streamlit_mvp_displays_openai_and_fallback_connection_status(monkeypatc
     app.run()
 
     assert app.subheader[0].value == "운영 연결 상태"
-    assert _metric_values(app) == {
+    metrics = _metric_values(app)
+    assert {
+        key: metrics[key]
+        for key in ("KOSIS API", "OpenAI 함수 호출", "HCX 예비 처리")
+    } == {
         "KOSIS API": "연결됨",
         "OpenAI 함수 호출": "연결됨",
         "HCX 예비 처리": "연결됨",
@@ -165,7 +222,8 @@ def test_streamlit_mvp_preserves_hcx_primary_status(monkeypatch) -> None:
     app = AppTest.from_file("app/streamlit_app.py", default_timeout=15)
     app.run()
 
-    assert _metric_values(app) == {
+    metrics = _metric_values(app)
+    assert {key: metrics[key] for key in ("KOSIS API", "HCX 함수 호출")} == {
         "KOSIS API": "미설정",
         "HCX 함수 호출": "연결됨",
     }
@@ -181,7 +239,11 @@ def test_streamlit_mvp_marks_unsupported_claim_provider_as_configuration_error(m
     app = AppTest.from_file("app/streamlit_app.py", default_timeout=15)
     app.run()
 
-    assert _metric_values(app) == {
+    metrics = _metric_values(app)
+    assert {
+        key: metrics[key]
+        for key in ("KOSIS API", "지원하지 않는 Provider")
+    } == {
         "KOSIS API": "미설정",
         "지원하지 않는 Provider": "설정 오류",
     }
@@ -194,9 +256,12 @@ def test_factory_value_error_is_not_reported_as_invalid_article_date(monkeypatch
         hcx_api_key="hcx-secret",
     )
 
-    with patch(
-        "core.claim_extractor_factory.create_claim_extractor",
-        side_effect=ValueError("CLAIM_PROVIDER_UNSUPPORTED"),
+    with (
+        patch(
+            "core.claim_extractor_factory.create_claim_extractor",
+            side_effect=ValueError("CLAIM_PROVIDER_UNSUPPORTED"),
+        ),
+        patch("core.operational_error._diagnostic_id", return_value="diag12345678"),
     ):
         app = AppTest.from_file("app/streamlit_app.py", default_timeout=15)
         app.run()
@@ -206,8 +271,89 @@ def test_factory_value_error_is_not_reported_as_invalid_article_date(monkeypatch
         app.run()
 
     errors = [element.value for element in app.error]
-    assert "보류: ValueError" in errors
+    assert "보류: CLAIM_PARSE 단계 처리 오류 · 진단 ID diag12345678" in errors
     assert "보류: 기사 기준일은 YYYY-MM-DD 형식이어야 합니다." not in errors
+
+
+def test_single_claim_reports_parse_exception_with_safe_stage_reference(monkeypatch) -> None:
+    _set_provider_environment(
+        monkeypatch,
+        claim_provider="openai",
+        openai_api_key="openai-secret",
+    )
+
+    with (
+        patch(
+            "core.claim_extractor_factory.create_claim_extractor",
+            side_effect=TypeError("openai-secret must not be rendered"),
+        ),
+        patch("core.operational_error._diagnostic_id", return_value="diag12345678"),
+    ):
+        app = AppTest.from_file("app/streamlit_app.py", default_timeout=15)
+        app.run()
+        app.text_area[0].input("올해 1분기 중고차 수출액은 지난해보다 31% 증가했다.")
+        app.text_input[0].input("2024-04-30")
+        app.button[0].click()
+        app.run()
+
+    errors = [element.value for element in app.error]
+    assert errors == ["보류: CLAIM_PARSE 단계 처리 오류 · 진단 ID diag12345678"]
+    assert "openai-secret must not be rendered" not in " ".join(errors)
+
+
+@pytest.mark.parametrize(
+    ("failure_target", "expected_stage"),
+    [
+        ("core.catalog_discovery.discover_catalog_candidates", "KOSIS_CATALOG"),
+        ("core.dynamic_kosis_verifier.verify_claim_against_kosis", "VERIFICATION"),
+        ("core.verdict_explainer.explain_verdict", "VERDICT_EXPLANATION"),
+    ],
+)
+def test_single_claim_reports_downstream_exception_stage(
+    monkeypatch, failure_target: str, expected_stage: str,
+) -> None:
+    _set_provider_environment(
+        monkeypatch,
+        claim_provider="openai",
+        openai_api_key="openai-secret",
+    )
+
+    class FakeExtractor:
+        last_provider = "openai"
+
+        def extract(self, source_sentence: str, *, article_published_at=None) -> ClaimSchema:
+            return ClaimSchema(
+                claim_id="temporary",
+                source_sentence=source_sentence,
+                indicator="수출액",
+                value=31,
+                unit="%",
+                time="2024년 1분기",
+                frequency="분기",
+                calculation="GROWTH_RATE",
+                comparison={"type": "YEAR_OVER_YEAR"},
+                parse_status="AUTO_OK",
+            )
+
+    with (
+        patch(
+            "core.claim_extractor_factory.create_claim_extractor",
+            return_value=FakeExtractor(),
+        ),
+        patch(failure_target, side_effect=TypeError("must not be rendered")),
+        patch("core.operational_error._diagnostic_id", return_value="diag12345678"),
+    ):
+        app = AppTest.from_file("app/streamlit_app.py", default_timeout=15)
+        app.run()
+        app.text_area[0].input("2024년 1분기 수출액은 지난해보다 31% 증가했다.")
+        app.text_input[0].input("2024-04-30")
+        app.button[0].click()
+        app.run()
+
+    errors = [element.value for element in app.error]
+    assert errors == [
+        f"보류: {expected_stage} 단계 처리 오류 · 진단 ID diag12345678"
+    ]
 
 
 def test_single_claim_reuses_extractor_and_shows_actual_fallback_provider(monkeypatch) -> None:
@@ -221,7 +367,7 @@ def test_single_claim_reuses_extractor_and_shows_actual_fallback_provider(monkey
     class FakeFallbackExtractor:
         last_provider = "hcx"
 
-        def extract(self, source_sentence: str) -> ClaimSchema:
+        def extract(self, source_sentence: str, *, article_published_at=None) -> ClaimSchema:
             return ClaimSchema(
                 claim_id="temporary",
                 source_sentence=source_sentence,
@@ -277,7 +423,7 @@ def test_single_claim_normalizes_selected_provider_when_actual_provider_is_unava
     )
 
     class FakeDirectExtractor:
-        def extract(self, source_sentence: str) -> ClaimSchema:
+        def extract(self, source_sentence: str, *, article_published_at=None) -> ClaimSchema:
             return ClaimSchema(
                 claim_id="temporary",
                 source_sentence=source_sentence,

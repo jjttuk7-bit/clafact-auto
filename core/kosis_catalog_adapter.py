@@ -93,5 +93,11 @@ def hydrate_candidates_from_official_metadata(
             structure = normalize_item_metadata(fetch_item_metadata(candidate.org_id, candidate.tbl_id), table_id=candidate.tbl_id)
             hydrated.append(hydrate_candidate(candidate, structure))
         except (RuntimeError, TypeError, ValueError):
-            hydrated.append(candidate)
+            hydrated.append(
+                candidate
+                if candidate.metadata_status == "OFFICIAL_METADATA_READY"
+                else candidate.model_copy(
+                    update={"metadata_status": "OFFICIAL_ITEM_METADATA_UNAVAILABLE"}
+                )
+            )
     return hydrated

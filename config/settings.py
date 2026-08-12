@@ -38,8 +38,8 @@ def load_environment_file(
 
 def _environment_value(name: str, default: str | None = None) -> str | None:
     """Read one setting after centrally loading missing values from .env."""
-    for index, environment_path in enumerate(_environment_paths()):
-        load_environment_file(environment_path, environ, overwrite=index > 0)
+    for environment_path in _environment_paths():
+        load_environment_file(environment_path, environ, overwrite=False)
     return getenv(name, default)
 
 
