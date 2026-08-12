@@ -29,6 +29,7 @@ from core.evidence_presentation import build_evidence_rows, build_kosis_table_ur
 from core.kosis_fetcher import OfficialValueFetcher
 from core.kosis_live_catalog import KosisLiveCatalogSearch
 from core.catalog_metadata_refresh import refresh_item_metadata
+from core.kosis_metadata_repository import KosisMetadataRepository
 from core.kosis_api_adapter import build_kosis_api_lookup
 from config.settings import Settings
 from core.review_handoff import build_review_payload
@@ -61,6 +62,15 @@ SNAPSHOT_PATHS = [
     DATA_ROOT / "kosis_snapshots" / "official_cpi_202510.json",
     DATA_ROOT / "kosis_snapshots" / "official_goldset_v3_news_b023.json",
 ]
+METADATA_MANIFEST_PATHS = [
+    PROJECT_ROOT / "data" / "kosis_snapshots" / "gold_standard_v1_metadata_manifest.json",
+]
+
+
+@st.cache_resource
+def _official_metadata_repository() -> KosisMetadataRepository:
+    """Reuse collected official table structure across interactive Claims."""
+    return KosisMetadataRepository.from_manifests(METADATA_MANIFEST_PATHS)
 
 def _find_catalog_candidates(
     claim: ClaimSchema,
@@ -94,6 +104,7 @@ def _find_catalog_candidates(
     refreshed = refresh_item_metadata(
         discovered,
         settings.kosis_api_key,
+        metadata_fetcher=_official_metadata_repository(),
         max_candidates=2,
         retries=1,
         timeout_seconds=5,
