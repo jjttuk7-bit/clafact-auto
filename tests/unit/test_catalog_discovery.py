@@ -49,3 +49,25 @@ class _Response:
 
     def __exit__(self, *_):
         return None
+
+
+def test_discovery_queries_concept_with_region_population_and_dimension_context() -> None:
+    queries: list[str] = []
+
+    class Search:
+        def search(self, query: str):
+            queries.append(query)
+            return []
+
+    claim = _claim().model_copy(update={
+        "indicator": "취업자 수",
+        "region": "서울",
+        "population": "15세 이상",
+        "dimension": {"품목": "사과"},
+    })
+    concept = _concept().model_copy(update={
+        "canonical_name": "취업자 수", "matched_alias": "취업자수"
+    })
+
+    assert discover_catalog_candidates(claim, concept, [], Search()) == []  # type: ignore[arg-type]
+    assert queries == ["취업자 수", "취업자 수 서울", "취업자 수 15세 이상", "취업자 수 사과"]

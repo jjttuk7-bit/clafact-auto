@@ -129,3 +129,16 @@ def test_catalog_search_matches_count_suffix_to_official_item_name() -> None:
     )
 
     assert [item.tbl_id for item in result] == ["DT_EMPLOYMENT"]
+
+
+def test_catalog_search_ranks_candidates_using_frequency_and_region_slots() -> None:
+    result = search_semantic_catalog(
+        claim(frequency="MONTH", region="서울"),
+        concept(),
+        [
+            candidate(tbl_id="A", frequency="YEAR", dimension_names=["성별"]),
+            candidate(tbl_id="B", frequency="MONTH", dimension_names=["시도별"]),
+        ],
+    )
+
+    assert [item.tbl_id for item in result] == ["B", "A"]
