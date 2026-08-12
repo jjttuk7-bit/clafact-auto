@@ -142,3 +142,8 @@ def test_catalog_search_ranks_candidates_using_frequency_and_region_slots() -> N
     )
 
     assert [item.tbl_id for item in result] == ["B", "A"]
+
+def test_hard_guard_treats_korean_annual_aliases_as_compatible() -> None:
+    result = apply_hard_guard(claim(frequency="연", region="전국"), candidate(frequency="년"))
+
+    assert result.passed is True

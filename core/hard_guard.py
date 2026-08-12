@@ -77,4 +77,4 @@ def _has_dimension(candidate: KosisCandidateSchema, token: str) -> bool:
 
 
 def _key(value: str) -> str:
-    normalized = re.sub(r"\s+", "", value).casefold(); return {"monthly":"월", "month":"월", "yearly":"년", "year":"년", "annual":"년"}.get(normalized, normalized)
+    normalized = re.sub(r"\s+", "", value).casefold(); return {"monthly":"월", "month":"월", "m":"월", "yearly":"년", "year":"년", "annual":"년", "y":"년", "연":"년"}.get(normalized, normalized)

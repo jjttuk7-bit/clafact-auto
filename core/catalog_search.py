@@ -85,6 +85,6 @@ def _frequency_key(value: str) -> str:
     normalized = _normalize(value)
     return {
         "monthly": "월", "month": "월", "m": "월",
-        "yearly": "년", "year": "년", "annual": "년", "y": "년",
+        "yearly": "년", "year": "년", "annual": "년", "y": "년", "연": "년",
         "quarterly": "분기", "quarter": "분기", "q": "분기",
     }.get(normalized, normalized)
