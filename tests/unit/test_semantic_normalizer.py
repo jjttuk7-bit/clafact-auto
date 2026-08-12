@@ -1,4 +1,8 @@
-from core.data_loader import SemanticStandardRecord
+from pathlib import Path
+
+import pytest
+
+from core.data_loader import SemanticStandardRecord, load_standard_concepts
 from core.semantic_normalizer import normalize_concept
 from schemas.claim import ClaimSchema
 
@@ -64,3 +68,33 @@ def test_normalize_concept_does_not_force_ambiguous_similarity_match() -> None:
     result = normalize_concept(claim("가마다"), ambiguous, similarity_threshold=0.6)
 
     assert result.status == "UNRESOLVED"
+
+
+@pytest.mark.parametrize(
+    ("indicator", "standard_key"),
+    [
+        ("총인구", "total_population"),
+        ("소비자물가 상승률", "inflation_rate"),
+        ("전산업생산", "all_industry_production_index"),
+        ("건설수주", "construction_order_value"),
+        ("광공업생산", "mining_manufacturing_production_index"),
+        ("제조업생산", "manufacturing_production_index"),
+        ("과수원 면적", "cultivated_area"),
+        ("해외건설", "overseas_construction_orders"),
+        ("해외직접투자액", "outward_foreign_direct_investment"),
+        ("실업자 수", "unemployed_count"),
+        ("1인당 GDP", "gross_domestic_product_per_capita"),
+        ("수출량", "export_quantity"),
+        ("수입량", "import_quantity"),
+        ("인구 자연증감", "natural_population_change"),
+    ],
+)
+def test_gold_standard_indicators_match_canonical_concepts(
+    indicator: str, standard_key: str
+) -> None:
+    path = Path(__file__).resolve().parents[2] / "data" / "semantic_standard" / "concept_seed_v1.json"
+    result = normalize_concept(claim(indicator), load_standard_concepts(path))
+
+    assert result.status == "MATCHED"
+    assert result.matched_alias == indicator
+    assert result.standard_key == standard_key

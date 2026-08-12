@@ -25,11 +25,20 @@ OPENAI_TIMEOUT_SECONDS = 20
 
 OPENAI_CLAIM_INSTRUCTIONS = (
     "Extract exactly one Korean numerical news claim from the input. "
-    "Call emit_claim exactly once and populate only stated or directly inferable slots. "
-    "Use AUTO_OK only for one clear factual claim; use HOLD or HUMAN_REVIEW for ambiguity, "
-    "forecasts, missing essential context, or multiple independent claims."
+    "Call emit_claim exactly once; never fetch or invent KOSIS values. "
+    "Fill these 12 semantic slots only when stated or directly inferable: "
+    "indicator (what is measured), value, unit, time, frequency, region, "
+    "population, dimension, comparison, calculation, condition, source_hint. "
+    "Resolve relative time only when the supplied text makes it unambiguous; otherwise leave it null. "
+    "Keep item, age, sex, industry, or product qualifiers in dimension or population rather than indicator. "
+    "Use comparison for YEAR_OVER_YEAR, MONTH_OVER_MONTH, QUARTER_OVER_QUARTER, "
+    "PART_TO_WHOLE, or explicit reference periods and direction. "
+    "Set calculation to one of DIRECT_VALUE, GROWTH_RATE, DIFFERENCE, SHARE, "
+    "MULTIPLE, RANK, or THRESHOLD according to the verdict target. "
+    "A claim is one independently verifiable verdict target, not every number in a sentence. "
+    "Use AUTO_OK only for one clear factual claim with sufficient slots; use HOLD or HUMAN_REVIEW "
+    "for missing context, forecasts, entity-specific statistics, ranges, or multiple targets."
 )
-
 Transport = Callable[..., Any]
 _OPENAI_API_KEY_OMITTED = object()
 

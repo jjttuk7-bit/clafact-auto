@@ -96,7 +96,13 @@ def test_build_request_contains_only_concise_instructions_and_sentence_input() -
 
     assert request["input"] == sentence
     assert isinstance(request["instructions"], str)
-    assert 0 < len(request["instructions"]) < 500
+    assert 0 < len(request["instructions"]) < 1_600
+    for required_term in (
+        "indicator", "value", "unit", "time", "frequency", "region",
+        "population", "dimension", "comparison", "calculation", "condition",
+        "source_hint", "DIRECT_VALUE", "GROWTH_RATE", "PART_TO_WHOLE",
+    ):
+        assert required_term in request["instructions"]
     assert set(request) == {
         "model",
         "instructions",
