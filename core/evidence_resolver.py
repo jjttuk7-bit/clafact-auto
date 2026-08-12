@@ -14,11 +14,11 @@ from schemas.evidence import EvidenceCellSchema
 def resolve_evidence_cell(claim: ClaimSchema, candidate: KosisCandidateSchema) -> EvidenceCellSchema:
     """Confirm an evidence cell only from catalog metadata or registered official coordinates."""
     dimensions, coordinate_resolved = _resolve_dimensions(claim, candidate)
-    indicator = _normalize(claim.indicator)
+    indicator_terms = _indicator_terms(claim)
     matches = [
         (item_id, item_name)
         for item_id, item_name in zip(candidate.core_item_ids, candidate.core_item_names)
-        if _normalize(item_name) == indicator or _normalize(item_name) in indicator
+        if _item_matches_indicator(_normalize(item_name), indicator_terms)
     ]
     status = "CONFIRMED" if len(matches) == 1 and claim.time and claim.unit else "AMBIGUOUS" if len(matches) > 1 else "UNRESOLVED"
     item_id = matches[0][0] if len(matches) == 1 else "UNRESOLVED"
@@ -133,3 +133,24 @@ def _key(org: str, table: str, item: str, obj: str | None, member: str | None, p
         return base
     encoded = ",".join(f"{key}:{value}" for key, value in dimensions.items())
     return f"{base}|DIMS={encoded}"
+
+
+def _indicator_terms(claim: ClaimSchema) -> set[str]:
+    """Keep the base statistical concept available for derived-rate Claims."""
+    indicator = _normalize(claim.indicator)
+    terms = {indicator} if indicator else set()
+    if claim.calculation not in {"GROWTH_RATE", "SHARE", "RATIO", "MULTIPLE"}:
+        return terms
+    for suffix in (
+        "\uc0c1\uc2b9\ub960", "\ud558\ub77d\ub960", "\uc99d\uac00\uc728", "\uac10\uc18c\uc728",
+        "\ub4f1\ub77d\ub960", "\ubcc0\ub3d9\ub960",
+    ):
+        if indicator.endswith(suffix):
+            base = indicator[: -len(suffix)]
+            if base:
+                terms.add(base)
+    return terms
+
+
+def _item_matches_indicator(item: str, terms: set[str]) -> bool:
+    return any(item == term or item in term or term in item for term in terms if term)

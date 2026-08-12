@@ -185,3 +185,31 @@ def test_resolve_evidence_cell_uses_registered_cpi_year_on_year_coordinate() -> 
     )
 
     assert cell.status == "UNRESOLVED"
+
+
+def test_resolve_evidence_cell_uses_base_indicator_for_growth_rate_claim() -> None:
+    cell = resolve_evidence_cell(
+        claim(
+            indicator="소비자물가 상승률",
+            unit="%",
+            time="2025년 10월",
+            frequency="월",
+            region=None,
+            comparison={"type": "YEAR_OVER_YEAR"},
+            calculation="GROWTH_RATE",
+        ),
+        candidate(
+            tbl_id="DT_CPI",
+            core_item_ids=["T"],
+            core_item_names=["소비자물가지수"],
+            dimension_ids=["C1"],
+            dimension_names=["지수종류"],
+            dimension_members={"C1": ["총지수"]},
+            dimension_member_codes={"C1": {"총지수": "T10"}},
+            unit_names=["2020=100"],
+            frequency="월",
+        ),
+    )
+
+    assert cell.status == "CONFIRMED"
+    assert cell.itm_id == "T"
