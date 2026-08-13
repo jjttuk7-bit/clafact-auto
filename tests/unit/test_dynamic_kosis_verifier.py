@@ -183,3 +183,25 @@ def test_year_over_year_claim_fetches_two_periods_and_calculates_growth_rate() -
     assert verdict.verdict == "MATCH"
     assert verdict.calculated_value == 1.0
     assert [cell.prd_de for cell in verdict.evidence_cells] == ["2024-12", "2023-12"]
+
+def test_unresolved_concept_holds_at_semantic_mapping_before_catalog() -> None:
+    unresolved = StandardConceptSchema(
+        concept_id="UNRESOLVED", canonical_name="UNRESOLVED",
+        standard_key="unresolved", status="UNRESOLVED",
+    )
+    claim = ClaimSchema(
+        claim_id="unknown", source_sentence="2025년 10월 미상 물가는 3% 상승했다.",
+        indicator="물가", value=3, unit="%", time="2025년 10월",
+        calculation="GROWTH_RATE", comparison={"type": "YEAR_OVER_YEAR"}, parse_status="AUTO_OK",
+    )
+    class Fetcher:
+        def fetch(self, *_args, **_kwargs):
+            raise AssertionError("Unresolved concepts must not fetch values")
+
+    verdict = verify_claim_against_kosis(
+        claim, unresolved, [], article_date=date(2025, 11, 4), official_fetcher=Fetcher()
+    )
+
+    assert verdict.reason_code == "CONCEPT_NOT_FOUND"
+    assert verdict.execution_trace.events[-1].stage == "SEMANTIC_MAPPING"
+    assert verdict.execution_trace.events[-1].status == "HOLD"

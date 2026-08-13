@@ -291,3 +291,24 @@ def test_resolve_evidence_cell_normalizes_korean_quarter_to_kosis_period_key() -
 
     assert cell.status == "CONFIRMED"
     assert cell.prd_de == "2024-Q1"
+
+def test_missing_region_defaults_to_official_nationwide_member() -> None:
+    claim = ClaimSchema(
+        claim_id="cpi-cabbage", source_sentence="2025년 10월 배추 물가는 하락했다.",
+        indicator="물가", value=-34.5, unit="%", time="2025년 10월",
+        frequency="MONTHLY", dimension={"product": "배추"},
+        calculation="GROWTH_RATE", comparison={"type": "YEAR_OVER_YEAR"}, parse_status="AUTO_OK",
+    )
+    candidate = KosisCandidateSchema(
+        org_id="101", tbl_id="DT_1J22112", tbl_name="품목별 소비자물가지수",
+        core_item_ids=["T"], core_item_names=["소비자물가지수"],
+        dimension_ids=["C", "I"], dimension_names=["시도별", "품목별"],
+        dimension_members={"C": ["전국", "서울"], "I": ["배추", "배", "무"]},
+        dimension_member_codes={"C": {"전국": "T10", "서울": "11"}, "I": {"배추": "A02A01701", "배": "A03A01501", "무": "A02A01708"}},
+        unit_names=["2020=100"], frequency="월", metadata_status="OFFICIAL_METADATA_READY",
+    )
+
+    cell = resolve_evidence_cell(claim, candidate)
+
+    assert cell.status == "CONFIRMED"
+    assert cell.dimension_codes == {"C": "T10", "I": "A02A01701"}

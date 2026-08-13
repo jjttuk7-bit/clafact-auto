@@ -39,7 +39,12 @@ def verify_claim_against_kosis(
 
     Candidate metadata and the official value API determine whether the Claim can be auto-verified.
     """
-    recorder = VerificationTraceRecorder(claim.claim_id).claim_parsed().concept_mapped().catalog_searched()
+    recorder = VerificationTraceRecorder(claim.claim_id).claim_parsed()
+    if concept.status != "MATCHED":
+        reason = "CONCEPT_NOT_FOUND"
+        recorder.concept_held(reason)
+        return _hold(claim, recorder, reason, "No semantic standard matches the Claim context.")
+    recorder.concept_mapped().catalog_searched()
     guarded_candidates = [candidate for candidate in candidates if apply_hard_guard(claim, candidate).passed]
     if not guarded_candidates:
         reason = "NO_HARD_GUARD_CANDIDATE"

@@ -99,3 +99,16 @@ def test_gold_standard_indicators_match_canonical_concepts(
     assert result.status == "MATCHED"
     assert result.matched_alias == indicator
     assert result.standard_key == standard_key
+
+def test_normalize_concept_uses_dimension_member_with_indicator() -> None:
+    contextual = [SemanticStandardRecord(
+        "CPI_DETAIL:A02A01701", "배추 소비자물가지수", "cpi_detail:A02A01701",
+        ("배추 물가",), ("배추 소비자물가지수", "품목별 소비자물가지수 배추"),
+    )]
+    contextual_claim = claim("물가").model_copy(update={"dimension": {"product": "배추"}})
+
+    result = normalize_concept(contextual_claim, contextual)
+
+    assert result.concept_id == "CPI_DETAIL:A02A01701"
+    assert result.matched_alias == "배추 물가"
+    assert result.kosis_search_terms == ["배추 소비자물가지수", "품목별 소비자물가지수 배추"]
