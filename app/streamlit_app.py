@@ -93,7 +93,7 @@ def _find_catalog_candidates(
         concept,
         local,
         live_search,
-        max_live_queries=3,
+        time_budget_seconds=45.0,
     )
     if (
         live_search is not None
@@ -105,7 +105,8 @@ def _find_catalog_candidates(
         discovered,
         settings.kosis_api_key,
         metadata_fetcher=_official_metadata_repository(),
-        max_candidates=3,
+        max_candidates=None,
+        time_budget_seconds=45.0,
         retries=2,
         timeout_seconds=10,
     )

@@ -154,3 +154,14 @@ def test_live_catalog_counts_invalid_data_shape_as_failed_query() -> None:
     )
 
     assert search.search("소비자물가") == []
+
+
+def test_live_catalog_records_zero_result_separately_from_transport_failure() -> None:
+    search = KosisLiveCatalogSearch(
+        "secret", opener=lambda *_, **__: _Response([]), max_attempts=1
+    )
+
+    assert search.search("존재하지 않는 검색어") == []
+    assert search.attempted_queries == 1
+    assert search.failed_queries == 0
+    assert search.empty_queries == 1

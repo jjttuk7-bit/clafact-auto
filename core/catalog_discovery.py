@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 import re
+from time import monotonic
 
 from core.claim_dimensions import dimension_member_values, normalized_dimension_members
 from core.hard_guard import apply_hard_guard
@@ -20,10 +21,12 @@ def discover_catalog_candidates(
     live_search: KosisLiveCatalogSearch | None,
     *,
     max_live_queries: int | None = None,
+    time_budget_seconds: float | None = None,
+    clock: Callable[[], float] = monotonic,
 ) -> list[KosisCandidateSchema]:
     """Use local structural metadata first, then a read-only KOSIS table search."""
     local = list(local_candidates)
-    if live_search is None or (local and _local_candidates_cover_claim_context(claim, local)):
+    if live_search is None:
         return local
     discovered = list(local)
     seen: set[tuple[str, str]] = {
@@ -32,7 +35,14 @@ def discover_catalog_candidates(
     queries = build_catalog_discovery_queries(claim, concept)
     if max_live_queries is not None:
         queries = queries[:max(0, max_live_queries)]
+    deadline = (
+        clock() + max(0.0, time_budget_seconds)
+        if time_budget_seconds is not None
+        else None
+    )
     for query in queries:
+        if deadline is not None and clock() >= deadline:
+            break
         for candidate in live_search.search(query):
             key = (candidate.org_id, candidate.tbl_id)
             if key not in seen:

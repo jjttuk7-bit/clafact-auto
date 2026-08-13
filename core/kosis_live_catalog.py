@@ -34,6 +34,7 @@ class KosisLiveCatalogSearch:
         self._timeout_seconds = max(1, timeout_seconds)
         self.attempted_queries = 0
         self.failed_queries = 0
+        self.empty_queries = 0
 
     def search(self, query: str, *, result_count: int = 20) -> list[KosisCandidateSchema]:
         """Return official table identities; selection metadata remains intentionally unresolved."""
@@ -76,6 +77,8 @@ class KosisLiveCatalogSearch:
                 return candidates
         if not transport_succeeded:
             self.failed_queries += 1
+        else:
+            self.empty_queries += 1
         return []
 
 

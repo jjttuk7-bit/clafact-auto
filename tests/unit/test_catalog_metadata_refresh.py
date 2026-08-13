@@ -174,7 +174,7 @@ def test_empty_period_metadata_is_preserved_as_unavailable() -> None:
 
     assert refreshed.metadata_status == "OFFICIAL_PERIOD_METADATA_UNAVAILABLE"
 
-def test_refresh_default_budget_limits_live_metadata_requests_to_eight_candidates() -> None:
+def test_refresh_without_count_limit_reconfirms_all_candidates() -> None:
     from core.catalog_metadata_refresh import refresh_item_metadata
 
     calls: list[tuple[str, str]] = []
@@ -195,9 +195,8 @@ def test_refresh_default_budget_limits_live_metadata_requests_to_eight_candidate
 
     refreshed = refresh_item_metadata(candidates, "secret", metadata_fetcher=fetcher)
 
-    assert len(calls) == 16
-    assert refreshed[7].metadata_status == "OFFICIAL_METADATA_READY"
-    assert refreshed[8] == candidates[8]
+    assert len(calls) == 18
+    assert all(item.metadata_status == "OFFICIAL_METADATA_READY" for item in refreshed)
 
 
 def test_refresh_passes_configured_request_retry_and_timeout_budget() -> None:
@@ -225,3 +224,33 @@ def test_refresh_passes_configured_request_retry_and_timeout_budget() -> None:
     )
 
     assert request_budgets == [(1, 10)]
+
+
+def test_refresh_stops_metadata_hydration_at_total_time_budget() -> None:
+    from core.catalog_metadata_refresh import refresh_item_metadata
+
+    now = [0.0]
+    calls: list[tuple[str, str]] = []
+
+    def fetcher(api_key, org_id, table_id, *, meta_type, retries, timeout_seconds):
+        calls.append((table_id, meta_type))
+        now[0] += 1.0
+        if meta_type == "PRD":
+            return [{"PRD_SE": "년", "STRT_PRD_DE": "2020", "END_PRD_DE": "2024"}]
+        return [{"ORG_ID": org_id, "TBL_ID": table_id, "OBJ_ID": "ITEM", "OBJ_NM": "항목", "ITM_ID": "T", "ITM_NM": "수출액", "UNIT_NM": "천달러"}]
+
+    candidates = [
+        KosisCandidateSchema(org_id="145", tbl_id=f"DT_{index}", tbl_name=str(index), metadata_status="LIVE_SEARCH_UNRESOLVED")
+        for index in range(2)
+    ]
+    refreshed = refresh_item_metadata(
+        candidates,
+        "secret",
+        metadata_fetcher=fetcher,
+        max_candidates=None,
+        time_budget_seconds=1.0,
+        clock=lambda: now[0],
+    )
+
+    assert calls == [("DT_0", "ITM")]
+    assert refreshed[1] == candidates[1]

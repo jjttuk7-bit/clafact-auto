@@ -87,7 +87,8 @@ def test_single_claim_catalog_hydration_uses_interactive_candidate_budget() -> N
         [candidate],
         "secret",
         metadata_fetcher=namespace["_official_metadata_repository"](),
-        max_candidates=3,
+        max_candidates=None,
+        time_budget_seconds=45.0,
         retries=2,
         timeout_seconds=10,
     )

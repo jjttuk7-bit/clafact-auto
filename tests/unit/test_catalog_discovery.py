@@ -25,7 +25,7 @@ def test_discovery_queries_structured_indicator_only_when_local_is_empty() -> No
     assert queries == ["가공식품 물가"]
 
 
-def test_discovery_preserves_local_structural_candidate_without_live_request() -> None:
+def test_discovery_keeps_local_candidate_but_still_runs_live_search() -> None:
     local = KosisCandidateSchema(
         org_id="101",
         tbl_id="DT_LOCAL",
@@ -38,7 +38,7 @@ def test_discovery_preserves_local_structural_candidate_without_live_request() -
 
     class Search:
         def search(self, query: str):
-            raise AssertionError("live search should not run")
+            return []
 
     assert discover_catalog_candidates(_claim(), _concept(), [local], Search()) == [local]  # type: ignore[arg-type]
 
@@ -85,7 +85,7 @@ def test_discovery_expands_live_search_when_local_candidates_miss_claim_dimensio
     ]
 
 
-def test_discovery_keeps_dimension_compatible_local_candidate_without_live_request() -> None:
+def test_discovery_keeps_dimension_compatible_local_candidate_and_runs_live_search() -> None:
     claim = _claim().model_copy(
         update={
             "indicator": "수출액",
@@ -110,7 +110,7 @@ def test_discovery_keeps_dimension_compatible_local_candidate_without_live_reque
 
     class Search:
         def search(self, query: str):
-            raise AssertionError("dimension-compatible local metadata should be reused")
+            return []
 
     assert discover_catalog_candidates(claim, concept, [local], Search()) == [local]  # type: ignore[arg-type]
 
@@ -354,3 +354,52 @@ def test_discovery_uses_claim_indicator_before_unresolved_concept_placeholders()
     assert queries[0] == "중고차 수출액"
     assert all("UNRESOLVED" not in query for query in queries)
     assert "중고차 중고차 수출액" not in queries
+
+
+def test_discovery_runs_live_search_even_when_local_candidate_looks_complete() -> None:
+    local = KosisCandidateSchema(
+        org_id="101",
+        tbl_id="DT_LOCAL",
+        tbl_name="로컬 가공식품 물가",
+        core_item_ids=["T"],
+        core_item_names=["가공식품 물가"],
+        unit_names=["%"],
+        frequency="월",
+        metadata_status="OFFICIAL_METADATA_READY",
+    )
+    observed: list[str] = []
+
+    class Search:
+        def search(self, query: str):
+            observed.append(query)
+            return []
+
+    assert discover_catalog_candidates(_claim(), _concept(), [local], Search()) == [local]  # type: ignore[arg-type]
+    assert observed == ["가공식품 물가"]
+
+def test_discovery_stops_query_expansion_when_total_time_budget_is_exhausted() -> None:
+    queries: list[str] = []
+    now = [0.0]
+
+    class Search:
+        def search(self, query: str):
+            queries.append(query)
+            now[0] += 1.0
+            return []
+
+    claim = _claim().model_copy(update={
+        "indicator": "수출액", "region": "서울", "population": "사업체",
+        "dimension": {"상품": "중고차"},
+    })
+    concept = _concept().model_copy(update={"canonical_name": "수출액"})
+
+    discover_catalog_candidates(
+        claim,
+        concept,
+        [],
+        Search(),  # type: ignore[arg-type]
+        time_budget_seconds=1.0,
+        clock=lambda: now[0],
+    )
+
+    assert queries == ["서울 사업체 중고차 수출액"]
