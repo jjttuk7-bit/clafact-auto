@@ -90,6 +90,91 @@ def test_single_claim_catalog_hydration_uses_interactive_candidate_budget() -> N
         timeout_seconds=5,
     )
 
+
+def test_catalog_transport_failure_returns_holdable_empty_candidates() -> None:
+    claim = ClaimSchema(
+        claim_id="CPI-CABBAGE",
+        source_sentence="2025년 10월 배추 물가는 전년 동월 대비 34.5% 하락했다.",
+        indicator="물가",
+        value=-34.5,
+        unit="%",
+        time="2025년 10월",
+        frequency="MONTHLY",
+        dimension={"item": "배추"},
+        comparison={"type": "YEAR_OVER_YEAR"},
+        calculation="GROWTH_RATE",
+        condition={"direction": "DECREASE"},
+        parse_status="AUTO_OK",
+    )
+    concept = StandardConceptSchema(
+        concept_id="UNRESOLVED",
+        canonical_name="UNRESOLVED",
+        standard_key="unresolved",
+        status="UNRESOLVED",
+    )
+    settings = MagicMock(kosis_api_key="secret")
+    failed_search = MagicMock(attempted_queries=2, failed_queries=2)
+
+    with ExitStack() as stack:
+        stack.enter_context(
+            patch("core.catalog_search.search_semantic_catalog", return_value=[])
+        )
+        stack.enter_context(
+            patch("core.kosis_live_catalog.KosisLiveCatalogSearch", return_value=failed_search)
+        )
+        stack.enter_context(
+            patch("core.catalog_discovery.discover_catalog_candidates", return_value=[])
+        )
+        namespace = runpy.run_path(str(APP_PATH), run_name="__catalog_failure_test__")
+        candidates = namespace["_find_catalog_candidates"](claim, concept, settings)
+
+    assert candidates == []
+
+
+def test_catalog_metadata_failure_returns_holdable_candidates() -> None:
+    candidate = KosisCandidateSchema(
+        org_id="101",
+        tbl_id="DT_CPI",
+        tbl_name="품목별 소비자물가지수",
+        metadata_status="OFFICIAL_ITEM_METADATA_UNAVAILABLE",
+    )
+    claim = ClaimSchema(
+        claim_id="CPI-CABBAGE",
+        source_sentence="2025년 10월 배추 물가는 전년 동월 대비 34.5% 하락했다.",
+        indicator="물가",
+        value=-34.5,
+        unit="%",
+        time="2025년 10월",
+        frequency="MONTHLY",
+        dimension={"item": "배추"},
+        comparison={"type": "YEAR_OVER_YEAR"},
+        calculation="GROWTH_RATE",
+        condition={"direction": "DECREASE"},
+        parse_status="AUTO_OK",
+    )
+    concept = StandardConceptSchema(
+        concept_id="UNRESOLVED",
+        canonical_name="UNRESOLVED",
+        standard_key="unresolved",
+        status="UNRESOLVED",
+    )
+    settings = MagicMock(kosis_api_key="secret")
+
+    with ExitStack() as stack:
+        stack.enter_context(
+            patch("core.catalog_search.search_semantic_catalog", return_value=[])
+        )
+        stack.enter_context(
+            patch("core.catalog_discovery.discover_catalog_candidates", return_value=[candidate])
+        )
+        stack.enter_context(
+            patch("core.catalog_metadata_refresh.refresh_item_metadata", return_value=[candidate])
+        )
+        namespace = runpy.run_path(str(APP_PATH), run_name="__metadata_failure_test__")
+        candidates = namespace["_find_catalog_candidates"](claim, concept, settings)
+
+    assert candidates == [candidate]
+
 @pytest.mark.parametrize(
     ("parse_status", "parse_reason"),
     [("HOLD", "SOURCE_CONTEXT_UNCLEAR"), ("HUMAN_REVIEW", "MULTIPLE_PLAUSIBLE_INTERPRETATIONS")],

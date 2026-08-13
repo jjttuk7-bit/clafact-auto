@@ -95,12 +95,6 @@ def _find_catalog_candidates(
         live_search,
         max_live_queries=3,
     )
-    if (
-        live_search is not None
-        and live_search.attempted_queries > 0
-        and live_search.failed_queries == live_search.attempted_queries
-    ):
-        raise RuntimeError("KOSIS_CATALOG_UNAVAILABLE")
     refreshed = refresh_item_metadata(
         discovered,
         settings.kosis_api_key,
@@ -109,12 +103,6 @@ def _find_catalog_candidates(
         retries=1,
         timeout_seconds=5,
     )
-    attempted = refreshed[:2]
-    if attempted and all(
-        candidate.metadata_status == "OFFICIAL_ITEM_METADATA_UNAVAILABLE"
-        for candidate in attempted
-    ):
-        raise RuntimeError("KOSIS_METADATA_UNAVAILABLE")
     return refreshed
 
 
