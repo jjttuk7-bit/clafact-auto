@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from core.claim_output_contract import (
     CLAIM_OUTPUT_FIELD_NAMES,
     EMIT_CLAIM_FUNCTION_NAME,
@@ -5,6 +7,7 @@ from core.claim_output_contract import (
     claim_output_json_schema,
     emit_claim_tool_definition,
 )
+from schemas.claim import CLAIM_DEFINITION, ClaimSchema
 
 
 EXPECTED_SEMANTIC_SLOTS = {
@@ -64,3 +67,14 @@ def test_emit_claim_is_the_only_function_and_reuses_the_claim_schema() -> None:
     assert tool["type"] == "function"
     assert tool["function"]["name"] == "emit_claim"
     assert tool["function"]["parameters"] == claim_output_json_schema()
+
+
+def test_claim_schema_exposes_the_canonical_claim_definition() -> None:
+    assert "최소 검증 단위" in CLAIM_DEFINITION
+    assert "하나의 최종 판정" in CLAIM_DEFINITION
+    assert ClaimSchema.model_json_schema()["description"] == CLAIM_DEFINITION
+
+
+def test_canonical_claim_definition_is_published_without_drift() -> None:
+    for path in (Path("README.md"), Path("docs/reference/03_DATA_SCHEMAS.md")):
+        assert CLAIM_DEFINITION in path.read_text(encoding="utf-8")
