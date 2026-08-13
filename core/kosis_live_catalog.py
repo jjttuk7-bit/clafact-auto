@@ -58,10 +58,14 @@ class KosisLiveCatalogSearch:
                     payload = _decode_kosis_payload(response.read())
             except (OSError, UnicodeDecodeError, RuntimeError):
                 continue
-            transport_succeeded = True
-            rows = payload if isinstance(payload, list) else payload.get("data", []) if isinstance(payload, dict) else []
+            if isinstance(payload, dict) and any(
+                key in payload for key in ("err", "error", "errMsg")
+            ):
+                continue
+            rows = payload if isinstance(payload, list) else payload.get("data") if isinstance(payload, dict) else None
             if not isinstance(rows, list):
                 continue
+            transport_succeeded = True
             candidates = [
                 candidate
                 for row in rows

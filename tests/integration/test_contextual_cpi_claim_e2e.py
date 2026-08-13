@@ -6,7 +6,10 @@ import pytest
 from core.catalog_discovery import build_catalog_discovery_queries, discover_catalog_candidates
 from core.catalog_metadata_refresh import refresh_item_metadata
 from core.data_loader import load_standard_concepts
-from core.dynamic_kosis_verifier import verify_claim_against_kosis
+from core.dynamic_kosis_verifier import (
+    _prefer_exact_concept_code,
+    verify_claim_against_kosis,
+)
 from core.kosis_fetcher import OfficialValueFetcher
 from core.kosis_metadata_repository import KosisMetadataRepository
 from core.semantic_normalizer import normalize_concept
@@ -79,10 +82,20 @@ def test_cabbage_price_claim_reaches_auto_through_contextual_dynamic_kosis_pipel
         allow_without_api_key=True,
         max_candidates=1,
     )
+    competing = hydrated[0].model_copy(update={
+        "tbl_id": "DT_1J22001",
+        "tbl_name": "지출목적별 소비자물가지수",
+        "dimension_member_codes": {
+            **hydrated[0].dimension_member_codes,
+            "I": {"배추": "A01701"},
+        },
+    })
+    assert _prefer_exact_concept_code(concept, [competing]) == []
+
     verdict = verify_claim_against_kosis(
         claim,
         concept,
-        hydrated,
+        [competing, *hydrated],
         article_date=date(2025, 11, 4),
         official_fetcher=OfficialValueFetcher([
             PROJECT_ROOT / "data/kosis_snapshots/official_cpi_detail_current_axes_v1.json"

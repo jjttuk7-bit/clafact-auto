@@ -43,10 +43,20 @@ def fetch_kosis_value(cell: EvidenceCellSchema, snapshot_path: Path) -> KosisVal
 class OfficialValueFetcher:
     """Prefer auditable local snapshots, then use an injected read-only KOSIS API adapter."""
 
-    def __init__(self, snapshot_paths: Iterable[Path], api_lookup: Callable[[EvidenceCellSchema], list[dict[str, Any]]] | None = None, *, prefer_api: bool = False) -> None:
+    def __init__(
+        self,
+        snapshot_paths: Iterable[Path],
+        api_lookup: Callable[[EvidenceCellSchema], list[dict[str, Any]]] | None = None,
+        *,
+        prefer_api: bool = False,
+        as_of_metadata_paths: Iterable[Path] = (),
+        require_verified_release_metadata: bool = False,
+    ) -> None:
         self._snapshot_paths = list(snapshot_paths)
         self._api_lookup = api_lookup
         self._prefer_api = prefer_api
+        self._as_of_metadata_paths = list(as_of_metadata_paths)
+        self._require_verified_release_metadata = require_verified_release_metadata
 
     def fetch(self, cell: EvidenceCellSchema, *, article_date: date | None = None) -> KosisValue:
         as_of_unavailable = False
@@ -77,6 +87,29 @@ class OfficialValueFetcher:
         )
         return KosisValue(None, status, "", "NONE")
 
+    def fetch_many(
+        self,
+        cells: list[EvidenceCellSchema],
+        *,
+        article_date: date | None = None,
+    ) -> list[KosisValue]:
+        """Fetch identical coordinates across periods with one API range request."""
+        batch_lookup = getattr(self._api_lookup, "fetch_many", None)
+        if not self._prefer_api or not callable(batch_lookup) or not cells:
+            return [self.fetch(cell, article_date=article_date) for cell in cells]
+        try:
+            rows = batch_lookup(cells)
+        except Exception:
+            return [
+                KosisValue(None, "FETCH_FAILED", "", "NONE") for _cell in cells
+            ]
+        digest = hashlib.sha256(
+            json.dumps(
+                rows, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+            ).encode("utf-8")
+        ).hexdigest()
+        return [self._api_result(cell, rows, article_date, digest) for cell in cells]
+
     def _fetch_api(self, cell: EvidenceCellSchema, article_date: date | None) -> KosisValue | None:
         if self._api_lookup is None:
             return None
@@ -87,7 +120,65 @@ class OfficialValueFetcher:
         digest = hashlib.sha256(
             json.dumps(rows, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
         ).hexdigest()
-        return self._extract_rows(cell, rows, article_date, source="API", digest=digest)
+        return self._api_result(cell, rows, article_date, digest)
+
+
+    def _api_result(
+        self,
+        cell: EvidenceCellSchema,
+        rows: list[dict[str, Any]],
+        article_date: date | None,
+        digest: str,
+    ) -> KosisValue:
+        dated_rows = self._with_release_metadata(cell, rows) if article_date else rows
+        if dated_rows is None:
+            return KosisValue(None, "AS_OF_UNAVAILABLE", digest, "API")
+        return self._extract_rows(
+            cell, dated_rows, article_date, source="API", digest=digest
+        )
+
+    def _with_release_metadata(
+        self, cell: EvidenceCellSchema, rows: list[dict[str, Any]]
+    ) -> list[dict[str, Any]] | None:
+        published_at: str | None = None
+        for path in self._as_of_metadata_paths:
+            try:
+                payload = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            if not isinstance(payload, dict):
+                continue
+            if payload.get("org_id") not in (None, cell.org_id):
+                continue
+            if payload.get("tbl_id") not in (None, cell.tbl_id):
+                continue
+            if payload.get("item_id") not in (None, cell.itm_id):
+                continue
+            records = payload.get("records")
+            if not isinstance(records, list):
+                continue
+            for record in records:
+                if not isinstance(record, dict) or not _matches_cell(record, cell):
+                    continue
+                if record.get("official_release_verified") is not True:
+                    continue
+                published_at = str(
+                    record.get("official_published_at")
+                    or record.get("source_published_at")
+                    or payload.get("source_published_at")
+                    or ""
+                ).strip() or None
+                if published_at:
+                    break
+            if published_at:
+                break
+        if not published_at:
+            return (
+                None
+                if self._require_verified_release_metadata
+                else rows
+            )
+        return [{**row, "official_published_at": published_at} for row in rows]
 
     def _fetch_snapshot(self, cell: EvidenceCellSchema, path: Path, article_date: date | None) -> KosisValue:
         try:

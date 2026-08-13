@@ -30,3 +30,30 @@ def test_api_lookup_uses_ordered_non_c_dimension_codes(monkeypatch) -> None:
     adapter.build_kosis_api_lookup("secret")(cell)
 
     assert captured["codes"] == ["T10"]
+
+
+def test_api_lookup_fetches_comparison_periods_in_one_range_request(monkeypatch) -> None:
+    captured = {"calls": 0}
+
+    def fake_get(*args, **kwargs):
+        captured["calls"] += 1
+        captured["start_end"] = args[5:7]
+        return [
+            {"TBL_ID":"DT", "ITM_ID":"T1", "PRD_DE":"202410", "DT":"208.57"},
+            {"TBL_ID":"DT", "ITM_ID":"T1", "PRD_DE":"202510", "DT":"136.62"},
+        ]
+
+    monkeypatch.setattr(adapter, "get_parameter_data", fake_get)
+    cells = [
+        EvidenceCellSchema(
+            org_id="101", tbl_id="DT", itm_id="T1", prd_se="월", prd_de=period,
+            dimension_codes={"C":"T10", "I":"A02A01701"},
+            canonical_key=period, status="CONFIRMED",
+        )
+        for period in ("2025-10", "2024-10")
+    ]
+
+    rows = adapter.build_kosis_api_lookup("secret").fetch_many(cells)
+
+    assert captured == {"calls": 1, "start_end": ("202410", "202510")}
+    assert [row["DT"] for row in rows] == ["208.57", "136.62"]

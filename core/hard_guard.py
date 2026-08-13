@@ -16,6 +16,7 @@ def apply_hard_guard(claim: ClaimSchema, candidate: KosisCandidateSchema) -> Har
     if candidate.metadata_status in {
         "LIVE_SEARCH_UNRESOLVED",
         "OFFICIAL_ITEM_METADATA_UNAVAILABLE",
+        "OFFICIAL_PERIOD_METADATA_UNAVAILABLE",
     } or (
         claim.frequency
         and candidate.metadata_status == "OFFICIAL_ITEM_METADATA_READY"

@@ -60,6 +60,7 @@ def verify_claim_against_kosis(
         for candidate in guarded_candidates
         if resolved_cells[candidate.tbl_id].status == "CONFIRMED"
     ]
+    eligible_candidates = _prefer_exact_concept_code(concept, eligible_candidates)
     matches = semantic_match(claim, eligible_candidates)
     if not matches:
         reason = "NO_EVIDENCE_COORDINATE_CANDIDATE"
@@ -96,8 +97,16 @@ def verify_claim_against_kosis(
     recorder.evidence_confirmed()
     official_values: list[float] = []
     provenance: list[OfficialValueProvenanceSchema] = []
-    for evidence_cell in evidence_cells:
-        official_value = official_fetcher.fetch(evidence_cell, article_date=article_date)
+    batch_fetch = getattr(official_fetcher, "fetch_many", None)
+    fetched_values = (
+        batch_fetch(evidence_cells, article_date=article_date)
+        if callable(batch_fetch)
+        else [
+            official_fetcher.fetch(item, article_date=article_date)
+            for item in evidence_cells
+        ]
+    )
+    for evidence_cell, official_value in zip(evidence_cells, fetched_values, strict=True):
         if official_value.status != "SUCCESS" or official_value.value is None:
             recorder.official_value_held(official_value.status)
             return _hold(
@@ -136,6 +145,31 @@ def verify_claim_against_kosis(
         ),
         recorder.build(),
     )
+
+
+def _prefer_exact_concept_code(
+    concept: StandardConceptSchema,
+    candidates: list[KosisCandidateSchema],
+) -> list[KosisCandidateSchema]:
+    """Narrow ties only when official metadata contains the Concept's exact code."""
+    concept_codes = {
+        token
+        for value in (concept.concept_id, concept.standard_key)
+        if ":" in value
+        if (token := value.rsplit(":", 1)[-1].strip())
+    }
+    if not concept_codes:
+        return candidates
+    exact = [
+        candidate
+        for candidate in candidates
+        if concept_codes.intersection(
+            str(code).strip()
+            for member_codes in candidate.dimension_member_codes.values()
+            for code in member_codes.values()
+        )
+    ]
+    return exact
 
 
 

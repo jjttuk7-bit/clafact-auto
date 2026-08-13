@@ -55,7 +55,9 @@ def refresh_item_metadata(
             ))
             refreshed.append(_with_period_metadata(candidate, period_rows))
         except (RuntimeError, TypeError, ValueError):
-            refreshed.append(candidate)
+            refreshed.append(candidate.model_copy(update={
+                "metadata_status": "OFFICIAL_PERIOD_METADATA_UNAVAILABLE",
+            }))
     return [*refreshed, *preserved]
 
 
@@ -70,6 +72,10 @@ def _with_period_metadata(
     ))
     starts = [str(row.get("STRT_PRD_DE", "")).strip() for row in materialized_rows if str(row.get("STRT_PRD_DE", "")).strip()]
     ends = [str(row.get("END_PRD_DE", "")).strip() for row in materialized_rows if str(row.get("END_PRD_DE", "")).strip()]
+    if not frequencies and candidate.metadata_status == "OFFICIAL_ITEM_METADATA_READY":
+        return candidate.model_copy(update={
+            "metadata_status": "OFFICIAL_PERIOD_METADATA_UNAVAILABLE",
+        })
     return candidate.model_copy(update={
         "frequency": "|".join(frequencies) or candidate.frequency,
         "start_period": min(starts) if starts else candidate.start_period,

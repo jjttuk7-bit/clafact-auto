@@ -114,3 +114,43 @@ def test_live_catalog_records_transport_failure_without_exposing_exception() -> 
     assert search.search("수출액") == []
     assert search.attempted_queries == 1
     assert search.failed_queries == 1
+
+
+def test_live_catalog_counts_error_payload_as_failed_query() -> None:
+    search = KosisLiveCatalogSearch(
+        "secret", opener=lambda *_, **__: _Response({"err": "20"}), max_attempts=1
+    )
+
+    assert search.search("소비자물가") == []
+    assert search.attempted_queries == 1
+    assert search.failed_queries == 1
+
+
+def test_live_catalog_counts_invalid_data_shape_as_failed_query() -> None:
+    search = KosisLiveCatalogSearch(
+        "secret",
+        opener=lambda *_, **__: _Response({"data": {"bad": "shape"}}),
+        max_attempts=1,
+    )
+
+    assert search.search("소비자물가") == []
+
+
+def test_live_catalog_counts_error_payload_as_failed_query() -> None:
+    search = KosisLiveCatalogSearch(
+        "secret", opener=lambda *_, **__: _Response({"err": "20"}), max_attempts=1
+    )
+
+    assert search.search("소비자물가") == []
+    assert search.attempted_queries == 1
+    assert search.failed_queries == 1
+
+
+def test_live_catalog_counts_invalid_data_shape_as_failed_query() -> None:
+    search = KosisLiveCatalogSearch(
+        "secret",
+        opener=lambda *_, **__: _Response({"data": {"bad": "shape"}}),
+        max_attempts=1,
+    )
+
+    assert search.search("소비자물가") == []

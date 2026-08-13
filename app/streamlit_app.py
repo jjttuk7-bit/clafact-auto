@@ -56,23 +56,19 @@ STANDARD_PATH = DATA_ROOT / "semantic_standard" / "concept_seed_v1.json"
 CATALOG_PATH = DATA_ROOT / "kosis_catalog" / "catalog_350.json"
 GOLD_STANDARD_REGISTRY_PATH = DATA_ROOT / "claim_registry" / "gold_standard_v1" / "claim_registry.jsonl"
 GOLD_STANDARD_REPORT_PATH = DATA_ROOT / "claim_registry" / "gold_standard_v1" / "validation_report.json"
-SNAPSHOT_PATHS = [
+AS_OF_METADATA_PATHS = [
     DATA_ROOT / "kosis_snapshots" / "goldset_pilot.json",
     DATA_ROOT / "kosis_snapshots" / "official_goldset_asof_v3.json",
     DATA_ROOT / "kosis_snapshots" / "official_cpi_202510.json",
     DATA_ROOT / "kosis_snapshots" / "official_goldset_v3_news_b023.json",
     DATA_ROOT / "kosis_snapshots" / "official_cpi_detail_current_axes_v1.json",
 ]
-METADATA_MANIFEST_PATHS = [
-    PROJECT_ROOT / "data" / "kosis_snapshots" / "gold_standard_v1_metadata_manifest.json",
-    PROJECT_ROOT / "data" / "kosis_snapshots" / "cpi_detail_metadata_v1_manifest.json",
-]
 
 
 @st.cache_resource
 def _official_metadata_repository() -> KosisMetadataRepository:
-    """Reuse collected official table structure across interactive Claims."""
-    return KosisMetadataRepository.from_manifests(METADATA_MANIFEST_PATHS)
+    """Cache live official table structure across interactive Claims."""
+    return KosisMetadataRepository([])
 
 def _find_catalog_candidates(
     claim: ClaimSchema,
@@ -84,8 +80,8 @@ def _find_catalog_candidates(
     live_search = (
         KosisLiveCatalogSearch(
             settings.kosis_api_key,
-            max_attempts=1,
-            timeout_seconds=5,
+            max_attempts=2,
+            timeout_seconds=10,
         )
         if settings.kosis_api_key
         else None
@@ -97,31 +93,63 @@ def _find_catalog_candidates(
         live_search,
         max_live_queries=3,
     )
+    if (
+        live_search is not None
+        and live_search.attempted_queries > 0
+        and live_search.failed_queries == live_search.attempted_queries
+    ):
+        raise RuntimeError("KOSIS_CATALOG_UNAVAILABLE")
     refreshed = refresh_item_metadata(
         discovered,
         settings.kosis_api_key,
         metadata_fetcher=_official_metadata_repository(),
-        max_candidates=2,
-        retries=1,
-        timeout_seconds=5,
+        max_candidates=3,
+        retries=2,
+        timeout_seconds=10,
     )
+    unavailable_statuses = {
+        "OFFICIAL_ITEM_METADATA_UNAVAILABLE",
+        "OFFICIAL_PERIOD_METADATA_UNAVAILABLE",
+    }
+    ready = [
+        candidate
+        for candidate in refreshed
+        if candidate.metadata_status == "OFFICIAL_METADATA_READY"
+    ]
+    unavailable = [
+        candidate
+        for candidate in refreshed
+        if candidate.metadata_status in unavailable_statuses
+    ]
+    concept_member_code = (
+        concept.concept_id.rsplit(":", 1)[-1]
+        if ":" in concept.concept_id
+        else None
+    )
+    ready_for_concept = bool(ready)
+    if concept_member_code:
+        ready_for_concept = any(
+            concept_member_code in codes.values()
+            for candidate in ready
+            for codes in candidate.dimension_member_codes.values()
+        )
+    if unavailable and not ready_for_concept:
+        raise RuntimeError("KOSIS_METADATA_UNAVAILABLE")
     return refreshed
 
 
 def _official_fetcher(settings: Settings) -> OfficialValueFetcher:
     """Build the read-only official-value fetcher without exposing credentials."""
     api_lookup = build_kosis_api_lookup(settings.kosis_api_key) if settings.kosis_api_key else None
-    return OfficialValueFetcher(SNAPSHOT_PATHS, api_lookup=api_lookup, prefer_api=api_lookup is not None)
-
-
-def _cpi_growth_fetcher(settings: Settings) -> OfficialValueFetcher:
-    """Use the dated official CPI detail Snapshot before an API fallback."""
-    api_lookup = build_kosis_api_lookup(settings.kosis_api_key) if settings.kosis_api_key else None
     return OfficialValueFetcher(
-        [DATA_ROOT / "kosis_snapshots" / "official_goldset_v3_news_b023.json"],
+        [],
         api_lookup=api_lookup,
-        prefer_api=False,
+        prefer_api=api_lookup is not None,
+        as_of_metadata_paths=AS_OF_METADATA_PATHS,
+        require_verified_release_metadata=True,
     )
+
+
 
 
 class _InvalidArticleDateError(ValueError):

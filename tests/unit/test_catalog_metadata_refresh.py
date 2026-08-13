@@ -128,6 +128,52 @@ def test_refresh_respects_candidate_metadata_budget_and_preserves_unfetched_rows
     assert refreshed[0].metadata_status == "OFFICIAL_METADATA_READY"
     assert refreshed[1:] == candidates[1:]
 
+
+def test_period_metadata_failure_is_preserved_as_unavailable() -> None:
+    from core.catalog_metadata_refresh import refresh_item_metadata
+
+    def fetcher(api_key, org_id, table_id, *, meta_type, retries, timeout_seconds):
+        if meta_type == "PRD":
+            raise RuntimeError("PRD unavailable")
+        return [{
+            "ORG_ID": org_id, "TBL_ID": table_id, "OBJ_ID": "ITEM",
+            "OBJ_NM": "항목", "ITM_ID": "T", "ITM_NM": "소비자물가지수",
+            "UNIT_NM": "2020=100",
+        }]
+
+    refreshed = refresh_item_metadata(
+        [KosisCandidateSchema(
+            org_id="101", tbl_id="DT_CPI", tbl_name="CPI",
+            metadata_status="LIVE_SEARCH_UNRESOLVED",
+        )],
+        "secret", metadata_fetcher=fetcher,
+    )[0]
+
+    assert refreshed.metadata_status == "OFFICIAL_PERIOD_METADATA_UNAVAILABLE"
+
+
+def test_empty_period_metadata_is_preserved_as_unavailable() -> None:
+    from core.catalog_metadata_refresh import refresh_item_metadata
+
+    def fetcher(api_key, org_id, table_id, *, meta_type, retries, timeout_seconds):
+        if meta_type == "PRD":
+            return []
+        return [{
+            "ORG_ID": org_id, "TBL_ID": table_id, "OBJ_ID": "ITEM",
+            "OBJ_NM": "항목", "ITM_ID": "T", "ITM_NM": "소비자물가지수",
+            "UNIT_NM": "2020=100",
+        }]
+
+    refreshed = refresh_item_metadata(
+        [KosisCandidateSchema(
+            org_id="101", tbl_id="DT_CPI", tbl_name="CPI",
+            metadata_status="LIVE_SEARCH_UNRESOLVED",
+        )],
+        "secret", metadata_fetcher=fetcher,
+    )[0]
+
+    assert refreshed.metadata_status == "OFFICIAL_PERIOD_METADATA_UNAVAILABLE"
+
 def test_refresh_default_budget_limits_live_metadata_requests_to_eight_candidates() -> None:
     from core.catalog_metadata_refresh import refresh_item_metadata
 

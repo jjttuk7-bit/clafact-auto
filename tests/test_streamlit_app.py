@@ -86,13 +86,13 @@ def test_single_claim_catalog_hydration_uses_interactive_candidate_budget() -> N
         [candidate],
         "secret",
         metadata_fetcher=namespace["_official_metadata_repository"](),
-        max_candidates=2,
-        retries=1,
-        timeout_seconds=5,
+        max_candidates=3,
+        retries=2,
+        timeout_seconds=10,
     )
 
 
-def test_catalog_transport_failure_returns_holdable_empty_candidates() -> None:
+def test_catalog_transport_failure_is_not_misreported_as_no_evidence() -> None:
     claim = ClaimSchema(
         claim_id="CPI-CABBAGE",
         source_sentence="2025년 10월 배추 물가는 전년 동월 대비 34.5% 하락했다.",
@@ -127,9 +127,24 @@ def test_catalog_transport_failure_returns_holdable_empty_candidates() -> None:
             patch("core.catalog_discovery.discover_catalog_candidates", return_value=[])
         )
         namespace = runpy.run_path(str(APP_PATH), run_name="__catalog_failure_test__")
-        candidates = namespace["_find_catalog_candidates"](claim, concept, settings)
+        with pytest.raises(RuntimeError, match="KOSIS_CATALOG_UNAVAILABLE"):
+            namespace["_find_catalog_candidates"](claim, concept, settings)
 
-    assert candidates == []
+
+
+def test_official_runtime_dependencies_do_not_use_static_snapshots() -> None:
+    api_lookup = MagicMock()
+    with patch("core.kosis_api_adapter.build_kosis_api_lookup", return_value=api_lookup):
+        namespace = runpy.run_path(str(APP_PATH), run_name="__live_runtime_test__")
+        namespace["_official_metadata_repository"].clear()
+        repository = namespace["_official_metadata_repository"]()
+        settings = MagicMock(kosis_api_key="secret")
+        value_fetcher = namespace["_official_fetcher"](settings)
+
+    assert tuple(repository._snapshot_paths) == ()
+    assert value_fetcher._snapshot_paths == []
+    assert value_fetcher._prefer_api is True
+    assert value_fetcher._require_verified_release_metadata is True
 
 
 def test_catalog_metadata_failure_returns_holdable_candidates() -> None:
@@ -172,9 +187,8 @@ def test_catalog_metadata_failure_returns_holdable_candidates() -> None:
             patch("core.catalog_metadata_refresh.refresh_item_metadata", return_value=[candidate])
         )
         namespace = runpy.run_path(str(APP_PATH), run_name="__metadata_failure_test__")
-        candidates = namespace["_find_catalog_candidates"](claim, concept, settings)
-
-    assert candidates == [candidate]
+        with pytest.raises(RuntimeError, match="KOSIS_METADATA_UNAVAILABLE"):
+            namespace["_find_catalog_candidates"](claim, concept, settings)
 
 @pytest.mark.parametrize(
     ("parse_status", "parse_reason"),
@@ -671,6 +685,40 @@ def test_cabbage_cpi_single_and_batch_paths_share_auto_result(monkeypatch) -> No
         tbl_name="품목별 소비자물가지수",
         metadata_status="LIVE_SEARCH_UNRESOLVED",
     )
+    hydrated = table_identity.model_copy(update={
+        "core_item_ids": ["T"],
+        "core_item_names": ["소비자물가지수"],
+        "dimension_ids": ["C", "I"],
+        "dimension_names": ["지역", "품목"],
+        "dimension_members": {"C": ["전국"], "I": ["배추"]},
+        "dimension_member_codes": {
+            "C": {"전국": "T10"},
+            "I": {"배추": "A02A01701"},
+        },
+        "unit_names": ["2020=100"],
+        "item_units": {"T": "2020=100"},
+        "frequency": "월|분기|년",
+        "metadata_status": "OFFICIAL_METADATA_READY",
+    })
+
+    class FakeLiveLookup:
+        def __call__(self, cell):
+            return self.fetch_many([cell])
+
+        def fetch_many(self, _cells):
+            return [
+                {
+                    "TBL_ID": "DT_1J22112", "ITM_ID": "T",
+                    "PRD_DE": "202410", "DT": "208.57",
+                    "LST_CHN_DE": "2025-10-30",
+                },
+                {
+                    "TBL_ID": "DT_1J22112", "ITM_ID": "T",
+                    "PRD_DE": "202510", "DT": "136.62",
+                    "LST_CHN_DE": "2025-10-30",
+                },
+            ]
+
     with (
         patch(
             "core.claim_extractor_factory.create_claim_extractor",
@@ -680,7 +728,11 @@ def test_cabbage_cpi_single_and_batch_paths_share_auto_result(monkeypatch) -> No
             "core.catalog_discovery.discover_catalog_candidates",
             return_value=[table_identity],
         ),
-        patch("core.kosis_api_adapter.build_kosis_api_lookup", return_value=None),
+        patch(
+            "core.catalog_metadata_refresh.refresh_item_metadata",
+            return_value=[hydrated],
+        ),
+        patch("core.kosis_api_adapter.build_kosis_api_lookup", return_value=FakeLiveLookup()),
     ):
         app = AppTest.from_file("app/streamlit_app.py", default_timeout=40)
         app.run()
@@ -715,6 +767,6 @@ def test_cabbage_cpi_single_and_batch_paths_share_auto_result(monkeypatch) -> No
         for cell in batch_verdict.evidence_cells
     )
     assert [item.source for item in batch_verdict.official_value_provenance] == [
-        "SNAPSHOT",
-        "SNAPSHOT",
+        "API",
+        "API",
     ]

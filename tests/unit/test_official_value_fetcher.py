@@ -104,3 +104,76 @@ def test_missing_snapshot_returns_fetch_failed_instead_of_raising(tmp_path) -> N
 
     assert result.status == "FETCH_FAILED"
     assert result.value is None
+
+def test_live_api_value_uses_release_metadata_without_snapshot_value_fallback(tmp_path) -> None:
+    release = tmp_path / "release.json"
+    release.write_text(json.dumps({
+        "org_id": "101",
+        "tbl_id": "DT",
+        "item_id": "T",
+        "source_published_at": "2025-06-01",
+        "records": [{
+            "period": "202505",
+            "value": 999.0,
+            "official_published_at": "2025-06-01",
+            "official_release_verified": True,
+        }],
+    }), encoding="utf-8")
+    api_rows = [{"TBL_ID":"DT", "ITM_ID":"T", "PRD_DE":"202505", "DT":"110.01"}]
+
+    result = OfficialValueFetcher(
+        [], api_lookup=lambda _cell: api_rows, prefer_api=True,
+        as_of_metadata_paths=[release],
+    ).fetch(cell(), article_date=date(2025, 6, 26))
+
+    assert result.status == "SUCCESS"
+
+    assert result.value == 110.01
+    assert result.source == "API"
+
+def test_fetch_many_uses_one_api_range_response_for_all_cells() -> None:
+    class Lookup:
+        calls = 0
+
+        def __call__(self, _cell):
+            raise AssertionError("single-cell API lookup must not run")
+
+        def fetch_many(self, _cells):
+            self.calls += 1
+            return [
+                {"TBL_ID":"DT", "ITM_ID":"T", "PRD_DE":"202410", "DT":"208.57", "LST_CHN_DE":"2025-01-01"},
+                {"TBL_ID":"DT", "ITM_ID":"T", "PRD_DE":"202510", "DT":"136.62", "LST_CHN_DE":"2025-11-01"},
+            ]
+
+    lookup = Lookup()
+    cells = [
+        EvidenceCellSchema(
+            org_id="101", tbl_id="DT", itm_id="T", prd_se="M", prd_de=period,
+            canonical_key=period, status="CONFIRMED",
+        )
+        for period in ("2025-10", "2024-10")
+    ]
+    results = OfficialValueFetcher(
+        [], api_lookup=lookup, prefer_api=True,
+    ).fetch_many(cells, article_date=date(2025, 11, 4))
+
+    assert lookup.calls == 1
+    assert [result.value for result in results] == [136.62, 208.57]
+    assert all(result.source == "API" for result in results)
+
+
+def test_strict_live_asof_holds_without_verified_release_metadata() -> None:
+    rows = [{
+        "TBL_ID": "DT", "ITM_ID": "T", "PRD_DE": "202505",
+        "DT": "109.67", "LST_CHN_DE": "2025-05-30",
+    }]
+
+    result = OfficialValueFetcher(
+        [],
+        api_lookup=lambda _cell: rows,
+        prefer_api=True,
+        require_verified_release_metadata=True,
+    ).fetch(cell(), article_date=date(2025, 6, 26))
+
+    assert result.status == "AS_OF_UNAVAILABLE"
+    assert result.value is None
