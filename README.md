@@ -78,6 +78,39 @@ flowchart TD
 ```
 
 전처리 단계는 기사 원문을 내부 데이터 계약으로 쓰지 않기 위해 입력 형식을 정리하고, 본문 속 광고·메뉴·중복 문구를 제거한 뒤 수치 Claim 후보 문장만 다음 단계로 전달합니다. LLM은 엄격한 데이터 계약 안에서 Claim을 구조화할 때만 사용되며, KOSIS 공식값 조회와 계산은 각각 KOSIS adapter와 Python 코드가 수행합니다.
+
+### 현재 운영 E2E 상태
+
+현재 Streamlit 단일 Claim과 배치 검증은 같은 동적 엔진을 사용합니다. 신규 문장은 다음 운영 경로를 거쳐 `AUTO`, `HOLD` 또는 `HUMAN_REVIEW`로 종결됩니다.
+
+```text
+신규 뉴스 문장
+  → OpenAI/HCX 12슬롯 파싱
+  → 문맥 결합 Semantic Concept 매핑
+  → KOSIS Live Catalog 검색
+  → KOSIS ITM/PRD 공식 메타데이터 조회
+  → Hard Guard와 Semantic Matching
+  → Evidence Cell 좌표 확정
+  → KOSIS Parameter API 공식값 조회
+  → Python 결정론적 계산
+  → AUTO/MATCH·MISMATCH 또는 단계별 HOLD
+```
+
+운영 acceptance case로 다음 경로를 실제 KOSIS API로 검증했습니다. 저장된 판정이나 고정 공식값을 반환하는 목업 경로가 아닙니다.
+
+| 항목 | 실제 검증 결과 |
+| --- | --- |
+| Claim | `2025년 10월 배추 물가는 전년 동월 대비 34.5% 하락했다.` |
+| Semantic Concept | `CPI_DETAIL:A02A01701` — 배추 소비자물가지수 |
+| KOSIS 표·항목 | `DT_1J22112` / `T` |
+| 공식 차원 좌표 | 전국 `C=T10`, 배추 `I=A02A01701` |
+| KOSIS API 공식값 | 2025-10 `136.62`, 2024-10 `208.57` |
+| Python 계산 | `(136.62 / 208.57 - 1) × 100 = -34.49681162199741%` |
+| 최종 결과 | `AUTO / MATCH / WITHIN_TOLERANCE` |
+| Provenance | `source=API`, Evidence별 좌표와 응답 SHA-256 기록 |
+
+이는 신규 Claim이 실제 KOSIS 공식값을 통해 끝까지 판정될 수 있음을 검증한 대표 사례입니다. 다만 모든 자연어 Claim이 자동 판정된다는 의미는 아닙니다. Concept Seed, KOSIS 차원 해석, 공표시점 메타데이터와 계산 유형의 운영 커버리지는 계속 확대합니다.
+
 ### 구조화 Claim 추출: OpenAI / HCX
 
 `CLAFACT_CLAIM_PROVIDER` 설정으로 추출기를 선택합니다. OpenAI는 Responses API Strict Function Calling으로 하나의 `emit_claim`만 호출하며, 기술적 실패 시 HCX 키가 설정된 경우에만 HCX 예비 처리로 전환합니다.
@@ -174,6 +207,23 @@ CLAFACT-AUTO는 “참/거짓” 두 가지로만 처리하지 않습니다. 처
 
 모든 계산 결과에는 계산 버전과 입력 Evidence가 함께 기록되어 재현할 수 있습니다.
 
+
+계산 함수 자체는 위 유형을 지원하지만, 현재 신규 Claim 운영 E2E에서 대표적으로 검증된 경로는 직접값과 전년·전월·전분기 비교 기반 증감률·차이입니다. `RANK`, `SHARE`, `RATIO`, `THRESHOLD`, `MULTIPLE`은 Claim별 분자·분모·비교집합 Evidence Resolution 커버리지를 추가 검증하며 확대합니다.
+
+## 현재 구현 수준
+
+| 영역 | 현재 상태 | 다음 확대 범위 |
+| --- | --- | --- |
+| 신규 Claim 12슬롯 파싱 | 구현됨 | 복합 문장 Claim Split 정확도 확대 |
+| Contextual Semantic Mapping | 구현됨 | Indicator·Dimension 별칭과 Concept Seed 확대 |
+| KOSIS Live Catalog 검색 | 구현됨 | 다양한 표현과 복합 제약 검색 회귀 확대 |
+| 공식 ITM/PRD 메타데이터 조회 | 구현됨 | API 장애 진단과 메타데이터 공표 범위 확대 |
+| Hard Guard / Semantic Matching | 구현됨 | 지역·모집단·복합 차원 충돌 규칙 확대 |
+| Evidence Cell Resolution | 구현됨 | 다양한 KOSIS 축 구성과 복수 Evidence 계산 확대 |
+| KOSIS 공식값 API 조회 | 구현됨 | 더 많은 표·주기·기사시점 acceptance case 확대 |
+| Python 계산 / Verdict | 직접값·증감률 운영 검증 | 순위·점유율·비율·임계값 E2E 확대 |
+| Streamlit 단일·배치 경로 | 동일 엔진으로 구현됨 | 운영 관측성과 대량 처리 성능 강화 |
+
 ## 프로젝트 구조
 
 ```text
@@ -263,12 +313,34 @@ streamlit run app/streamlit_app.py
 
 ## KOSIS 공식값과 Snapshot 정책
 
-공식값 조회는 두 가지 adapter를 통해 이뤄집니다.
+운영 Streamlit 경로는 좌표가 확정된 뒤 **KOSIS Parameter API에서 공식값을 조회하는 경로를 우선**합니다. 저장된 판정값이나 정적 공식값으로 API 결과를 대체하지 않습니다.
 
-1. **KOSIS API**: 코드가 확정된 Evidence Cell의 값만 요청한다.
-2. **공식 Snapshot**: 저장된 KOSIS 응답 또는 검증 시점의 공식 근거를 읽는다.
+1. **KOSIS API**: 코드가 확정된 Evidence Cell만 요청하고 응답값으로 판정한다.
+2. **공표시점 메타데이터**: 해당 공식값이 기사 기준일에 이용 가능했는지 검증한다.
+3. **공식 Snapshot**: 회귀 테스트·감사·재현과 공표시점 확인에 사용하며, 운영 API 장애를 고정값으로 덮지 않는다.
 
 Snapshot은 `data/kosis_snapshots/` 아래 JSON으로 보관하며, 요청 파라미터·조회 시각·응답 SHA-256 해시를 기록합니다. 기존 Snapshot을 덮어쓰지 않고 새 버전을 추가합니다. 이는 기사 시점의 공표값과 나중에 갱신된 통계값을 구분하기 위해서입니다.
+
+최종 결과의 `official_value_provenance`에는 각 Evidence Cell과 1:1로 연결된 출처와 콘텐츠 해시가 기록됩니다.
+
+```json
+{
+  "evidence_key": "ORG=101|TBL=DT_1J22112|ITM=T|...",
+  "source": "API",
+  "content_hash": "KOSIS 응답의 SHA-256"
+}
+```
+
+외부 API나 공표시점 확인에 실패하면 예외를 자동 정답으로 바꾸지 않고 다음 단계 사유로 중단합니다.
+
+| Reason code | 의미 |
+| --- | --- |
+| `KOSIS_CATALOG_UNAVAILABLE` | KOSIS 통계표 검색 API를 정상적으로 완료하지 못함 |
+| `KOSIS_METADATA_UNAVAILABLE` | 선택 후보의 ITM/PRD 공식 메타데이터를 확정하지 못함 |
+| `FETCH_FAILED` | 확정 Evidence 좌표의 공식값 조회에 실패함 |
+| `AS_OF_UNAVAILABLE` | 공식값이 기사 기준일에 공표됐다는 근거를 확인하지 못함 |
+
+이 상태들은 “해당 통계가 존재하지 않는다”는 뜻이 아닙니다. 외부 조회 또는 시점 검증을 완료하지 못했다는 운영 상태이며, `HOLD`와 검토 가능한 실행 추적으로 보존합니다.
 
 ## 운영 안전장치
 
