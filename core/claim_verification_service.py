@@ -9,6 +9,8 @@ class VerificationTraceRecorder:
         self._trace = self._trace.pass_stage('CLAIM_PARSE'); return self
     def concept_mapped(self) -> 'VerificationTraceRecorder':
         self._trace = self._trace.pass_stage('SEMANTIC_MAPPING'); return self
+    def concept_held(self, reason_code: str) -> 'VerificationTraceRecorder':
+        self._trace = self._trace.hold('SEMANTIC_MAPPING', reason_code); return self
     def catalog_searched(self) -> 'VerificationTraceRecorder':
         self._trace = self._trace.pass_stage('CATALOG_SEARCH'); return self
     def build(self) -> PipelineTraceSchema:

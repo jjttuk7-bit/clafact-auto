@@ -7,6 +7,7 @@ from collections import defaultdict
 from difflib import SequenceMatcher
 from typing import Iterable
 
+from core.claim_dimensions import dimension_member_values
 from core.data_loader import SemanticStandardRecord
 from schemas.claim import ClaimSchema
 from schemas.concept import StandardConceptSchema
@@ -23,6 +24,15 @@ def normalize_concept(
     indicator = claim.indicator
     if not indicator:
         return _unresolved()
+
+    for contextual_label in _contextual_labels(claim):
+        contextual_matches = _label_matches(
+            contextual_label, concept_list, normalize=True
+        )
+        if len(contextual_matches) == 1:
+            return _matched(*contextual_matches[0])
+        if len(contextual_matches) > 1:
+            return _unresolved()
 
     exact_matches = _label_matches(indicator, concept_list, normalize=False)
     if len(exact_matches) == 1:
@@ -45,6 +55,21 @@ def normalize_concept(
         return _unresolved()
     return _matched(*best_matches[0])
 
+
+def _contextual_labels(claim: ClaimSchema) -> list[str]:
+    indicator = (claim.indicator or "").strip()
+    if not indicator:
+        return []
+    labels: list[str] = []
+    for member in dimension_member_values(claim.dimension):
+        member = member.strip()
+        if not member:
+            continue
+        if _normalize_text(member) in _normalize_text(indicator):
+            labels.append(indicator)
+        else:
+            labels.append(f"{member} {indicator}")
+    return list(dict.fromkeys(labels))
 
 def _label_matches(
     indicator: str,

@@ -85,10 +85,15 @@ def _resolve_dimensions(claim: ClaimSchema, candidate: KosisCandidateSchema) -> 
             selected[dimension_id] = members[0]
             continue
         matches = [member for member in members if _normalize(member) and _normalize(member) in target]
-        if len(matches) == 1:
-            selected[dimension_id] = matches[0]
-            continue
-        total_members = [member for member in members if _is_total_member(member)]
+        if matches:
+            longest_length = max(len(_normalize(member)) for member in matches)
+            longest = [
+                member for member in matches
+                if len(_normalize(member)) == longest_length
+            ]
+            if len(longest) == 1:
+                selected[dimension_id] = longest[0]
+                continue
         if not matches and len(total_members) == 1:
             selected[dimension_id] = total_members[0]
             continue
@@ -110,7 +115,7 @@ def _claim_dimensions_confirmed(claim: ClaimSchema, dimensions: dict[str, str]) 
 
 def _is_total_member(member: str) -> bool:
     normalized = _normalize(member)
-    return normalized in {"계", "전체", "합계"} or normalized.endswith("계")
+    return normalized in {"계", "전체", "합계", "전국", "대한민국", "한국"} or normalized.endswith("계")
 
 
 def _resolve_frequency(claim_frequency: str | None, candidate_frequency: str | None) -> str:

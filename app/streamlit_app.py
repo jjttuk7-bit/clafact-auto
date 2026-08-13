@@ -64,6 +64,7 @@ SNAPSHOT_PATHS = [
 ]
 METADATA_MANIFEST_PATHS = [
     PROJECT_ROOT / "data" / "kosis_snapshots" / "gold_standard_v1_metadata_manifest.json",
+    PROJECT_ROOT / "data" / "kosis_snapshots" / "cpi_detail_metadata_v1_manifest.json",
 ]
 
 

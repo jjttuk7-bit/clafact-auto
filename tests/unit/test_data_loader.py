@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import pytest
 
@@ -86,3 +87,12 @@ def test_normalize_catalog_record_rejects_invalid_dimension_json() -> None:
                 "semantic_core_status": "READY",
             }
         )
+
+def test_operational_standard_contains_cabbage_cpi_detail() -> None:
+    path = Path(__file__).resolve().parents[2] / "data/semantic_standard/concept_seed_v1.json"
+    concepts = load_standard_concepts(path)
+    cabbage = next(concept for concept in concepts if concept.concept_id == "CPI_DETAIL:A02A01701")
+
+    assert cabbage.standard_key == "cpi_detail:A02A01701"
+    assert cabbage.aliases == ("배추 물가",)
+    assert cabbage.kosis_search_terms == ("배추 소비자물가지수", "품목별 소비자물가지수 배추")
