@@ -287,6 +287,11 @@ def _hold(
 
 def _claim_tolerance(claim: ClaimSchema) -> float:
     """Accept only the explicit reporting precision present in the article text."""
-    if claim.unit == "명" and "천" in claim.source_sentence:
+    if claim.unit != "명":
+        return 0.01
+    source = claim.source_sentence
+    if "천" in source or re.search(r"\d+\s*만\s*\d{1,4}(?!\s*[천백십])", source):
+        # "2804만1000명" and "2천804만 명" both state a count only to
+        # the nearest thousand people; a KOSIS 천명 value can retain hundreds.
         return 500.0
     return 0.01

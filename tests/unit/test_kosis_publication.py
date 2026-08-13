@@ -156,3 +156,54 @@ def test_official_release_with_multiple_labeled_dates_is_unresolved() -> None:
 
     assert result.status == "UNRESOLVED"
     assert result.published_at is None
+
+def test_publication_lookup_finds_exact_kostat_release_when_kosis_has_only_schedule() -> None:
+    explanation = (
+        '[{"statsNm":"경제활동인구조사","pubDate":"조사대상월 익월 15일경",'
+        '"publictMth":"KOSIS 및 보도자료"}]'
+    ).encode("utf-8")
+    search_page = (
+        '<a href="/board.es?act=view&bid=210&list_no=434801">'
+        '2024년 12월 및 연간 고용동향</a>'
+    ).encode("utf-8")
+    release_page = (
+        '<h1>2024년 12월 및 연간 고용동향</h1>'
+        '<p>연관조사 경제활동인구조사</p><p>게시일 2025-01-15</p>'
+    ).encode("utf-8")
+
+    def opener(request, *, timeout):
+        if "statisticsExplData" in request.full_url:
+            return Response(explanation)
+        if "act=list" in request.full_url:
+            return Response(search_page)
+        return Response(release_page)
+
+    result = KosisPublicationLookup("secret", opener=opener, retries=1).fetch(
+        "101", "DT_1DA7001S", period="2024-12"
+    )
+
+    assert result.status == "VERIFIED"
+    assert result.published_at == date(2025, 1, 15)
+    assert result.source_url == "https://mods.go.kr/board.es?act=view&bid=210&list_no=434801"
+
+def test_kostat_search_uses_human_period_label() -> None:
+    assert publication._period_label("2024-12") == "2024년 12월"
+    assert publication._period_label("2024Q1") == "2024년 1분기"
+
+def test_official_release_transport_failure_is_not_downgraded_to_unresolved() -> None:
+    explanation = (
+        '[{"pubDate":"매월 15일경",'
+        '"publictMth":"https://kostat.go.kr/board.es?act=view&list_no=4"}]'
+    ).encode("utf-8")
+
+    def opener(request, *, timeout):
+        if "statisticsExplData" in request.full_url:
+            return Response(explanation)
+        raise OSError("network unavailable")
+
+    result = KosisPublicationLookup("secret", opener=opener, retries=1).fetch(
+        "101", "DT_EMPLOYMENT", period="2024-12"
+    )
+
+    assert result.status == "FETCH_FAILED"
+    assert result.source_url == "https://kostat.go.kr/board.es?act=view&list_no=4"

@@ -10,7 +10,7 @@ from datetime import date, datetime, timezone
 from html import unescape
 from time import sleep
 from typing import Any, Callable, Literal
-from urllib.parse import urlencode, urlparse
+from urllib.parse import urlencode, urljoin, urlparse
 from urllib.request import Request, urlopen
 
 from core.kosis_openapi_transport import _decode_kosis_payload, _repair_kosis_mojibake
@@ -26,7 +26,50 @@ _EXACT_DATE = re.compile(_EXACT_DATE_BODY)
 _RELEASE_DATE = re.compile(r"(?:게시일|보도시점|공표일자)\s*[:：]?\s*" + _EXACT_DATE_BODY)
 _OFFICIAL_URL = re.compile(r"https://[^\s<>\"']+")
 _TAGS = re.compile(r"<[^>]+>")
+_KOSTAT_PRESS_RELEASE_LIST = "https://mods.go.kr/board.es"
+_KOSTAT_PRESS_RELEASE_PARAMS = {
+    "act": "list", "mid": "a10301030100", "bid": "a103010301",
+    "ref_bid": "210,211,11109,11113,11814",
+}
+_VIEW_LINK = re.compile(
+    r"href=[\"'](?P<href>[^\"']*board\.es\?[^\"']*act=view[^\"']*)[\"'][^>]*>(?P<title>.*?)</a>",
+    re.IGNORECASE | re.DOTALL,
+)
 
+
+class _KostatPressReleaseSearch:
+    """Find one official KOSTAT press release for a KOSIS survey and period."""
+
+    def __init__(self, opener: Callable[..., Any], timeout_seconds: int) -> None:
+        self._opener = opener
+        self._timeout_seconds = timeout_seconds
+
+    def find(self, stats_name: str | None, period: str, pub_period: str | None, pub_date_text: str | None) -> PublicationEvidence | None:
+        if not stats_name:
+            return None
+        params = {**_KOSTAT_PRESS_RELEASE_PARAMS, "searchKeyword": f"{_period_label(period)} {stats_name}"}
+        search_url = f"{_KOSTAT_PRESS_RELEASE_LIST}?{urlencode(params)}"
+        try:
+            request = Request(search_url, headers={"Accept": "text/html", "User-Agent": "CLAFACT-AUTO/0.1"})
+            with self._opener(request, timeout=self._timeout_seconds) as response:
+                search_raw = response.read()
+        except (OSError, RuntimeError, TypeError, ValueError):
+            return PublicationEvidence(status="FETCH_FAILED", pub_period=pub_period, pub_date_text=pub_date_text, publication_method_url=search_url, source_url=search_url, retrieved_at=_now())
+        matches: list[PublicationEvidence] = []
+        for url, title in _release_links(search_raw):
+            if not _period_appears(title, period):
+                continue
+            try:
+                request = Request(url, headers={"Accept": "text/html", "User-Agent": "CLAFACT-AUTO/0.1"})
+                with self._opener(request, timeout=self._timeout_seconds) as response:
+                    raw = response.read()
+            except (OSError, RuntimeError, TypeError, ValueError):
+                return PublicationEvidence(status="FETCH_FAILED", pub_period=pub_period, pub_date_text=pub_date_text, publication_method_url=search_url, source_url=url, retrieved_at=_now())
+            text = _html_text(raw)
+            published_at = _parse_release_date(text)
+            if _normalized_text(stats_name) in _normalized_text(text) and published_at:
+                matches.append(PublicationEvidence(status="VERIFIED", published_at=published_at, pub_period=pub_period, pub_date_text=pub_date_text, publication_method_url=search_url, source_url=url, retrieved_at=_now(), content_hash=hashlib.sha256(raw).hexdigest()))
+        return matches[0] if len(matches) == 1 else None
 
 @dataclass(frozen=True, slots=True)
 class PublicationEvidence:
@@ -69,10 +112,16 @@ class KosisPublicationLookup:
                 pub_date_text = _text(merged.get("pubDate"))
                 pub_period = _text(merged.get("pubPeriod"))
                 method = _text(merged.get("publictMth"))
+                stats_name = _text(merged.get("statsNm"))
                 conflict = merged.get("_publication_conflict") is True
                 published_at = None if conflict else _parse_exact_date(pub_date_text)
                 if published_at is None and period and not conflict:
                     release = self._fetch_official_release(method, period, pub_period, pub_date_text)
+                    if release is not None:
+                        return release
+                    release = _KostatPressReleaseSearch(self._opener, self._timeout_seconds).find(
+                        stats_name, period, pub_period, pub_date_text
+                    )
                     if release is not None:
                         return release
                 return PublicationEvidence(
@@ -111,7 +160,14 @@ class KosisPublicationLookup:
                 content_hash=hashlib.sha256(raw).hexdigest(),
             )
         except (OSError, RuntimeError, TypeError, ValueError):
-            return None
+            return PublicationEvidence(
+                status="FETCH_FAILED",
+                pub_period=pub_period,
+                pub_date_text=pub_date_text,
+                publication_method_url=official_url,
+                source_url=official_url,
+                retrieved_at=_now(),
+            )
 
 
 def _merge_payload(payload: Any) -> dict[str, Any] | None:
@@ -180,3 +236,32 @@ def _text(value: object) -> str | None:
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+def _html_text(raw: bytes) -> str:
+    return unescape(_TAGS.sub(" ", raw.decode("utf-8", errors="replace")))
+
+
+def _release_links(raw: bytes) -> list[tuple[str, str]]:
+    page = raw.decode("utf-8", errors="replace")
+    links: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    for match in _VIEW_LINK.finditer(page):
+        url = urljoin(_KOSTAT_PRESS_RELEASE_LIST, unescape(match.group("href")))
+        if url in seen:
+            continue
+        seen.add(url)
+        links.append((url, _html_text(match.group("title").encode("utf-8"))))
+    return links
+
+
+def _period_label(period: str) -> str:
+    normalized = period.replace("-", "").upper()
+    if re.fullmatch(r"\d{6}", normalized):
+        return f"{normalized[:4]}년 {int(normalized[4:])}월"
+    if match := re.fullmatch(r"(\d{4})Q([1-4])", normalized):
+        return f"{match.group(1)}년 {match.group(2)}분기"
+    return f"{normalized}년" if re.fullmatch(r"\d{4}", normalized) else period
+
+
+def _normalized_text(value: str) -> str:
+    return re.sub(r"\s+", "", value).casefold()
