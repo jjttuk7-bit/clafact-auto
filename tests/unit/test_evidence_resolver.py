@@ -312,3 +312,118 @@ def test_missing_region_defaults_to_official_nationwide_member() -> None:
 
     assert cell.status == "CONFIRMED"
     assert cell.dimension_codes == {"C": "T10", "I": "A02A01701"}
+
+
+def test_resolve_evidence_cell_maps_named_claim_slots_to_c1_through_c6_codes() -> None:
+    cell = resolve_evidence_cell(
+        claim(
+            indicator="취업자 수", unit="명", time="2024년 12월", frequency="월",
+            region="서울", population="15-29세",
+            dimension={"성별": "여성", "산업": "제조업", "품목": "중고차", "모집단": "15세 이상"},
+        ),
+        candidate(
+            core_item_ids=["T30"], core_item_names=["취업자 수"],
+            unit_names=["천명"], item_units={"T30": "천명"}, frequency="월",
+            dimension_ids=["C1", "C2", "C3", "C4", "C5", "C6"],
+            dimension_names=["시도별", "성별", "연령별", "산업별", "품목별", "모집단별"],
+            dimension_members={
+                "C1": ["전국", "서울"], "C2": ["계", "남자", "여자"],
+                "C3": ["15-29세", "30-39세"], "C4": ["제조업", "서비스업"],
+                "C5": ["중고차", "신차"], "C6": ["15세 이상", "전체"],
+            },
+            dimension_member_codes={
+                "C1": {"전국": "00", "서울": "11"}, "C2": {"계": "0", "남자": "1", "여자": "2"},
+                "C3": {"15-29세": "15", "30-39세": "30"}, "C4": {"제조업": "C", "서비스업": "S"},
+                "C5": {"중고차": "USED", "신차": "NEW"}, "C6": {"15세 이상": "A15", "전체": "ALL"},
+            },
+        ),
+    )
+
+    assert cell.status == "CONFIRMED"
+    assert cell.dimension_codes == {"C1": "11", "C2": "2", "C3": "15", "C4": "C", "C5": "USED", "C6": "A15"}
+
+def test_resolve_evidence_cell_maps_all_c1_through_c8_with_axis_specific_totals() -> None:
+    cell = resolve_evidence_cell(
+        claim(
+            indicator="취업자 수", unit="명", time="2024년 12월", frequency="월",
+            region="서울", population="15-29세",
+            dimension={"성별": "여자", "산업": "제조업", "품목": "중고차", "모집단": "15세 이상"},
+        ),
+        candidate(
+            core_item_ids=["T30"], core_item_names=["취업자 수"], unit_names=["천명"],
+            item_units={"T30": "천명"}, frequency="월",
+            dimension_ids=["C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8"],
+            dimension_names=["지역", "성별", "연령", "산업", "품목", "모집단", "종사상지위", "규모별"],
+            dimension_members={
+                "C1": ["전국", "서울"], "C2": ["계", "여자"], "C3": ["15-29세"],
+                "C4": ["제조업"], "C5": ["중고차"], "C6": ["15세 이상"],
+                "C7": ["계", "상용근로자"], "C8": ["전체", "대규모"],
+            },
+            dimension_member_codes={
+                "C1": {"전국": "00", "서울": "11"}, "C2": {"계": "0", "여자": "2"},
+                "C3": {"15-29세": "15"}, "C4": {"제조업": "C"}, "C5": {"중고차": "USED"},
+                "C6": {"15세 이상": "A15"}, "C7": {"계": "ALL_WORK", "상용근로자": "REG"},
+                "C8": {"전체": "ALL_SIZE", "대규모": "L"},
+            },
+        ),
+    )
+
+    assert cell.status == "CONFIRMED"
+    assert cell.dimension_codes == {
+        "C1": "11", "C2": "2", "C3": "15", "C4": "C", "C5": "USED", "C6": "A15",
+        "C7": "ALL_WORK", "C8": "ALL_SIZE",
+    }
+
+def test_resolve_evidence_cell_does_not_apply_industry_member_to_gender_axis() -> None:
+    cell = resolve_evidence_cell(
+        claim(
+            indicator="취업자 수", unit="명", time="2024년 12월", frequency="월",
+            region="서울", dimension={"산업": "제조업"},
+        ),
+        candidate(
+            core_item_ids=["T30"], core_item_names=["취업자 수"], unit_names=["천명"],
+            item_units={"T30": "천명"}, frequency="월",
+            dimension_ids=["C1", "C2", "C3"],
+            dimension_names=["지역", "성별", "산업"],
+            dimension_members={
+                "C1": ["전국", "서울"],
+                "C2": ["계", "남자", "제조업"],
+                "C3": ["계", "제조업"],
+            },
+            dimension_member_codes={
+                "C1": {"전국": "00", "서울": "11"},
+                "C2": {"계": "0", "남자": "1", "제조업": "WRONG"},
+                "C3": {"계": "0", "제조업": "C"},
+            },
+        ),
+    )
+
+    assert cell.status == "CONFIRMED"
+    assert cell.dimension_codes == {"C1": "11", "C2": "0", "C3": "C"}
+
+def test_resolve_evidence_cell_maps_named_nonstandard_c7_and_c8_axes() -> None:
+    cell = resolve_evidence_cell(
+        claim(
+            indicator="취업자 수", unit="명", time="2024년 12월", frequency="월",
+            region="서울", dimension={"종사상지위": "상용근로자", "규모": "대규모"},
+        ),
+        candidate(
+            core_item_ids=["T30"], core_item_names=["취업자 수"], unit_names=["천명"],
+            item_units={"T30": "천명"}, frequency="월",
+            dimension_ids=["C1", "C7", "C8"],
+            dimension_names=["지역", "종사상지위별", "사업체규모별"],
+            dimension_members={
+                "C1": ["전국", "서울"],
+                "C7": ["계", "상용근로자", "임시근로자", "대규모"],
+                "C8": ["전체", "대규모", "중소규모"],
+            },
+            dimension_member_codes={
+                "C1": {"전국": "00", "서울": "11"},
+                "C7": {"계": "ALL", "상용근로자": "REG", "임시근로자": "TEMP"},
+                "C8": {"전체": "ALL", "대규모": "L", "중소규모": "S"},
+            },
+        ),
+    )
+
+    assert cell.status == "CONFIRMED"
+    assert cell.dimension_codes == {"C1": "11", "C7": "REG", "C8": "L"}

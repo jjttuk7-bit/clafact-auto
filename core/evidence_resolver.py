@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from core.claim_dimensions import dimension_member_values
+from core.claim_dimensions import dimension_member_values, normalized_dimension_members
 from core.member_code_mapper import resolve_member_code
 from core.unit_normalizer import compatible_units
 from schemas.candidate import KosisCandidateSchema
@@ -76,30 +76,79 @@ def resolve_evidence_cell(claim: ClaimSchema, candidate: KosisCandidateSchema) -
 def _resolve_dimensions(claim: ClaimSchema, candidate: KosisCandidateSchema) -> tuple[dict[str, str], bool]:
     if not candidate.dimension_ids:
         return {}, True
-    region = "전국" if claim.region in {"한국", "대한민국", "전국"} else claim.region
-    target = _normalize(" ".join(filter(None, [region, claim.population, _dimension_text(claim.dimension), claim.indicator])))
     selected: dict[str, str] = {}
-    for dimension_id in candidate.dimension_ids:
+    for index, dimension_id in enumerate(candidate.dimension_ids):
         members = candidate.dimension_members.get(dimension_id, [])
         if len(members) == 1:
             selected[dimension_id] = members[0]
             continue
-        matches = [member for member in members if _normalize(member) and _normalize(member) in target]
+        axis_name = candidate.dimension_names[index] if index < len(candidate.dimension_names) else None
+        targets = _axis_targets(claim, axis_name)
+        matches = [member for member in members if _normalize(member) and _normalize(member) in targets]
         total_members = [member for member in members if _is_total_member(member)]
-        if matches:
-            longest_length = max(len(_normalize(member)) for member in matches)
-            longest = [
-                member for member in matches
-                if len(_normalize(member)) == longest_length
-            ]
-            if len(longest) == 1:
-                selected[dimension_id] = longest[0]
-                continue
+        if len(matches) == 1:
+            selected[dimension_id] = matches[0]
+            continue
         if not matches and len(total_members) == 1:
             selected[dimension_id] = total_members[0]
             continue
         return {}, False
     return selected, True
+
+
+def _axis_targets(claim: ClaimSchema, axis_name: str | None) -> set[str]:
+    """Return only Claim values applicable to one named KOSIS axis."""
+    axis = _axis_kind(axis_name)
+    dimensions = claim.dimension or {}
+    values = dimension_member_values(dimensions)
+    if axis == "region":
+        region = "전국" if claim.region in {"한국", "대한민국", "전국"} else claim.region
+        values = [region] if region else ["전국"]
+    elif axis == "population":
+        values = _dimension_values_for_axis(dimensions, "population")
+        if not values and claim.population:
+            values = [claim.population]
+    elif axis == "age":
+        values = _dimension_values_for_axis(dimensions, "age")
+        if not values and claim.population:
+            values = [claim.population]
+    elif axis:
+        values = dimension_member_values(dimensions) if set(dimensions) == {"raw"} else _dimension_values_for_axis(dimensions, axis)
+    return {_normalize(value) for value in values if _normalize(value)}
+
+
+def _axis_kind(axis_name: str | None) -> str | None:
+    normalized = _normalize(axis_name)
+    aliases = {
+        "region": ("지역", "시도", "시군구", "행정구역"),
+        "gender": ("성별", "남녀", "gender", "sex"),
+        "age": ("연령", "나이", "age"),
+        "industry": ("산업", "업종", "직종", "industry"),
+        "product": ("품목", "상품", "재화", "product", "item"),
+        "population": ("모집단", "대상", "population"),
+    }
+    for kind, terms in aliases.items():
+        if any(_normalize(term) in normalized for term in terms):
+            return kind
+    return f"custom:{normalized}" if normalized else None
+
+
+def _dimension_values_for_axis(dimensions: dict[str, str], axis: str) -> list[str]:
+    named_members = normalized_dimension_members(dimensions)
+    if axis.startswith("custom:"):
+        axis_label = axis.removeprefix("custom:")
+        return [
+            value
+            for key, values in named_members.items()
+            if (key_label := _normalize(key)) and (key_label in axis_label or axis_label in key_label)
+            for value in values
+        ]
+    return [
+        value
+        for key, values in named_members.items()
+        if _axis_kind(key) == axis
+        for value in values
+    ]
 
 
 def _dimension_text(value: dict[str, str] | None) -> str | None:
@@ -164,7 +213,8 @@ def _resolve_dimension_codes(
 
 
 def _normalize(value: str | None) -> str:
-    return (value or "").replace(" ", "").replace("-", "")
+    normalized = (value or "").replace(" ", "").replace("-", "")
+    return normalized.replace("여성", "여자").replace("남성", "남자").replace("대한민국", "전국").replace("한국", "전국")
 
 
 def _key(org: str, table: str, item: str, obj: str | None, member: str | None, prd_se: str, prd_de: str, dimensions: dict[str, str], *, include_dimensions: bool) -> str:
