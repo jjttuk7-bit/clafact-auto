@@ -8,6 +8,7 @@ import re
 from typing import Protocol
 
 from core.calculator import calculate
+from core.calculation_planner import build_calculation_plan
 from core.hard_guard import apply_hard_guard
 from core.claim_verification_service import VerificationTraceRecorder
 from core.evidence_resolver import resolve_evidence_cell
@@ -90,13 +91,14 @@ def verify_claim_against_kosis(
         )
 
     calculation_type = claim.calculation or "DIRECT_VALUE"
-    evidence_cells = _calculation_cells(cell, claim, calculation_type)
-    if evidence_cells is None:
-        recorder.evidence_held("MISSING_COMPARISON_FOR_GROWTH_RATE")
+    plan = build_calculation_plan(claim, cell, selected)
+    if plan is None:
+        recorder.evidence_held("CALCULATION_EVIDENCE_PLAN_UNRESOLVED")
         return _hold(
-            claim, recorder, "MISSING_COMPARISON_FOR_GROWTH_RATE",
-            "The comparison period is not explicit enough to resolve official evidence.", evidence_cells=[cell],
+            claim, recorder, "CALCULATION_EVIDENCE_PLAN_UNRESOLVED",
+            "Required official evidence operands are not explicit enough to resolve.", evidence_cells=[cell],
         )
+    evidence_cells = plan.required_cells
 
     recorder.evidence_confirmed()
     official_values: list[float] = []
@@ -128,9 +130,7 @@ def verify_claim_against_kosis(
         official_values.append(official_value.value)
 
     recorder.official_value_fetched()
-    calculated = calculate(
-        CalculationPlan(calculation_type=calculation_type, required_cells=evidence_cells), official_values
-    )
+    calculated = calculate(plan, [*official_values, *plan.literal_values])
     recorder.calculation_completed()
     if calculation_type == "DIFFERENCE" and _is_percentage_point_unit(claim.unit):
         claim_unit_value = _direction_checked_difference(calculated, claim)

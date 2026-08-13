@@ -11,6 +11,8 @@ def calculate(plan: CalculationPlan, values: list[float]) -> float:
     if plan.calculation_type == "RANK":
         if not values:
             raise ValueError("calculation requires at least 1 value")
+        if (plan.operator or "DESC").upper() == "ASC":
+            return float(1 + sum(value < values[0] for value in values[1:]))
         return float(1 + sum(value > values[0] for value in values[1:]))
     if plan.calculation_type == "SHARE":
         if len(values) < 2:
@@ -25,7 +27,11 @@ def calculate(plan: CalculationPlan, values: list[float]) -> float:
     if plan.calculation_type == "DIFFERENCE":
         return numerator - denominator
     if plan.calculation_type == "THRESHOLD":
-        return 1.0 if numerator >= denominator else 0.0
+        operator = (plan.operator or "GTE").upper()
+        comparisons = {"GT": numerator > denominator, "GTE": numerator >= denominator, "LT": numerator < denominator, "LTE": numerator <= denominator}
+        if operator not in comparisons:
+            raise ValueError(f"Unsupported threshold operator: {operator}")
+        return 1.0 if comparisons[operator] else 0.0
     if denominator == 0:
         raise ValueError("zero denominator is not allowed")
     if plan.calculation_type == "GROWTH_RATE":

@@ -52,3 +52,11 @@ def test_calculate_threshold_returns_one_when_value_meets_threshold() -> None:
 
 def test_calculate_threshold_returns_zero_when_value_is_below_threshold() -> None:
     assert calculate(plan("THRESHOLD"), [69.9, 70.0]) == 0.0
+
+
+def test_calculate_rank_honors_ascending_order() -> None:
+    assert calculate(CalculationPlan(calculation_type="RANK", required_cells=[], operator="ASC"), [3.0, 2.0, 4.0]) == 2.0
+
+
+def test_calculate_threshold_honors_strict_operator() -> None:
+    assert calculate(CalculationPlan(calculation_type="THRESHOLD", required_cells=[], operator="GT"), [4.0, 4.0]) == 0.0

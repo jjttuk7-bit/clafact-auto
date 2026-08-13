@@ -29,3 +29,4 @@ class CalculationPlan(BaseModel):
     required_cells: list[EvidenceCellSchema] = Field(default_factory=list)
     operator: str | None = None
     tolerance: float | None = None
+    literal_values: list[float] = Field(default_factory=list)
