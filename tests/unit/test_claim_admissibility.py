@@ -18,3 +18,9 @@ def test_classifies_downstream_kosis_hold_as_verifiable() -> None:
     result = classify_admissibility("NO_EVIDENCE_COORDINATE_CANDIDATE", "HOLD")
     assert result.route == "VERIFIABLE"
     assert result.reason_code == "KOSIS_STAGE_REACHED"
+
+
+def test_classifies_publication_transport_failure_as_reached_kosis_stage() -> None:
+    result = classify_admissibility("PUBLICATION_FETCH_FAILED", "HOLD")
+    assert result.route == "VERIFIABLE"
+    assert result.reason_code == "KOSIS_STAGE_REACHED"

@@ -11,9 +11,10 @@ from pathlib import Path
 from typing import Any, Literal
 
 from core.snapshot_asof import filter_rows_as_of
+from core.kosis_publication import PublicationEvidence
 from schemas.evidence import EvidenceCellSchema
 
-ValueStatus = Literal["SUCCESS", "NO_DATA", "INVALID_RESPONSE", "AS_OF_UNAVAILABLE", "FETCH_FAILED"]
+ValueStatus = Literal["SUCCESS", "NO_DATA", "INVALID_RESPONSE", "AS_OF_UNAVAILABLE", "PUBLICATION_FETCH_FAILED", "FETCH_FAILED"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -22,6 +23,7 @@ class KosisValue:
     status: ValueStatus
     snapshot_hash: str
     source: Literal["SNAPSHOT", "API", "NONE"] = "SNAPSHOT"
+    publication: PublicationEvidence | None = None
 
 
 def fetch_kosis_value(cell: EvidenceCellSchema, snapshot_path: Path) -> KosisValue:
@@ -50,22 +52,27 @@ class OfficialValueFetcher:
         *,
         prefer_api: bool = False,
         as_of_metadata_paths: Iterable[Path] = (),
+        publication_lookup: Any | None = None,
         require_verified_release_metadata: bool = False,
     ) -> None:
         self._snapshot_paths = list(snapshot_paths)
         self._api_lookup = api_lookup
         self._prefer_api = prefer_api
         self._as_of_metadata_paths = list(as_of_metadata_paths)
+        self._publication_lookup = publication_lookup
+        self._publication_cache: dict[tuple[str, str, str], PublicationEvidence] = {}
         self._require_verified_release_metadata = require_verified_release_metadata
 
     def fetch(self, cell: EvidenceCellSchema, *, article_date: date | None = None) -> KosisValue:
         as_of_unavailable = False
+        publication_failed = False
         fetch_failed = False
         if self._prefer_api:
             api_result = self._fetch_api(cell, article_date)
             if api_result is not None and api_result.status == "SUCCESS":
                 return api_result
             as_of_unavailable = bool(api_result and api_result.status == "AS_OF_UNAVAILABLE")
+            publication_failed = bool(api_result and api_result.status == "PUBLICATION_FETCH_FAILED")
             fetch_failed = bool(api_result and api_result.status == "FETCH_FAILED")
         for path in self._snapshot_paths:
             result = self._fetch_snapshot(cell, path, article_date)
@@ -75,13 +82,14 @@ class OfficialValueFetcher:
             fetch_failed = fetch_failed or result.status == "FETCH_FAILED"
         if not self._prefer_api:
             api_result = self._fetch_api(cell, article_date)
-            if api_result is not None and api_result.status in {"SUCCESS", "AS_OF_UNAVAILABLE"}:
+            if api_result is not None and api_result.status in {"SUCCESS", "AS_OF_UNAVAILABLE", "PUBLICATION_FETCH_FAILED"}:
                 return api_result
             fetch_failed = fetch_failed or bool(
                 api_result and api_result.status == "FETCH_FAILED"
             )
         status: ValueStatus = (
             "AS_OF_UNAVAILABLE" if as_of_unavailable
+            else "PUBLICATION_FETCH_FAILED" if publication_failed
             else "FETCH_FAILED" if fetch_failed
             else "NO_DATA"
         )
@@ -130,16 +138,34 @@ class OfficialValueFetcher:
         article_date: date | None,
         digest: str,
     ) -> KosisValue:
-        dated_rows = self._with_release_metadata(cell, rows) if article_date else rows
+        publication: PublicationEvidence | None = None
+        if article_date:
+            dated_rows, publication = self._with_release_metadata(cell, rows)
+        else:
+            dated_rows = rows
         if dated_rows is None:
-            return KosisValue(None, "AS_OF_UNAVAILABLE", digest, "API")
+            status: ValueStatus = (
+                "PUBLICATION_FETCH_FAILED"
+                if publication is not None and publication.status == "FETCH_FAILED"
+                else "AS_OF_UNAVAILABLE"
+            )
+            return KosisValue(None, status, digest, "API", publication)
         return self._extract_rows(
-            cell, dated_rows, article_date, source="API", digest=digest
+            cell, dated_rows, article_date, source="API", digest=digest,
+            publication=publication,
         )
 
     def _with_release_metadata(
         self, cell: EvidenceCellSchema, rows: list[dict[str, Any]]
-    ) -> list[dict[str, Any]] | None:
+    ) -> tuple[list[dict[str, Any]] | None, PublicationEvidence | None]:
+        publication = self._fetch_publication(cell)
+        if publication is not None and publication.status == "FETCH_FAILED":
+            return None, publication
+        if publication is not None and publication.status == "VERIFIED" and publication.published_at:
+            return (
+                [{**row, "official_published_at": publication.published_at.isoformat()} for row in rows],
+                publication,
+            )
         published_at: str | None = None
         for path in self._as_of_metadata_paths:
             try:
@@ -174,11 +200,23 @@ class OfficialValueFetcher:
                 break
         if not published_at:
             return (
-                None
-                if self._require_verified_release_metadata
-                else rows
+                None if self._require_verified_release_metadata else rows,
+                publication,
             )
-        return [{**row, "official_published_at": published_at} for row in rows]
+        return ([{**row, "official_published_at": published_at} for row in rows], publication)
+
+    def _fetch_publication(self, cell: EvidenceCellSchema) -> PublicationEvidence | None:
+        if self._publication_lookup is None:
+            return None
+        key = (cell.org_id, cell.tbl_id, cell.prd_de)
+        if key not in self._publication_cache:
+            try:
+                self._publication_cache[key] = self._publication_lookup.fetch(
+                    cell.org_id, cell.tbl_id, period=cell.prd_de
+                )
+            except Exception:
+                self._publication_cache[key] = PublicationEvidence(status="FETCH_FAILED")
+        return self._publication_cache[key]
 
     def _fetch_snapshot(self, cell: EvidenceCellSchema, path: Path, article_date: date | None) -> KosisValue:
         try:
@@ -216,7 +254,7 @@ class OfficialValueFetcher:
         ]
         return self._extract_rows(cell, inherited_records, article_date, source="SNAPSHOT", digest=digest)
 
-    def _extract_rows(self, cell: EvidenceCellSchema, rows: list[dict[str, Any]], article_date: date | None, *, source: Literal["SNAPSHOT", "API"], digest: str) -> KosisValue:
+    def _extract_rows(self, cell: EvidenceCellSchema, rows: list[dict[str, Any]], article_date: date | None, *, source: Literal["SNAPSHOT", "API"], digest: str, publication: PublicationEvidence | None = None) -> KosisValue:
         matching = [row for row in rows if _matches_cell(row, cell, allow_missing_codes=source == "API")]
         if not matching:
             return KosisValue(None, "NO_DATA", digest, source)
@@ -225,7 +263,7 @@ class OfficialValueFetcher:
             return KosisValue(None, "AS_OF_UNAVAILABLE", digest, source)
         value = usable[0].get("value", usable[0].get("DT"))
         try:
-            return KosisValue(float(value), "SUCCESS", digest, source)
+            return KosisValue(float(value), "SUCCESS", digest, source, publication)
         except (TypeError, ValueError):
             return KosisValue(None, "INVALID_RESPONSE", digest, source)
 

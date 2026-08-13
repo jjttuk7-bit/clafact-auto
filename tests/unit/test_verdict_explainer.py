@@ -34,3 +34,9 @@ def test_template_explanation_describes_undetermined_next_action() -> None:
     assert result.source == "TEMPLATE"
     assert result.conclusion == "판정 불가"
     assert result.next_action is not None
+
+
+def test_publication_transport_failure_explains_external_lookup_retry() -> None:
+    result = build_template_explanation(_verdict("UNDETERMINED", "HOLD", "PUBLICATION_FETCH_FAILED"))
+    assert "공표정보 조회" in result.detail
+    assert "다시 시도" in (result.next_action or "")

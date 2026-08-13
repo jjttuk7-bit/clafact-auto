@@ -2,6 +2,7 @@ from datetime import date
 
 from core.dynamic_kosis_verifier import verify_claim_against_kosis
 from core.kosis_fetcher import KosisValue
+from core.kosis_publication import PublicationEvidence
 from schemas.candidate import KosisCandidateSchema
 from schemas.claim import ClaimSchema
 from schemas.concept import StandardConceptSchema
@@ -12,7 +13,16 @@ class FixedOfficialFetcher:
         assert cell.tbl_id == "DT_1DA7028S"
         assert cell.dimension_codes == {"B": "0", "J": "00"}
         assert article_date == date(2025, 1, 15)
-        return KosisValue(28041.0, "SUCCESS", "test", "API")
+        return KosisValue(
+            28041.0, "SUCCESS", "test", "API",
+            PublicationEvidence(
+                status="VERIFIED", published_at=date(2025, 1, 15),
+                pub_period="월", pub_date_text="2025-01-15",
+                publication_method_url="https://kostat.go.kr/release",
+                source_url="https://kosis.kr/openapi/statisticsExplData.do",
+                retrieved_at="2025-01-15T00:00:00Z", content_hash="c" * 64,
+            ),
+        )
 
 
 def test_employment_claim_is_auto_verified_with_dynamic_kosis_coordinate() -> None:
@@ -61,6 +71,11 @@ def test_employment_claim_is_auto_verified_with_dynamic_kosis_coordinate() -> No
     assert verdict.verdict == "MATCH"
     assert verdict.calculated_value == 28_041_000
     assert verdict.evidence_cells[0].dimension_codes == {"B": "0", "J": "00"}
+    publication = verdict.official_value_provenance[0].publication
+    assert publication is not None
+    assert publication.published_at == date(2025, 1, 15)
+    assert publication.source_url == "https://kosis.kr/openapi/statisticsExplData.do"
+    assert publication.content_hash == "c" * 64
 
 
 class RoundedEmploymentOfficialFetcher:
@@ -240,3 +255,42 @@ def test_official_value_adapter_exception_becomes_fetch_failed_hold() -> None:
 
     assert verdict.route_status == "HOLD"
     assert verdict.reason_code == "FETCH_FAILED"
+
+
+def test_publication_failure_hold_preserves_attempt_provenance() -> None:
+    claim = ClaimSchema(
+        claim_id="publication-failure", source_sentence="2024년 12월 취업자 수는 2804만1천 명이었다.",
+        indicator="취업자 수", value=28_041_000, unit="명", time="2024년 12월",
+        frequency="월", region="한국", parse_status="AUTO_OK",
+    )
+    concept = StandardConceptSchema(
+        concept_id="employment_count", canonical_name="취업자 수",
+        standard_key="employment_count", status="MATCHED",
+    )
+    candidate = KosisCandidateSchema(
+        org_id="101", tbl_id="DT_1DA7028S", tbl_name="취업자",
+        core_item_ids=["T30"], core_item_names=["취업자"],
+        dimension_ids=["B"], dimension_names=["성별"], dimension_members={"B": ["계"]},
+        dimension_member_codes={"B": {"계": "0"}}, unit_names=["천명"], frequency="월",
+        metadata_status="OFFICIAL_METADATA_READY",
+    )
+
+    class Fetcher:
+        def fetch(self, _cell, *, article_date):
+            return KosisValue(
+                None, "PUBLICATION_FETCH_FAILED", "value-hash", "API",
+                PublicationEvidence(
+                    status="FETCH_FAILED", source_url="https://kosis.kr/openapi/statisticsExplData.do",
+                    retrieved_at="2025-01-15T00:00:00Z", content_hash="e" * 64,
+                ),
+            )
+
+    verdict = verify_claim_against_kosis(
+        claim, concept, [candidate], article_date=date(2025, 1, 15), official_fetcher=Fetcher()
+    )
+
+    assert verdict.route_status == "HOLD"
+    assert verdict.reason_code == "PUBLICATION_FETCH_FAILED"
+    assert len(verdict.official_value_provenance) == 1
+    assert verdict.official_value_provenance[0].publication is not None
+    assert verdict.official_value_provenance[0].publication.content_hash == "e" * 64

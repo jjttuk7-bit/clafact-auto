@@ -15,6 +15,7 @@ import config.settings as settings_module
 from schemas.claim import ClaimSchema
 from schemas.candidate import KosisCandidateSchema
 from schemas.concept import StandardConceptSchema
+from core.kosis_publication import PublicationEvidence
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -145,6 +146,7 @@ def test_official_runtime_dependencies_do_not_use_static_snapshots() -> None:
     assert value_fetcher._snapshot_paths == []
     assert value_fetcher._prefer_api is True
     assert value_fetcher._require_verified_release_metadata is True
+    assert value_fetcher._publication_lookup is not None
 
 
 def test_catalog_metadata_failure_returns_holdable_candidates() -> None:
@@ -701,6 +703,17 @@ def test_cabbage_cpi_single_and_batch_paths_share_auto_result(monkeypatch) -> No
         "metadata_status": "OFFICIAL_METADATA_READY",
     })
 
+    class FakePublicationLookup:
+        def __init__(self, _api_key):
+            pass
+
+        def fetch(self, _org_id, _table_id, *, period):
+            return PublicationEvidence(
+                status="VERIFIED", published_at=date(2025, 11, 4),
+                source_url="https://kosis.kr/openapi/statisticsExplData.do",
+                retrieved_at="2025-11-04T00:00:00Z", content_hash=period.ljust(64, "0"),
+            )
+
     class FakeLiveLookup:
         def __call__(self, cell):
             return self.fetch_many([cell])
@@ -733,6 +746,7 @@ def test_cabbage_cpi_single_and_batch_paths_share_auto_result(monkeypatch) -> No
             return_value=[hydrated],
         ),
         patch("core.kosis_api_adapter.build_kosis_api_lookup", return_value=FakeLiveLookup()),
+        patch("core.kosis_publication.KosisPublicationLookup", FakePublicationLookup),
     ):
         app = AppTest.from_file("app/streamlit_app.py", default_timeout=40)
         app.run()

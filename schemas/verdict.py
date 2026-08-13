@@ -1,5 +1,6 @@
 """Final auditable verification result contract."""
 
+from datetime import date
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -7,6 +8,20 @@ from pydantic import BaseModel, ConfigDict, Field
 from schemas.evidence import EvidenceCellSchema
 from schemas.pipeline_trace import PipelineTraceSchema
 
+
+class OfficialPublicationProvenanceSchema(BaseModel):
+    """Official publication evidence used for the article-date safeguard."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    status: Literal["VERIFIED", "UNRESOLVED", "FETCH_FAILED"]
+    published_at: date | None = None
+    pub_period: str | None = None
+    pub_date_text: str | None = None
+    publication_method_url: str | None = None
+    source_url: str
+    retrieved_at: str
+    content_hash: str
 
 class OfficialValueProvenanceSchema(BaseModel):
     """Auditable source identity for one fetched official evidence value."""
@@ -16,6 +31,7 @@ class OfficialValueProvenanceSchema(BaseModel):
     evidence_key: str
     source: Literal["SNAPSHOT", "API", "NONE"]
     content_hash: str
+    publication: OfficialPublicationProvenanceSchema | None = None
 
 
 class VerdictSchema(BaseModel):

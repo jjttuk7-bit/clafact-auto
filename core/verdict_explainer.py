@@ -31,8 +31,12 @@ def build_template_explanation(verdict: VerdictSchema) -> VerdictExplanationSche
         next_action = "기사의 수치, 기준시점, 비교 기준을 다시 확인하세요."
     else:
         summary = "공식 근거 또는 필수 검증 조건이 충분하지 않아 판정할 수 없습니다."
-        detail = f"판정 불가 사유 코드: {verdict.reason_code}."
-        next_action = "KOSIS 표·항목·기준시점 또는 기사 표현을 확인한 뒤 재검토하세요."
+        if verdict.reason_code == "PUBLICATION_FETCH_FAILED":
+            detail = "KOSIS 공식 공표정보 조회가 외부 연결 오류로 완료되지 않았습니다."
+            next_action = "공표정보 API 연결을 확인한 뒤 다시 시도하세요."
+        else:
+            detail = f"판정 불가 사유 코드: {verdict.reason_code}."
+            next_action = "KOSIS 표·항목·기준시점 또는 기사 표현을 확인한 뒤 재검토하세요."
     return VerdictExplanationSchema(
         source="TEMPLATE",
         conclusion=conclusion,

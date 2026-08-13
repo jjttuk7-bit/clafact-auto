@@ -28,6 +28,7 @@ from core.evidence_resolver import resolve_evidence_cell
 from core.evidence_presentation import build_evidence_rows, build_kosis_table_url
 from core.kosis_fetcher import OfficialValueFetcher
 from core.kosis_live_catalog import KosisLiveCatalogSearch
+from core.kosis_publication import KosisPublicationLookup
 from core.catalog_metadata_refresh import refresh_item_metadata
 from core.kosis_metadata_repository import KosisMetadataRepository
 from core.kosis_api_adapter import build_kosis_api_lookup
@@ -146,6 +147,7 @@ def _official_fetcher(settings: Settings) -> OfficialValueFetcher:
         api_lookup=api_lookup,
         prefer_api=api_lookup is not None,
         as_of_metadata_paths=AS_OF_METADATA_PATHS,
+        publication_lookup=KosisPublicationLookup(settings.kosis_api_key),
         require_verified_release_metadata=True,
     )
 

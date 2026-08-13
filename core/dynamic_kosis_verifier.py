@@ -20,7 +20,11 @@ from schemas.candidate import KosisCandidateSchema
 from schemas.claim import ClaimSchema
 from schemas.concept import StandardConceptSchema
 from schemas.evidence import CalculationPlan, EvidenceCellSchema
-from schemas.verdict import OfficialValueProvenanceSchema, VerdictSchema
+from schemas.verdict import (
+    OfficialPublicationProvenanceSchema,
+    OfficialValueProvenanceSchema,
+    VerdictSchema,
+)
 
 
 class OfficialValueFetcher(Protocol):
@@ -114,19 +118,14 @@ def verify_claim_against_kosis(
             evidence_cells=evidence_cells,
         )
     for evidence_cell, official_value in zip(evidence_cells, fetched_values, strict=True):
+        provenance.append(_value_provenance(evidence_cell, official_value))
         if official_value.status != "SUCCESS" or official_value.value is None:
             recorder.official_value_held(official_value.status)
             return _hold(
-                claim, recorder, official_value.status, "Official value is unavailable.", evidence_cells=evidence_cells,
+                claim, recorder, official_value.status, "Official value is unavailable.",
+                evidence_cells=evidence_cells, official_value_provenance=provenance,
             )
         official_values.append(official_value.value)
-        provenance.append(
-            OfficialValueProvenanceSchema(
-                evidence_key=evidence_cell.canonical_key,
-                source=official_value.source,
-                content_hash=official_value.snapshot_hash,
-            )
-        )
 
     recorder.official_value_fetched()
     calculated = calculate(
@@ -242,6 +241,30 @@ def _comparison_period(period: str, comparison: str | None) -> str | None:
         previous_year, previous_month = (year - 1, 12) if month == 1 else (year, month - 1)
         return f"{previous_year:04d}-{previous_month:02d}"
     return None
+def _value_provenance(
+    evidence_cell: EvidenceCellSchema, official_value: KosisValue
+) -> OfficialValueProvenanceSchema:
+    publication = official_value.publication
+    return OfficialValueProvenanceSchema(
+        evidence_key=evidence_cell.canonical_key,
+        source=official_value.source,
+        content_hash=official_value.snapshot_hash,
+        publication=(
+            OfficialPublicationProvenanceSchema(
+                status=publication.status,
+                published_at=publication.published_at,
+                pub_period=publication.pub_period,
+                pub_date_text=publication.pub_date_text,
+                publication_method_url=publication.publication_method_url,
+                source_url=publication.source_url,
+                retrieved_at=publication.retrieved_at,
+                content_hash=publication.content_hash,
+            )
+            if publication is not None
+            else None
+        ),
+    )
+
 def _hold(
     claim: ClaimSchema,
     recorder: VerificationTraceRecorder,
@@ -249,10 +272,15 @@ def _hold(
     explanation: str,
     *,
     evidence_cells: list[EvidenceCellSchema] | None = None,
+    official_value_provenance: list[OfficialValueProvenanceSchema] | None = None,
 ) -> VerdictSchema:
     verdict = make_verdict(claim.claim_id, claim.value, [], None)
     return attach_trace(
-        verdict.model_copy(update={"reason_code": reason_code, "explanation": explanation, "evidence_cells": evidence_cells or []}),
+        verdict.model_copy(update={
+            "reason_code": reason_code, "explanation": explanation,
+            "evidence_cells": evidence_cells or [],
+            "official_value_provenance": official_value_provenance or [],
+        }),
         recorder.build(),
     )
 
