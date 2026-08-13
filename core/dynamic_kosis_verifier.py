@@ -98,14 +98,21 @@ def verify_claim_against_kosis(
     official_values: list[float] = []
     provenance: list[OfficialValueProvenanceSchema] = []
     batch_fetch = getattr(official_fetcher, "fetch_many", None)
-    fetched_values = (
-        batch_fetch(evidence_cells, article_date=article_date)
-        if callable(batch_fetch)
-        else [
-            official_fetcher.fetch(item, article_date=article_date)
-            for item in evidence_cells
-        ]
-    )
+    try:
+        fetched_values = (
+            batch_fetch(evidence_cells, article_date=article_date)
+            if callable(batch_fetch)
+            else [
+                official_fetcher.fetch(item, article_date=article_date)
+                for item in evidence_cells
+            ]
+        )
+    except Exception:
+        recorder.official_value_held("FETCH_FAILED")
+        return _hold(
+            claim, recorder, "FETCH_FAILED", "Official value fetch failed.",
+            evidence_cells=evidence_cells,
+        )
     for evidence_cell, official_value in zip(evidence_cells, fetched_values, strict=True):
         if official_value.status != "SUCCESS" or official_value.value is None:
             recorder.official_value_held(official_value.status)

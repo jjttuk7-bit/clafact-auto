@@ -205,3 +205,38 @@ def test_unresolved_concept_holds_at_semantic_mapping_before_catalog() -> None:
     assert verdict.reason_code == "CONCEPT_NOT_FOUND"
     assert verdict.execution_trace.events[-1].stage == "SEMANTIC_MAPPING"
     assert verdict.execution_trace.events[-1].status == "HOLD"
+
+def test_official_value_adapter_exception_becomes_fetch_failed_hold() -> None:
+    claim = ClaimSchema(
+        claim_id="cpi-fetch-failure",
+        source_sentence="2025년 10월 배추 물가는 전년 동월 대비 34.5% 하락했다.",
+        indicator="물가", value=-34.5, unit="%", time="2025년 10월",
+        frequency="월", dimension={"item": "배추"},
+        comparison={"type": "YEAR_OVER_YEAR"}, calculation="GROWTH_RATE",
+        parse_status="AUTO_OK",
+    )
+    concept = StandardConceptSchema(
+        concept_id="CPI_DETAIL:A02A01701", canonical_name="배추 소비자물가지수",
+        standard_key="cpi_detail:A02A01701", status="MATCHED",
+    )
+    candidate = KosisCandidateSchema(
+        org_id="101", tbl_id="DT_1J22112", tbl_name="품목별 소비자물가지수",
+        core_item_ids=["T"], core_item_names=["소비자물가지수"],
+        dimension_ids=["C", "I"], dimension_names=["지역", "품목별"],
+        dimension_members={"C": ["전국"], "I": ["배추"]},
+        dimension_member_codes={"C": {"전국": "T10"}, "I": {"배추": "A02A01701"}},
+        unit_names=["2020=100"], frequency="월",
+        metadata_status="OFFICIAL_METADATA_READY",
+    )
+
+    class FailingFetcher:
+        def fetch_many(self, _cells, *, article_date):
+            raise RuntimeError("transient KOSIS value failure")
+
+    verdict = verify_claim_against_kosis(
+        claim, concept, [candidate], article_date=date(2025, 11, 4),
+        official_fetcher=FailingFetcher(),
+    )
+
+    assert verdict.route_status == "HOLD"
+    assert verdict.reason_code == "FETCH_FAILED"
