@@ -14,6 +14,7 @@ if str(PROJECT_ROOT) not in sys.path:
 import streamlit as st
 
 from core.batch_verifier import export_batch_xlsx, load_articles, verify_articles
+from core.article_claim_pipeline import parse_article_claims
 from core.claim_parser import parse_claim
 from core.claim_result_export import export_verdict_json_bytes, export_verdict_xlsx_bytes
 from core.claim_extractor_factory import create_claim_extractor
@@ -185,14 +186,17 @@ def _verify_batch_claim(sentence: str, article_date: date, settings: Settings) -
         "CLAIM_PARSE",
         lambda: create_claim_extractor(settings),
     )
-    claim = run_operational_stage(
+    claims = run_operational_stage(
         "CLAIM_PARSE",
-        lambda: parse_claim(
+        lambda: parse_article_claims(
             sentence,
             extractor,
             article_published_at=article_date,
         ),
     )
+    if len(claims) != 1:
+        raise ValueError("BATCH_CLAIM_SPLIT_CARDINALITY")
+    claim = claims[0]
     if claim.parse_status != "AUTO_OK":
         recorder = VerificationTraceRecorder(claim.claim_id).claim_parsed()
         return attach_trace(make_verdict(claim.claim_id, claim.value, [], None), recorder.build()).model_copy(
@@ -246,20 +250,40 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
             "CLAIM_PARSE",
             lambda: create_claim_extractor(settings),
         )
-        claim = run_operational_stage(
+        claims = run_operational_stage(
             "CLAIM_PARSE",
-            lambda: parse_claim(
+            lambda: parse_article_claims(
                 sentence,
                 extractor,
                 article_published_at=article_date,
             ),
         )
+        if not claims:
+            raise ValueError("NO_NUMERICAL_CLAIM_CANDIDATE")
+        st.caption(f"Claim Split: {len(claims)}개 독립 Claim")
+        selected_claim_index = (
+            st.selectbox(
+                "검토할 Claim 선택",
+                range(len(claims)),
+                format_func=lambda index: claims[index].source_sentence,
+            )
+            if len(claims) > 1 else 0
+        )
+        claim = claims[selected_claim_index]
         actual_provider = getattr(extractor, "last_provider", None)
         actual_provider_label = {
             "openai": "OpenAI",
             "hcx": "HCX",
         }.get(actual_provider, selected_provider_display_label)
         st.metric("실제 주장 추출기", actual_provider_label)
+        resolutions_by_claim_id = {}
+        if article_date and any(parsed_claim.parse_status == "AUTO_OK" for parsed_claim in claims):
+            service = _official_evidence_service(settings)
+            for parsed_claim in claims:
+                if parsed_claim.parse_status == "AUTO_OK":
+                    resolutions_by_claim_id[parsed_claim.claim_id] = service.resolve(
+                        parsed_claim, article_date=article_date
+                    )
         ui_trace = VerificationTraceRecorder(claim.claim_id).claim_parsed()
         requires_parse_review = claim.parse_status != "AUTO_OK"
         resolution_ready = False
@@ -274,9 +298,7 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
                 }
             )
         elif article_date:
-            resolution = _official_evidence_service(settings).resolve(
-                claim, article_date=article_date
-            )
+            resolution = resolutions_by_claim_id[claim.claim_id]
             concept = resolution.concept
             candidates = resolution.candidates
             verdict = resolution.verdict
