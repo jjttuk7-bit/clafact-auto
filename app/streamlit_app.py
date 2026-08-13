@@ -43,6 +43,7 @@ from core.ui_labels import translate_status
 from core.verdict_explainer import explain_verdict
 from core.operator_artifact_loader import load_operator_run
 from core.operational_error import OperationalStageError, run_operational_stage
+from core.official_evidence_service import OfficialEvidenceService
 from core.claim_verification_service import VerificationTraceRecorder
 from core.verification_trace import attach_trace
 from schemas.candidate import KosisCandidateSchema
@@ -152,7 +153,17 @@ def _official_fetcher(settings: Settings) -> OfficialValueFetcher:
     )
 
 
-
+def _official_evidence_service(settings: Settings) -> OfficialEvidenceService:
+    """Build the one Core Engine used by interactive and batch verification."""
+    return OfficialEvidenceService(
+        concept_mapper=lambda claim: normalize_concept(
+            claim, load_standard_concepts(STANDARD_PATH)
+        ),
+        catalog_resolver=lambda claim, concept: _find_catalog_candidates(
+            claim, concept, settings
+        ),
+        official_fetcher=_official_fetcher(settings),
+    )
 
 class _InvalidArticleDateError(ValueError):
     """Raised only when the article date input is not ISO formatted."""
@@ -190,35 +201,9 @@ def _verify_batch_claim(sentence: str, article_date: date, settings: Settings) -
                 "explanation": "Claim parsing requires human review.",
             }
         )
-    concept = run_operational_stage(
-        "SEMANTIC_MAPPING",
-        lambda: normalize_concept(claim, load_standard_concepts(STANDARD_PATH)),
-    )
-    if concept.status != "MATCHED":
-        return run_operational_stage(
-            "VERIFICATION",
-            lambda: verify_claim_against_kosis(
-                claim,
-                concept,
-                [],
-                article_date=article_date,
-                official_fetcher=_official_fetcher(settings),
-            ),
-        )
-    candidates = run_operational_stage(
-        "KOSIS_CATALOG",
-        lambda: _find_catalog_candidates(claim, concept, settings),
-    )
-    return run_operational_stage(
-        "VERIFICATION",
-        lambda: verify_claim_against_kosis(
-            claim,
-            concept,
-            candidates,
-            article_date=article_date,
-            official_fetcher=_official_fetcher(settings),
-        ),
-    )
+    return _official_evidence_service(settings).resolve(
+        claim, article_date=article_date
+    ).verdict
 st.set_page_config(page_title="CLAFACT-AUTO", layout="wide")
 st.title("CLAFACT-AUTO")
 st.caption("KOSIS 공식값만 사용하며, 좌표·기사시점·후보가 불확실하면 자동 판정하지 않습니다.")
@@ -276,11 +261,10 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
         st.metric("실제 주장 추출기", actual_provider_label)
         ui_trace = VerificationTraceRecorder(claim.claim_id).claim_parsed()
         requires_parse_review = claim.parse_status != "AUTO_OK"
-        requires_semantic_review = False
+        resolution_ready = False
         if requires_parse_review:
             concept = None
             candidates = []
-            matches = []
             verdict = make_verdict(claim.claim_id, claim.value, [], None).model_copy(
                 update={
                     "route_status": "HOLD",
@@ -288,34 +272,19 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
                     "explanation": "Claim parsing requires human review.",
                 }
             )
-        else:
-            concept = run_operational_stage(
-                "SEMANTIC_MAPPING",
-                lambda: normalize_concept(
-                    claim,
-                    load_standard_concepts(STANDARD_PATH),
-                ),
+        elif article_date:
+            resolution = _official_evidence_service(settings).resolve(
+                claim, article_date=article_date
             )
-            requires_semantic_review = concept.status != "MATCHED"
-            if requires_semantic_review:
-                candidates = []
-                verdict = run_operational_stage(
-                    "VERIFICATION",
-                    lambda: verify_claim_against_kosis(
-                        claim,
-                        concept,
-                        [],
-                        article_date=article_date or date.min,
-                        official_fetcher=_official_fetcher(settings),
-                    ),
-                )
-            else:
-                candidates = run_operational_stage(
-                    "KOSIS_CATALOG",
-                    lambda: _find_catalog_candidates(claim, concept, settings),
-                )
-            matches = []
-
+            concept = resolution.concept
+            candidates = resolution.candidates
+            verdict = resolution.verdict
+            resolution_ready = True
+        else:
+            concept = normalize_concept(claim, load_standard_concepts(STANDARD_PATH))
+            candidates = []
+            verdict = make_verdict(claim.claim_id, claim.value, [], None)
+        requires_semantic_review = concept is not None and concept.status != "MATCHED"
         st.subheader("기사 주장")
         claim_columns = st.columns(4)
         claim_columns[0].metric("지표", claim.indicator or "미확정")
@@ -332,22 +301,9 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
 
         official_value = None
         evidence_cells = []
-        if requires_parse_review or requires_semantic_review:
-            pass
-        elif not article_date:
-            verdict = make_verdict(claim.claim_id, claim.value, [], None)
+        if not article_date and not requires_parse_review:
             st.warning("보류: 기사 기준일이 없어 사후 개정값을 차단할 수 없습니다.")
-        else:
-            verdict = run_operational_stage(
-                "VERIFICATION",
-                lambda: verify_claim_against_kosis(
-                    claim,
-                    concept,
-                    candidates,
-                    article_date=article_date,
-                    official_fetcher=_official_fetcher(settings),
-                ),
-            )
+        elif resolution_ready:
             evidence_cells = verdict.evidence_cells
             if evidence_cells:
                 st.subheader("근거 좌표")
@@ -529,7 +485,6 @@ if DEFAULT_INTERNAL_RUN_DIR.is_dir():
         st.error("내부 검증 실행 산출물을 읽을 수 없습니다.")
 else:
     st.info("아직 내부 검증 실행 산출물이 없습니다.")
-
 
 
 
