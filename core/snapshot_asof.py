@@ -10,6 +10,19 @@ def filter_rows_as_of(rows: list[dict[str, Any]], article_date: date) -> list[di
     """Keep dated official rows or explicitly adjudicated Goldset historical snapshots."""
     accepted: list[dict[str, Any]] = []
     for row in rows:
+        official_date = (
+            row.get("official_published_at") or row.get("source_published_at")
+        )
+        if isinstance(official_date, str):
+            try:
+                published = date.fromisoformat(official_date)
+            except ValueError:
+                continue
+            if published <= article_date:
+                accepted.append(row)
+            continue
+        if row.get("official_release_verified") is True:
+            continue
         if row.get("as_of_verified_by_goldset") is True:
             accepted.append(row)
             continue

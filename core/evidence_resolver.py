@@ -85,6 +85,7 @@ def _resolve_dimensions(claim: ClaimSchema, candidate: KosisCandidateSchema) -> 
             selected[dimension_id] = members[0]
             continue
         matches = [member for member in members if _normalize(member) and _normalize(member) in target]
+        total_members = [member for member in members if _is_total_member(member)]
         if matches:
             longest_length = max(len(_normalize(member)) for member in matches)
             longest = [

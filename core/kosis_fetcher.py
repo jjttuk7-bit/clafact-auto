@@ -50,21 +50,32 @@ class OfficialValueFetcher:
 
     def fetch(self, cell: EvidenceCellSchema, *, article_date: date | None = None) -> KosisValue:
         as_of_unavailable = False
+        fetch_failed = False
         if self._prefer_api:
             api_result = self._fetch_api(cell, article_date)
             if api_result is not None and api_result.status == "SUCCESS":
                 return api_result
             as_of_unavailable = bool(api_result and api_result.status == "AS_OF_UNAVAILABLE")
+            fetch_failed = bool(api_result and api_result.status == "FETCH_FAILED")
         for path in self._snapshot_paths:
             result = self._fetch_snapshot(cell, path, article_date)
             if result.status == "SUCCESS":
                 return result
             as_of_unavailable = as_of_unavailable or result.status == "AS_OF_UNAVAILABLE"
+            fetch_failed = fetch_failed or result.status == "FETCH_FAILED"
         if not self._prefer_api:
             api_result = self._fetch_api(cell, article_date)
             if api_result is not None and api_result.status in {"SUCCESS", "AS_OF_UNAVAILABLE"}:
                 return api_result
-        return KosisValue(None, "AS_OF_UNAVAILABLE" if as_of_unavailable else "NO_DATA", "", "NONE")
+            fetch_failed = fetch_failed or bool(
+                api_result and api_result.status == "FETCH_FAILED"
+            )
+        status: ValueStatus = (
+            "AS_OF_UNAVAILABLE" if as_of_unavailable
+            else "FETCH_FAILED" if fetch_failed
+            else "NO_DATA"
+        )
+        return KosisValue(None, status, "", "NONE")
 
     def _fetch_api(self, cell: EvidenceCellSchema, article_date: date | None) -> KosisValue | None:
         if self._api_lookup is None:
@@ -73,10 +84,16 @@ class OfficialValueFetcher:
             rows = self._api_lookup(cell)
         except Exception:
             return KosisValue(None, "FETCH_FAILED", "", "NONE")
-        return self._extract_rows(cell, rows, article_date, source="API", digest="")
+        digest = hashlib.sha256(
+            json.dumps(rows, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        ).hexdigest()
+        return self._extract_rows(cell, rows, article_date, source="API", digest=digest)
 
     def _fetch_snapshot(self, cell: EvidenceCellSchema, path: Path, article_date: date | None) -> KosisValue:
-        raw = path.read_bytes()
+        try:
+            raw = path.read_bytes()
+        except OSError:
+            return KosisValue(None, "FETCH_FAILED", "", "NONE")
         digest = hashlib.sha256(raw).hexdigest()
         try:
             payload = json.loads(raw)
@@ -93,7 +110,20 @@ class OfficialValueFetcher:
             return KosisValue(None, "NO_DATA", digest)
         if payload.get("item_id") and payload.get("item_id") != cell.itm_id:
             return KosisValue(None, "NO_DATA", digest)
-        return self._extract_rows(cell, records, article_date, source="SNAPSHOT", digest=digest)
+        published_at = payload.get("source_published_at")
+        inherited_records = [
+            {
+                **row,
+                **(
+                    {"source_published_at": published_at}
+                    if published_at and "source_published_at" not in row
+                    else {}
+                ),
+            }
+            for row in records
+            if isinstance(row, dict)
+        ]
+        return self._extract_rows(cell, inherited_records, article_date, source="SNAPSHOT", digest=digest)
 
     def _extract_rows(self, cell: EvidenceCellSchema, rows: list[dict[str, Any]], article_date: date | None, *, source: Literal["SNAPSHOT", "API"], digest: str) -> KosisValue:
         matching = [row for row in rows if _matches_cell(row, cell, allow_missing_codes=source == "API")]

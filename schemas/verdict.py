@@ -8,6 +8,16 @@ from schemas.evidence import EvidenceCellSchema
 from schemas.pipeline_trace import PipelineTraceSchema
 
 
+class OfficialValueProvenanceSchema(BaseModel):
+    """Auditable source identity for one fetched official evidence value."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    evidence_key: str
+    source: Literal["SNAPSHOT", "API", "NONE"]
+    content_hash: str
+
+
 class VerdictSchema(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -20,6 +30,9 @@ class VerdictSchema(BaseModel):
     reason_code: str
     explanation: str
     evidence_cells: list[EvidenceCellSchema] = Field(default_factory=list)
+    official_value_provenance: list[OfficialValueProvenanceSchema] = Field(
+        default_factory=list
+    )
     execution_trace: PipelineTraceSchema | None = None
     dataset_version: str
     preprocess_version: str = "1.0"

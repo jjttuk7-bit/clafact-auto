@@ -1,0 +1,41 @@
+{
+  "snapshot_id": "official-cpi-detail-current-axes-v1",
+  "dataset_version": "official-cpi-detail-current-axes-v1-20260813",
+  "source_artifact": "2025년 10월 소비자물가동향",
+  "source_url": "https://www.kostat.go.kr/board.es?act=view&bid=213&list_no=439120&mid=a10301010000",
+  "source_published_at": "2025-11-04",
+  "derived_from_snapshot": "data/kosis_snapshots/official_goldset_v3_news_b023.json",
+  "claim_id": "NEWS_B-023-A01",
+  "org_id": "101",
+  "tbl_id": "DT_1J22112",
+  "item_id": "T",
+  "unit": "2020=100",
+  "coordinate_axis_migration": {
+    "C1": "C",
+    "C2": "I"
+  },
+  "records": [
+    {
+      "period": "202410",
+      "value": 208.57,
+      "dimension_codes": {
+        "C": "T10",
+        "I": "A02A01701"
+      },
+      "last_changed_at": "2025-10-30",
+      "official_published_at": "2025-11-04",
+      "official_release_verified": true
+    },
+    {
+      "period": "202510",
+      "value": 136.62,
+      "dimension_codes": {
+        "C": "T10",
+        "I": "A02A01701"
+      },
+      "last_changed_at": "2025-10-30",
+      "official_published_at": "2025-11-04",
+      "official_release_verified": true
+    }
+  ]
+}

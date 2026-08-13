@@ -4,6 +4,7 @@ import subprocess
 import sys
 import runpy
 from contextlib import ExitStack
+from datetime import date
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -230,6 +231,59 @@ def test_single_claim_preserves_parse_review_route_without_downstream_calls(
     assert parse_status in rendered_json
     assert parse_reason in rendered_json
 
+
+
+def test_unresolved_concept_holds_at_semantic_mapping_without_catalog(
+    monkeypatch,
+) -> None:
+    _set_provider_environment(
+        monkeypatch,
+        claim_provider="openai",
+        openai_api_key="openai-secret",
+    )
+
+    class FakeExtractor:
+        last_provider = "openai"
+
+        def extract(self, source_sentence: str, *, article_published_at=None) -> ClaimSchema:
+            return ClaimSchema(
+                claim_id="unresolved-claim",
+                source_sentence=source_sentence,
+                indicator="완전히 미등록된 지표",
+                value=12.3,
+                unit="%",
+                time="2025년 10월",
+                frequency="MONTHLY",
+                dimension={"product": "가상 품목"},
+                calculation="DIRECT_VALUE",
+                parse_status="AUTO_OK",
+            )
+
+    with (
+        patch(
+            "core.claim_extractor_factory.create_claim_extractor",
+            return_value=FakeExtractor(),
+        ),
+        patch(
+            "core.catalog_search.search_semantic_catalog",
+            side_effect=AssertionError("Catalog must not run for an unresolved Concept"),
+        ),
+    ):
+        app = AppTest.from_file("app/streamlit_app.py", default_timeout=30)
+        app.run()
+        app.text_area[0].input("2025년 10월 완전히 미등록된 지표는 12.3%였다.")
+        app.text_input[0].input("2025-11-04")
+        app.button[0].click()
+        app.run()
+
+    assert not app.exception
+    metrics = _metric_values(app)
+    assert metrics["판정"] == "판정 보류"
+    assert metrics["경로"] == "보류"
+    rendered_json = " ".join(str(element.value) for element in app.json)
+    assert "CONCEPT_NOT_FOUND" in rendered_json
+    assert "SEMANTIC_MAPPING" in rendered_json
+    assert "CATALOG_SEARCH" not in rendered_json
 
 def test_streamlit_entrypoint_imports_core_when_only_app_directory_is_on_path() -> None:
     """Streamlit Cloud executes the app module from app/, not the repository root."""
@@ -579,3 +633,88 @@ def test_streamlit_operator_panel_uses_configured_run_directory(monkeypatch, tmp
     labels = {item.label for item in app.download_button}
     assert {"보류 검토 큐 JSON 다운로드", "전체 결과 CSV 다운로드", "전체 결과 XLSX 다운로드"} <= labels
 
+
+
+def test_cabbage_cpi_single_and_batch_paths_share_auto_result(monkeypatch) -> None:
+    _set_provider_environment(
+        monkeypatch,
+        claim_provider="openai",
+        kosis_api_key="kosis-test-key",
+        openai_api_key="openai-secret",
+    )
+
+    class FakeCpiExtractor:
+        last_provider = "openai"
+
+        def extract(self, source_sentence: str, *, article_published_at=None) -> ClaimSchema:
+            return ClaimSchema(
+                claim_id="claim_eeb4134b7158445d",
+                source_sentence=source_sentence,
+                indicator="물가",
+                value=-34.5,
+                unit="%",
+                time="2025년 10월",
+                frequency="MONTHLY",
+                dimension={"product": "배추"},
+                comparison={
+                    "type": "YEAR_OVER_YEAR",
+                    "reference_period": "전년 동월",
+                },
+                calculation="GROWTH_RATE",
+                condition={"direction": "DECREASE"},
+                parse_status="AUTO_OK",
+            )
+
+    table_identity = KosisCandidateSchema(
+        org_id="101",
+        tbl_id="DT_1J22112",
+        tbl_name="품목별 소비자물가지수",
+        metadata_status="LIVE_SEARCH_UNRESOLVED",
+    )
+    with (
+        patch(
+            "core.claim_extractor_factory.create_claim_extractor",
+            return_value=FakeCpiExtractor(),
+        ),
+        patch(
+            "core.catalog_discovery.discover_catalog_candidates",
+            return_value=[table_identity],
+        ),
+        patch("core.kosis_api_adapter.build_kosis_api_lookup", return_value=None),
+    ):
+        app = AppTest.from_file("app/streamlit_app.py", default_timeout=40)
+        app.run()
+        app.text_area[0].input(
+            "2025년 10월 배추 물가는 전년 동월 대비 34.5% 하락했다."
+        )
+        app.text_input[0].input("2025-11-04")
+        app.button[0].click()
+        app.run()
+
+        namespace = runpy.run_path(str(APP_PATH), run_name="__cpi_batch_e2e_test__")
+        batch_verdict = namespace["_verify_batch_claim"](
+            "2025년 10월 배추 물가는 전년 동월 대비 34.5% 하락했다.",
+            date(2025, 11, 4),
+            MagicMock(kosis_api_key="kosis-test-key"),
+        )
+
+    assert not app.exception
+    metrics = _metric_values(app)
+    assert metrics["판정"] == "일치"
+    assert metrics["경로"] == "자동"
+    rendered_json = " ".join(str(element.value) for element in app.json)
+    assert "CPI_DETAIL:A02A01701" in rendered_json
+    assert "A02A01701" in rendered_json
+    assert "official_value_provenance" in rendered_json
+
+    assert batch_verdict.route_status == "AUTO"
+    assert batch_verdict.verdict == "MATCH"
+    assert batch_verdict.evidence_values == [136.62, 208.57]
+    assert all(
+        cell.dimension_codes == {"C": "T10", "I": "A02A01701"}
+        for cell in batch_verdict.evidence_cells
+    )
+    assert [item.source for item in batch_verdict.official_value_provenance] == [
+        "SNAPSHOT",
+        "SNAPSHOT",
+    ]

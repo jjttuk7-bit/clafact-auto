@@ -20,7 +20,7 @@ from schemas.candidate import KosisCandidateSchema
 from schemas.claim import ClaimSchema
 from schemas.concept import StandardConceptSchema
 from schemas.evidence import CalculationPlan, EvidenceCellSchema
-from schemas.verdict import VerdictSchema
+from schemas.verdict import OfficialValueProvenanceSchema, VerdictSchema
 
 
 class OfficialValueFetcher(Protocol):
@@ -95,6 +95,7 @@ def verify_claim_against_kosis(
 
     recorder.evidence_confirmed()
     official_values: list[float] = []
+    provenance: list[OfficialValueProvenanceSchema] = []
     for evidence_cell in evidence_cells:
         official_value = official_fetcher.fetch(evidence_cell, article_date=article_date)
         if official_value.status != "SUCCESS" or official_value.value is None:
@@ -103,6 +104,13 @@ def verify_claim_against_kosis(
                 claim, recorder, official_value.status, "Official value is unavailable.", evidence_cells=evidence_cells,
             )
         official_values.append(official_value.value)
+        provenance.append(
+            OfficialValueProvenanceSchema(
+                evidence_key=evidence_cell.canonical_key,
+                source=official_value.source,
+                content_hash=official_value.snapshot_hash,
+            )
+        )
 
     recorder.official_value_fetched()
     calculated = calculate(
@@ -119,7 +127,15 @@ def verify_claim_against_kosis(
         claim.claim_id, claim.value, official_values, claim_unit_value, tolerance=_claim_tolerance(claim)
     )
     recorder.verdict_completed()
-    return attach_trace(verdict.model_copy(update={"evidence_cells": evidence_cells}), recorder.build())
+    return attach_trace(
+        verdict.model_copy(
+            update={
+                "evidence_cells": evidence_cells,
+                "official_value_provenance": provenance,
+            }
+        ),
+        recorder.build(),
+    )
 
 
 

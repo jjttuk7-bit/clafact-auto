@@ -61,6 +61,7 @@ SNAPSHOT_PATHS = [
     DATA_ROOT / "kosis_snapshots" / "official_goldset_asof_v3.json",
     DATA_ROOT / "kosis_snapshots" / "official_cpi_202510.json",
     DATA_ROOT / "kosis_snapshots" / "official_goldset_v3_news_b023.json",
+    DATA_ROOT / "kosis_snapshots" / "official_cpi_detail_current_axes_v1.json",
 ]
 METADATA_MANIFEST_PATHS = [
     PROJECT_ROOT / "data" / "kosis_snapshots" / "gold_standard_v1_metadata_manifest.json",
@@ -163,6 +164,17 @@ def _verify_batch_claim(sentence: str, article_date: date, settings: Settings) -
         "SEMANTIC_MAPPING",
         lambda: normalize_concept(claim, load_standard_concepts(STANDARD_PATH)),
     )
+    if concept.status != "MATCHED":
+        return run_operational_stage(
+            "VERIFICATION",
+            lambda: verify_claim_against_kosis(
+                claim,
+                concept,
+                [],
+                article_date=article_date,
+                official_fetcher=_official_fetcher(settings),
+            ),
+        )
     candidates = run_operational_stage(
         "KOSIS_CATALOG",
         lambda: _find_catalog_candidates(claim, concept, settings),
@@ -234,6 +246,7 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
         st.metric("실제 주장 추출기", actual_provider_label)
         ui_trace = VerificationTraceRecorder(claim.claim_id).claim_parsed()
         requires_parse_review = claim.parse_status != "AUTO_OK"
+        requires_semantic_review = False
         if requires_parse_review:
             concept = None
             candidates = []
@@ -253,10 +266,24 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
                     load_standard_concepts(STANDARD_PATH),
                 ),
             )
-            candidates = run_operational_stage(
-                "KOSIS_CATALOG",
-                lambda: _find_catalog_candidates(claim, concept, settings),
-            )
+            requires_semantic_review = concept.status != "MATCHED"
+            if requires_semantic_review:
+                candidates = []
+                verdict = run_operational_stage(
+                    "VERIFICATION",
+                    lambda: verify_claim_against_kosis(
+                        claim,
+                        concept,
+                        [],
+                        article_date=article_date or date.min,
+                        official_fetcher=_official_fetcher(settings),
+                    ),
+                )
+            else:
+                candidates = run_operational_stage(
+                    "KOSIS_CATALOG",
+                    lambda: _find_catalog_candidates(claim, concept, settings),
+                )
             matches = []
 
         st.subheader("기사 주장")
@@ -275,7 +302,7 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
 
         official_value = None
         evidence_cells = []
-        if requires_parse_review:
+        if requires_parse_review or requires_semantic_review:
             pass
         elif not article_date:
             verdict = make_verdict(claim.claim_id, claim.value, [], None)

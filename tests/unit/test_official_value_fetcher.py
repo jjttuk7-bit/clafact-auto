@@ -37,6 +37,7 @@ def test_unified_fetcher_uses_api_rows_when_snapshot_has_no_value() -> None:
     assert result.status == "SUCCESS"
     assert result.source == "API"
 
+    assert len(result.snapshot_hash) == 64
 
 def test_unified_fetcher_matches_dimension_codes(tmp_path) -> None:
     path = tmp_path / "official.json"
@@ -94,3 +95,12 @@ def test_prefer_api_falls_back_to_dated_snapshot_when_api_has_no_asof_metadata(t
     assert result.status == "SUCCESS"
     assert result.value == 109.67
     assert result.source == "SNAPSHOT"
+
+
+def test_missing_snapshot_returns_fetch_failed_instead_of_raising(tmp_path) -> None:
+    result = OfficialValueFetcher([
+        tmp_path / "missing-official-snapshot.json"
+    ]).fetch(cell(), article_date=date(2025, 6, 26))
+
+    assert result.status == "FETCH_FAILED"
+    assert result.value is None
