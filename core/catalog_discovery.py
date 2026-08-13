@@ -122,27 +122,50 @@ def build_catalog_discovery_queries(
     claim: ClaimSchema, concept: StandardConceptSchema
 ) -> list[str]:
     """Build KOSIS table-search queries from Concept plus searchable Claim context."""
-    bases = _unique_texts((*concept.kosis_search_terms, concept.canonical_name, claim.indicator, concept.matched_alias))
+    bases = _unique_texts(
+        value
+        for value in (
+            *concept.kosis_search_terms,
+            concept.canonical_name,
+            claim.indicator,
+            concept.matched_alias,
+        )
+        if not _is_placeholder(value)
+    )
     if not bases:
         return []
     dimension_values = _unique_texts(dimension_member_values(claim.dimension))
     region = claim.region if claim.region not in {"전국", "대한민국", "한국"} else None
     qualifiers = _unique_texts((*dimension_values, claim.population, region))
-    contextual_bases = _unique_texts((claim.indicator, concept.canonical_name, bases[0]))
-    combined_context = " ".join(
-        filter(None, (region, claim.population, *dimension_values))
+    contextual_bases = _unique_texts(
+        value
+        for value in (claim.indicator, concept.canonical_name, bases[0])
+        if not _is_placeholder(value)
     )
+    combined_context = _unique_texts((region, claim.population, *dimension_values))
     combined_queries = (
-        f"{combined_context} {base}"
+        _with_missing_context(base, combined_context)
         for base in contextual_bases
         if combined_context
     )
     contextual_queries = (
-        f"{qualifier} {base}"
+        _with_missing_context(base, (qualifier,))
         for qualifier in qualifiers
         for base in contextual_bases
     )
     return _unique_texts((*combined_queries, *contextual_queries, *bases))
+
+
+def _is_placeholder(value: str | None) -> bool:
+    return _normalized_text(value) in {"unresolved", "unknown", "na"}
+
+
+def _with_missing_context(base: str, context: Iterable[str]) -> str:
+    normalized_base = _normalized_text(base)
+    missing = [
+        value for value in context if _normalized_text(value) not in normalized_base
+    ]
+    return " ".join((*missing, base))
 
 
 def _unique_texts(values: Iterable[str | None]) -> list[str]:

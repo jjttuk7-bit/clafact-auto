@@ -330,3 +330,27 @@ def test_rank_uses_unwrapped_raw_dimension_values() -> None:
     ranked = rank_discovered_candidates(claim, concept, candidates)
 
     assert [candidate.tbl_id for candidate in ranked] == ["Z_COSMETICS", "A_GENERIC"]
+
+def test_discovery_uses_claim_indicator_before_unresolved_concept_placeholders() -> None:
+    claim = _claim().model_copy(
+        update={
+            "indicator": "중고차 수출액",
+            "dimension": {"상품": "중고차"},
+        }
+    )
+    concept = _concept().model_copy(
+        update={
+            "concept_id": "UNRESOLVED",
+            "canonical_name": "UNRESOLVED",
+            "standard_key": "unresolved",
+            "matched_alias": None,
+            "kosis_search_terms": [],
+            "status": "UNRESOLVED",
+        }
+    )
+
+    queries = build_catalog_discovery_queries(claim, concept)
+
+    assert queries[0] == "중고차 수출액"
+    assert all("UNRESOLVED" not in query for query in queries)
+    assert "중고차 중고차 수출액" not in queries
