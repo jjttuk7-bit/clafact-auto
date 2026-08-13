@@ -35,7 +35,7 @@ def _extracted(**updates) -> ClaimSchema:
         "time": "2020년",
         "comparison": {"type": "YEAR_OVER_YEAR"},
         "calculation": "GROWTH_RATE",
-        "condition": {"seasonal_adjustment": "원계열"},
+        "condition": {"seasonal_adjustment": "원계열", "direction": "DECREASE"},
         "parse_status": "AUTO_OK",
     }
     values.update(updates)
@@ -49,7 +49,9 @@ def test_slot_enricher_updates_only_target_slots_and_preserves_source_claim() ->
     assert result.claim.value == -34.5
     assert result.claim.comparison == {"type": "YEAR_OVER_YEAR"}
     assert result.claim.calculation == "GROWTH_RATE"
-    assert result.claim.condition == {"seasonal_adjustment": "원계열"}
+    assert result.claim.condition == {
+        "seasonal_adjustment": "원계열", "direction": "DECREASE"
+    }
     assert result.catalog_search_ready is True
     assert result.reason_code is None
 
@@ -82,7 +84,11 @@ def test_slot_enricher_normalizes_period_comparison_alias() -> None:
     )
 
     assert result.catalog_search_ready is True
-    assert result.claim.comparison == {"basis": "전년 동월 대비", "direction": "하락"}
+    assert result.claim.comparison == {
+        "basis": "전년 동월 대비",
+        "direction": "하락",
+        "type": "YEAR_OVER_YEAR",
+    }
 
 def test_slot_enricher_prefers_explicit_source_rule_over_provider_slots() -> None:
     result = enrich_claim_slots(
@@ -98,7 +104,9 @@ def test_slot_enricher_prefers_explicit_source_rule_over_provider_slots() -> Non
 
     assert result.claim.comparison == {"type": "YEAR_OVER_YEAR"}
     assert result.claim.calculation == "GROWTH_RATE"
-    assert result.claim.condition == {"release_status": "잠정"}
+    assert result.claim.condition == {
+        "release_status": "잠정", "direction": "DECREASE"
+    }
     assert result.catalog_search_ready is True
 
 def test_slot_enricher_holds_ambiguous_direction_even_when_provider_suggests_slots() -> None:

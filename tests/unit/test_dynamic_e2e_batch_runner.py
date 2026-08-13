@@ -121,6 +121,62 @@ def test_dynamic_batch_records_claim_parse_hold_in_execution_trace() -> None:
     }]
 
 
+def test_dynamic_batch_normalizes_freeform_parse_detail_to_stable_reason_code() -> None:
+    detail = "한 문장에 수출액과 수입액이라는 서로 독립적인 두 수치가 포함됨"
+    record = _employment_record().model_copy(update={
+        "claim": _employment_record().claim.model_copy(update={
+            "parse_status": "HOLD",
+            "parse_reason": detail,
+        })
+    })
+
+    result = run_dynamic_e2e_batch([record], _employment_concept(), [])[0]
+
+    assert result["reason_code"] == "MULTIPLE_CLAIMS"
+    assert result["parse_reason_detail"] == detail
+
+
+def test_dynamic_batch_enriches_explicit_growth_contract_before_slot_quality() -> None:
+    claim = _employment_record().claim.model_copy(update={
+        "source_sentence": "2024년 취업자 수는 전년 대비 2.1% 증가했다.",
+        "value": 2.1,
+        "unit": "%",
+        "time": "2024",
+        "frequency": "년",
+        "comparison": {"reference_period": "전년"},
+        "calculation": "GROWTH_RATE",
+        "condition": None,
+    })
+    record = _employment_record().model_copy(update={"claim": claim})
+
+    result = run_dynamic_e2e_batch([record], _employment_concept(), [])[0]
+
+    assert result["reason_code"] != "CLAIM_PARSE_UNCERTAIN"
+
+
+def test_dynamic_batch_holds_invalid_auto_contract_before_catalog_search() -> None:
+    record = _employment_record().model_copy(update={
+        "claim": _employment_record().claim.model_copy(update={
+            "value": 3.1,
+            "unit": "%",
+            "calculation": "GROWTH_RATE",
+            "comparison": {"type": "YEAR_OVER_YEAR"},
+            "condition": None,
+        })
+    })
+
+    class FailingLiveSearch:
+        def search(self, _query: str) -> list[KosisCandidateSchema]:
+            raise AssertionError("contract HOLD must occur before catalog search")
+
+    result = run_dynamic_e2e_batch(
+        [record], _employment_concept(), [], live_search=FailingLiveSearch()
+    )[0]
+
+    assert result["route_status"] == "HOLD"
+    assert result["reason_code"] == "MISSING_REQUIRED_SLOTS:condition"
+    assert result["claim_contract"]["missing_slots"] == ["condition"]
+
 def test_dynamic_batch_reparses_non_auto_claim_before_semantic_mapping() -> None:
     original = _employment_record().model_copy(update={
         "claim": _employment_record().claim.model_copy(update={"parse_status": "HOLD", "parse_reason": "OLD_PARSE_HOLD"})

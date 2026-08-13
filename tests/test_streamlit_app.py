@@ -333,6 +333,7 @@ def test_single_claim_reports_downstream_exception_stage(
                 frequency="분기",
                 calculation="GROWTH_RATE",
                 comparison={"type": "YEAR_OVER_YEAR"},
+                condition={"direction": "INCREASE"},
                 parse_status="AUTO_OK",
             )
 

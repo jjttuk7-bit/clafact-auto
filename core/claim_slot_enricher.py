@@ -2,9 +2,9 @@
 
 from dataclasses import dataclass
 
-from core.claim_parser import StructuredClaimExtractor, parse_claim
+from core.claim_parser import StructuredClaimExtractor
 from core.comparison_normalizer import normalize_comparison
-from core.deterministic_slot_enricher import infer_explicit_slots
+from core.deterministic_slot_enricher import apply_explicit_slots, infer_explicit_slots
 from schemas.claim import ClaimSchema
 
 _SUPPORTED_CALCULATIONS = {
@@ -36,7 +36,9 @@ def enrich_claim_slots(
     if explicit.reason_code is not None:
         return _held(claim, explicit.reason_code)
 
-    extracted = parse_claim(claim.source_sentence, extractor)
+    extracted = extractor.extract(claim.source_sentence)
+    if not isinstance(extracted, ClaimSchema):
+        raise TypeError("Structured extractor must return ClaimSchema")
     if extracted.parse_status != "AUTO_OK":
         return _held(claim, "ENRICHMENT_PARSE_NOT_AUTO_OK")
     calculation = claim.calculation or explicit.calculation or extracted.calculation
@@ -54,6 +56,7 @@ def enrich_claim_slots(
             or _non_empty_mapping(extracted.condition),
         }
     )
+    enriched = apply_explicit_slots(enriched)
     if normalized_calculation is None:
         return _held(enriched, "MISSING_CALCULATION")
     if normalized_calculation not in _SUPPORTED_CALCULATIONS:

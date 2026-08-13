@@ -192,6 +192,20 @@ def test_parse_claim_routes_missing_time_to_hold() -> None:
     assert result.parse_reason == "MISSING_REQUIRED_SLOTS:time"
 
 
+def test_parse_claim_holds_invalid_growth_contract_before_kosis() -> None:
+    result = parse_claim(
+        "2024년 고용률은 전년 대비 3.1%였다.",
+        FakeStructuredExtractor(auto_claim(
+            value=3.1,
+            calculation="GROWTH_RATE",
+            comparison={"type": "YEAR_OVER_YEAR"},
+            condition=None,
+        )),
+    )
+
+    assert result.parse_status == "HOLD"
+    assert result.parse_reason == "MISSING_REQUIRED_SLOTS:condition"
+
 def test_parse_claim_preserves_explicit_human_review_route() -> None:
     result = parse_claim(
         "향후 고용률은 70%가 될 전망이다.",

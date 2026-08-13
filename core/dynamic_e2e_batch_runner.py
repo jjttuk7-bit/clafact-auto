@@ -11,7 +11,10 @@ from typing import Any
 from core.catalog_discovery import build_catalog_discovery_queries, discover_catalog_candidates
 from core.catalog_metadata_refresh import refresh_item_metadata
 from core.catalog_search import search_semantic_catalog
+from core.claim_contract import assess_claim_contract
 from core.claim_slot_quality import assess_claim_slot_quality
+from core.claim_parse_reason import operational_parse_reason
+from core.deterministic_slot_enricher import apply_explicit_slots
 from core.hard_guard import apply_hard_guard
 from core.data_loader import SemanticStandardRecord
 from core.dynamic_kosis_verifier import verify_claim_against_kosis
@@ -156,7 +159,13 @@ def run_dynamic_e2e_batch(
             "kosis_discovery_snapshot_hash": snapshot_hash,
         }
         if claim.parse_status != "AUTO_OK":
-            results.append(early_hold(base, "CLAIM_PARSE", claim.parse_reason or "CLAIM_PARSE_UNCERTAIN"))
+            held = early_hold(
+                base,
+                "CLAIM_PARSE",
+                operational_parse_reason(claim.parse_reason),
+            )
+            held["parse_reason_detail"] = claim.parse_reason
+            results.append(held)
             continue
         export_scope = classify_export_claim_scope(claim, record.article_published_at)
         if export_scope.reason_code is not None:
@@ -167,12 +176,33 @@ def run_dynamic_e2e_batch(
             }
             results.append(held)
             continue
+        claim = apply_explicit_slots(claim)
+        if claim.parse_status != "AUTO_OK":
+            held = early_hold(
+                base,
+                "CLAIM_PARSE",
+                operational_parse_reason(claim.parse_reason),
+            )
+            held["parse_reason_detail"] = claim.parse_reason
+            results.append(held)
+            continue
         slot_quality = assess_claim_slot_quality(claim)
         if slot_quality.status == "HOLD":
             held = early_hold(base, "CLAIM_PARSE", slot_quality.reason_code or "CLAIM_PARSE_UNCERTAIN")
             held["slot_quality"] = {
                 "reason_code": slot_quality.reason_code,
                 "detected_modifier": slot_quality.detected_modifier,
+            }
+            results.append(held)
+            continue
+        contract = assess_claim_contract(claim)
+        if contract.status == "HOLD":
+            held = early_hold(
+                base, "CLAIM_PARSE", contract.reason_code or "CLAIM_PARSE_UNCERTAIN"
+            )
+            held["claim_contract"] = {
+                "missing_slots": list(contract.missing_slots),
+                "detail": contract.detail,
             }
             results.append(held)
             continue

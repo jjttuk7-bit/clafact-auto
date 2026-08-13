@@ -7,7 +7,9 @@ from datetime import date
 from hashlib import sha256
 from typing import Protocol
 
+from core.claim_contract import assess_claim_contract
 from core.claim_time_resolver import resolve_relative_time
+from core.deterministic_slot_enricher import apply_explicit_slots
 from schemas.claim import ClaimSchema
 
 
@@ -72,6 +74,13 @@ def parse_claim(
                 "parse_reason": f"MISSING_REQUIRED_SLOTS:{','.join(missing_slots)}",
             }
         )
+    claim = apply_explicit_slots(claim)
+    decision = assess_claim_contract(claim)
+    if decision.status == "HOLD":
+        return claim.model_copy(update={
+            "parse_status": "HOLD",
+            "parse_reason": decision.reason_code,
+        })
     return claim
 
 
