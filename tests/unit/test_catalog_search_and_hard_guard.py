@@ -229,3 +229,52 @@ def test_hard_guard_accepts_claim_dimension_bound_by_official_table_name() -> No
 
     assert result.passed is True
     assert "DIMENSION_MEMBER_CONFLICT" not in result.reject_codes
+def test_hard_guard_accepts_korean_gender_alias_for_official_member() -> None:
+    result = apply_hard_guard(
+        claim(dimension={"sex": "여성"}, region="전국"),
+        candidate(
+            dimension_names=["성별"],
+            dimension_members={"B": ["계", "남자", "여자"]},
+            dimension_member_codes={"B": {"계": "0", "남자": "2", "여자": "3"}},
+        ),
+    )
+
+    assert result.passed is True
+    assert result.reject_codes == []
+def test_hard_guard_accepts_official_region_and_age_spelling_variants() -> None:
+    result = apply_hard_guard(
+        claim(region="서울", population="15~29세", dimension={"sex": "여성"}),
+        candidate(
+            dimension_names=["시도별", "성별", "연령계층별"],
+            dimension_members={"A": ["서울특별시"], "B": ["여자"], "G": ["15 - 29세"]},
+            dimension_member_codes={"A": {"서울특별시": "11"}, "B": {"여자": "3"}, "G": {"15 - 29세": "75"}},
+        ),
+    )
+
+    assert result.passed is True
+
+def test_hard_guard_accepts_gender_and_age_member_spelling_variants() -> None:
+    result = apply_hard_guard(
+        claim(dimension={"sex": "여성", "age": "15~29세"}, region="전국"),
+        candidate(
+            dimension_names=["성별", "연령계층별"],
+            dimension_members={"B": ["여자"], "G": ["15 - 29세"]},
+            dimension_member_codes={"B": {"여자": "3"}, "G": {"15 - 29세": "75"}},
+        ),
+    )
+
+    assert "DIMENSION_MEMBER_CONFLICT" not in result.reject_codes
+
+def test_hard_guard_allows_direct_value_query_when_item_metadata_and_frequency_are_confirmed() -> None:
+    result = apply_hard_guard(
+        claim(frequency="월", region="전국"),
+        candidate(
+            core_item_ids=["T30"],
+            frequency="월",
+            dimension_member_codes={"B": {"계": "0"}},
+            metadata_status="OFFICIAL_PERIOD_METADATA_UNAVAILABLE",
+        ),
+    )
+
+    assert result.passed is True
+    assert result.reject_codes == []

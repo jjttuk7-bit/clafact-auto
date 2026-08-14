@@ -16,8 +16,10 @@ def apply_hard_guard(claim: ClaimSchema, candidate: KosisCandidateSchema) -> Har
     if candidate.metadata_status in {
         "LIVE_SEARCH_UNRESOLVED",
         "OFFICIAL_ITEM_METADATA_UNAVAILABLE",
-        "OFFICIAL_PERIOD_METADATA_UNAVAILABLE",
     } or (
+        candidate.metadata_status == "OFFICIAL_PERIOD_METADATA_UNAVAILABLE"
+        and not _direct_value_period_query_is_safe(claim, candidate)
+    ) or (
         claim.frequency
         and candidate.metadata_status == "OFFICIAL_ITEM_METADATA_READY"
         and not candidate.frequency
@@ -41,6 +43,17 @@ def apply_hard_guard(claim: ClaimSchema, candidate: KosisCandidateSchema) -> Har
         reject_codes.append("FORECAST_CLAIM")
     return HardGuardResult(passed=not reject_codes, reject_codes=reject_codes)
 
+
+def _direct_value_period_query_is_safe(
+    claim: ClaimSchema, candidate: KosisCandidateSchema
+) -> bool:
+    """Permit exact live value lookup when PRD is down but official item metadata is complete."""
+    return bool(
+        candidate.core_item_ids
+        and candidate.dimension_member_codes
+        and candidate.frequency
+        and not _frequency_conflict(claim, candidate)
+    )
 
 def _frequency_conflict(claim: ClaimSchema, candidate: KosisCandidateSchema) -> bool:
     return bool(claim.frequency and candidate.frequency and _key(claim.frequency) not in {_key(item) for item in candidate.frequency.split("|")})
@@ -101,4 +114,19 @@ def _has_dimension(candidate: KosisCandidateSchema, token: str) -> bool:
 
 
 def _key(value: str) -> str:
-    normalized = re.sub(r"\s+", "", value).casefold(); return {"monthly":"월", "month":"월", "m":"월", "yearly":"년", "year":"년", "annual":"년", "y":"년", "연":"년"}.get(normalized, normalized)
+    """Normalize Claim and KOSIS member aliases before strict guard comparison."""
+    normalized = re.sub(r"\s+", "", value).casefold()
+    normalized = {
+        "monthly": "월", "month": "월", "m": "월",
+        "yearly": "년", "year": "년", "annual": "년", "y": "년", "연": "년", "연간": "년",
+    }.get(normalized, normalized)
+    normalized = normalized.replace("~", "").replace("-", "")
+    return (
+        normalized.replace("여성", "여자")
+        .replace("남성", "남자")
+        .replace("합계", "계")
+        .replace("총계", "계")
+        .replace("전체", "계")
+        .replace("대한민국", "전국")
+        .replace("한국", "전국")
+    )
