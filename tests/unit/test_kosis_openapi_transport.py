@@ -59,6 +59,20 @@ def test_get_meta_accepts_a_configured_timeout(monkeypatch) -> None:
     assert observed['timeout'] == 5
 
 
+def test_get_meta_sends_catalog_compatible_request_headers(monkeypatch) -> None:
+    observed: dict[str, object] = {}
+
+    def fake_urlopen(request, *, timeout, context):
+        observed["request"] = request
+        return Response(b'{"items": []}')
+
+    monkeypatch.setattr(transport, "urlopen", fake_urlopen)
+    transport.get_meta("secret", "101", "DT_TEST", retries=1)
+
+    request = observed["request"]
+    assert request.get_header("Accept") == "application/json"
+    assert request.get_header("User-agent") == "CLAFACT-AUTO/0.1"
+
 def test_get_meta_uses_tls_12_compatibility_context(monkeypatch) -> None:
     observed: dict[str, object] = {}
 

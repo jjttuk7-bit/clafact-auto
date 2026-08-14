@@ -8,7 +8,7 @@ import ssl
 from time import sleep
 from typing import Any
 from urllib.parse import urlencode
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 
 _ERROR_CODE = re.compile(r'^\s*\{\s*err\s*:\s*["\'](?P<code>\d+)["\']')
 _LEGACY_KEY = re.compile(r'([\[{,]\s*)([A-Za-z_][A-Za-z0-9_]*)(\s*:)')
@@ -33,10 +33,11 @@ def get_meta(api_key: str, org_id: str, table_id: str, *, meta_type: str = "SOUR
     if itm_id:
         params["itmId"] = itm_id
     url = "https://kosis.kr/openapi/statisticsData.do?" + urlencode(params)
+    request = Request(url, headers={"Accept": "application/json", "User-Agent": "CLAFACT-AUTO/0.1"})
     last: Exception | None = None
     for attempt in range(retries):
         try:
-            with urlopen(url, timeout=timeout_seconds, context=create_kosis_tls_context()) as response:
+            with urlopen(request, timeout=timeout_seconds, context=create_kosis_tls_context()) as response:
                 payload = response.read()
             decoded = _decode_kosis_payload(payload)
             if error_code := _decoded_kosis_error_code(decoded):
