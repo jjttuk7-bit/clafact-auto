@@ -65,7 +65,7 @@ def test_gateway_client_allows_render_free_cold_start_before_holding() -> None:
             _post_json("https://clafact-auto.onrender.com/verify", {}, "shared-token")
 
     # Render Free may take roughly 50 seconds to resume; keep a margin above that.
-    assert gateway_urlopen.call_args.kwargs["timeout"] == 75
+    assert gateway_urlopen.call_args.kwargs["timeout"] == 180
 
 def test_gateway_client_classifies_token_rejection_without_response_body() -> None:
     from core.official_gateway_client import OfficialGatewayTransportError, _post_json
