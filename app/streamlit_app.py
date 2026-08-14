@@ -46,7 +46,7 @@ from core.verdict_explainer import explain_verdict
 from core.operator_artifact_loader import load_operator_run
 from core.operational_error import OperationalStageError, run_operational_stage
 from core.official_evidence_service import OfficialEvidenceService
-from core.official_gateway_client import OfficialGatewayClient
+from core.official_gateway_client import OfficialGatewayClient, OfficialGatewayTransportError
 from core.official_engine_factory import OfficialEnginePaths, build_official_evidence_service
 from core.claim_verification_service import VerificationTraceRecorder
 from core.verification_trace import attach_trace
@@ -438,6 +438,8 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
         st.error("보류: 기사 기준일은 YYYY-MM-DD 형식이어야 합니다.")
     except OperationalStageError as error:
         st.error(f"보류: {error.safe_message}")
+    except OfficialGatewayTransportError as error:
+        st.error(f"보류: {error}")
     except Exception as error:
         st.error(f"보류: {type(error).__name__}")
 st.divider()

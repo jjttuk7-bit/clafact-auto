@@ -1,4 +1,7 @@
 from datetime import date
+from unittest.mock import patch
+
+import pytest
 
 from core.official_evidence_service import OfficialEvidenceResolution
 from schemas.claim import ClaimSchema
@@ -49,3 +52,16 @@ def test_gateway_client_sends_claim_without_credentials_and_reconstructs_resolut
     }
     assert result.catalog_diagnostics == {"metadata_itm_succeeded": 1}
     assert result.verdict.claim_id == "claim-1"
+
+
+def test_gateway_client_allows_render_free_cold_start_before_holding() -> None:
+    from core.official_gateway_client import OfficialGatewayTransportError, _post_json
+
+    with patch(
+        "core.official_gateway_client.urlopen", side_effect=TimeoutError
+    ) as gateway_urlopen:
+        with pytest.raises(OfficialGatewayTransportError, match="KOSIS_GATEWAY_UNAVAILABLE"):
+            _post_json("https://clafact-auto.onrender.com/verify", {}, "shared-token")
+
+    # Render Free may take roughly 50 seconds to resume; keep a margin above that.
+    assert gateway_urlopen.call_args.kwargs["timeout"] == 75

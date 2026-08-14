@@ -68,7 +68,7 @@ def _post_json(url: str, payload: dict[str, object], gateway_token: str) -> dict
         method="POST",
     )
     try:
-        with urlopen(request, timeout=45) as response:
+        with urlopen(request, timeout=75) as response:
             body: Any = json.loads(response.read())
     except Exception as error:
         raise OfficialGatewayTransportError("KOSIS_GATEWAY_UNAVAILABLE") from error
