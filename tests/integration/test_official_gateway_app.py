@@ -82,3 +82,22 @@ def test_gateway_rejects_request_without_shared_token() -> None:
 
     assert response.status_code == 401
     assert response.json()["detail"] == "GATEWAY_AUTH_REQUIRED"
+
+def test_gateway_returns_only_safe_kosis_probe_summary_with_valid_token() -> None:
+    from gateway.official_gateway_app import create_gateway_app
+
+    client = TestClient(
+        create_gateway_app(
+            lambda: None,
+            gateway_token="test-token",
+            kosis_metadata_probe=lambda: 17,
+        )
+    )
+
+    response = client.get(
+        "/diagnostics/kosis",
+        headers={"X-CLAFACT-GATEWAY-TOKEN": "test-token"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "OK", "metadata_row_count": 17}
