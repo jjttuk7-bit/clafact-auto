@@ -8,11 +8,15 @@ from typing import Any
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-from core.kosis_openapi_transport import _decode_kosis_payload
+from core.kosis_openapi_transport import _decode_kosis_payload, create_kosis_tls_context
 
 from schemas.candidate import KosisCandidateSchema
 
 KOSIS_SEARCH_URL = "https://kosis.kr/openapi/statisticsSearch.do"
+
+def _default_kosis_catalog_opener(request: Request | str, *, timeout: float) -> Any:
+    """Use the KOSIS-compatible TLS version for live Catalog requests."""
+    return urlopen(request, timeout=timeout, context=create_kosis_tls_context())
 
 
 class KosisLiveCatalogSearch:
@@ -22,13 +26,13 @@ class KosisLiveCatalogSearch:
         self,
         api_key: str | None,
         *,
-        opener: Callable[..., Any] = urlopen,
+        opener: Callable[..., Any] | None = None,
         endpoint: str = KOSIS_SEARCH_URL,
         max_attempts: int = 2,
         timeout_seconds: int = 10,
     ) -> None:
         self._api_key = api_key
-        self._opener = opener
+        self._opener = opener or _default_kosis_catalog_opener
         self._endpoint = endpoint
         self._max_attempts = max(1, max_attempts)
         self._timeout_seconds = max(1, timeout_seconds)

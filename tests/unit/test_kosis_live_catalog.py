@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+import ssl
 from urllib.parse import parse_qs, urlparse
 
+import core.kosis_live_catalog as live_catalog
 from core.hard_guard import apply_hard_guard
 from core.kosis_live_catalog import KosisLiveCatalogSearch
 from schemas.claim import ClaimSchema
@@ -21,6 +23,22 @@ class _Response:
     def __exit__(self, *_: object) -> None:
         return None
 
+
+def test_default_kosis_catalog_opener_uses_tls_12_context(monkeypatch) -> None:
+    observed: dict[str, object] = {}
+
+    def fake_urlopen(_request, *, timeout, context):
+        observed["context"] = context
+        return _Response([])
+
+    monkeypatch.setattr(live_catalog, "urlopen", fake_urlopen)
+
+    with live_catalog._default_kosis_catalog_opener("https://kosis.kr/test", timeout=5):
+        pass
+
+    context = observed["context"]
+    assert isinstance(context, ssl.SSLContext)
+    assert context.maximum_version == ssl.TLSVersion.TLSv1_2
 
 def test_live_catalog_search_maps_official_table_result() -> None:
     seen: list[str] = []
