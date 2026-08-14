@@ -10,6 +10,9 @@ from core.kosis_discovery_snapshot import DiscoverySnapshot
 from core.kosis_metadata_repository import KosisMetadataRepository
 
 
+def _canonical_hash(path: Path) -> str:
+    return sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+
 def _snapshot(path: Path) -> None:
     snapshot = DiscoverySnapshot.empty("official-metadata-v1")
     snapshot.record_metadata(
@@ -163,13 +166,29 @@ def test_repository_accepts_versioned_hash_verified_manifest(tmp_path: Path) -> 
     manifest_path.write_text(json.dumps({
         "metadata_snapshot_version": "official-metadata-v1",
         "snapshot_path": snapshot_path.name,
-        "content_sha256": sha256(snapshot_path.read_bytes()).hexdigest(),
+        "content_sha256": _canonical_hash(snapshot_path),
     }), encoding="utf-8")
 
     repository = KosisMetadataRepository.from_manifests([manifest_path])
 
     assert repository("secret", "360", "DT_EXPORT")[1]["ITM_ID"] == "781"
 
+
+def test_repository_accepts_canonical_lf_hash_for_crlf_checkout(tmp_path: Path) -> None:
+    snapshot_path = tmp_path / "official.json"
+    _snapshot(snapshot_path)
+    canonical = snapshot_path.read_bytes().replace(b"\r\n", b"\n").rstrip(b"\n") + b"\n"
+    snapshot_path.write_bytes(canonical.replace(b"\n", b"\r\n"))
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_text(json.dumps({
+        "metadata_snapshot_version": "official-metadata-v1",
+        "snapshot_path": snapshot_path.name,
+        "content_sha256": sha256(canonical).hexdigest(),
+    }), encoding="utf-8")
+
+    repository = KosisMetadataRepository.from_manifests([manifest_path])
+
+    assert repository("secret", "360", "DT_EXPORT")[1]["ITM_ID"] == "781"
 
 def test_repository_rejects_snapshot_internal_version_mismatch(tmp_path: Path) -> None:
     snapshot_path = tmp_path / "official.json"
@@ -178,7 +197,7 @@ def test_repository_rejects_snapshot_internal_version_mismatch(tmp_path: Path) -
     manifest_path.write_text(json.dumps({
         "metadata_snapshot_version": "different-version",
         "snapshot_path": snapshot_path.name,
-        "content_sha256": sha256(snapshot_path.read_bytes()).hexdigest(),
+        "content_sha256": _canonical_hash(snapshot_path),
     }), encoding="utf-8")
 
     repository = KosisMetadataRepository.from_manifests([manifest_path])

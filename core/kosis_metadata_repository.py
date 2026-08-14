@@ -148,7 +148,7 @@ class KosisMetadataRepository:
                 if not source.path.is_file():
                     continue
                 if source.content_sha256 is not None:
-                    actual = sha256(source.path.read_bytes()).hexdigest()
+                    actual = _canonical_text_sha256(source.path)
                     if actual != source.content_sha256:
                         raise RuntimeError("KOSIS_METADATA_SNAPSHOT_HASH_MISMATCH")
                 snapshot = DiscoverySnapshot.load(source.path)
@@ -161,6 +161,11 @@ class KosisMetadataRepository:
             self._snapshots = tuple(loaded)
         return self._snapshots
 
+
+def _canonical_text_sha256(path: Path) -> str:
+    """Hash JSON text with LF line endings so checkout platform cannot change identity."""
+    content = path.read_bytes().replace(b"\r\n", b"\n")
+    return sha256(content).hexdigest()
 
 def _materialize_rows(
     result: Mapping[str, Any] | Iterable[Mapping[str, Any]],
