@@ -109,8 +109,12 @@ def build_official_evidence_service(
 def _safe_metadata_failure_code(error: Exception) -> str:
     """Return a stable, non-sensitive KOSIS metadata failure classification."""
     code = str(error).strip()
-    if re.fullmatch(r"KOSIS_METADATA_(?:FETCH_FAILED|INVALID_RESPONSE|EMPTY_RESPONSE|API_ERROR_\d+)", code):
+    if re.fullmatch(r"KOSIS_METADATA_(?:FETCH_FAILED|INVALID_RESPONSE|EMPTY_RESPONSE|API_ERROR(?:_\d+)?|SNAPSHOT_(?:HASH_MISMATCH|MANIFEST_INVALID|VERSION_MISMATCH|VERSION_REQUIRED))", code):
         return code
+    if isinstance(error, TypeError):
+        return "KOSIS_METADATA_CLIENT_TYPE_ERROR"
+    if isinstance(error, ValueError):
+        return "KOSIS_METADATA_CLIENT_VALUE_ERROR"
     return "KOSIS_METADATA_UNCLASSIFIED_FAILURE"
 def _add_official_concept_candidates(
     candidates: list[KosisCandidateSchema],

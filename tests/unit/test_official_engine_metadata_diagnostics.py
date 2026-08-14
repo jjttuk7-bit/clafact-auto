@@ -44,3 +44,13 @@ def test_factory_reports_safe_metadata_api_error_diagnostics(tmp_path: Path, mon
     assert resolution.diagnostics["metadata_itm_attempted"] == 1
     assert resolution.diagnostics["metadata_itm_failed"] == 1
     assert resolution.diagnostics["metadata_failure_KOSIS_METADATA_API_ERROR_30"] == 1
+
+def test_safe_metadata_diagnostics_classify_client_errors_without_messages() -> None:
+    from core.official_engine_factory import _safe_metadata_failure_code
+
+    assert _safe_metadata_failure_code(TypeError("sensitive detail")) == "KOSIS_METADATA_CLIENT_TYPE_ERROR"
+    assert _safe_metadata_failure_code(ValueError("sensitive detail")) == "KOSIS_METADATA_CLIENT_VALUE_ERROR"
+    assert (
+        _safe_metadata_failure_code(RuntimeError("KOSIS_METADATA_SNAPSHOT_HASH_MISMATCH"))
+        == "KOSIS_METADATA_SNAPSHOT_HASH_MISMATCH"
+    )
