@@ -461,7 +461,7 @@ def test_single_claim_reports_parse_exception_with_safe_stage_reference(monkeypa
 @pytest.mark.parametrize(
     ("failure_target", "expected_stage"),
     [
-        ("core.catalog_discovery.discover_catalog_candidates", "KOSIS_CATALOG"),
+        ("core.official_engine_factory.discover_catalog_candidates", "KOSIS_CATALOG"),
         ("core.dynamic_kosis_verifier.verify_claim_against_kosis", "VERIFICATION"),
         ("core.verdict_explainer.explain_verdict", "VERDICT_EXPLANATION"),
     ],
@@ -785,3 +785,20 @@ def test_cabbage_cpi_single_and_batch_paths_share_auto_result(monkeypatch) -> No
         "API",
         "API",
     ]
+
+def test_streamlit_official_service_uses_shared_engine_factory() -> None:
+    sentinel = object()
+    settings = MagicMock(kosis_api_key="kosis-test-key")
+
+    with patch(
+        "core.official_engine_factory.build_official_evidence_service",
+        return_value=sentinel,
+    ) as build_service:
+        namespace = runpy.run_path(str(APP_PATH), run_name="__shared_engine_factory_test__")
+        result = namespace["_official_evidence_service"](settings)
+
+    assert result is sentinel
+    paths = build_service.call_args.args[0]
+    assert paths.standard_path == namespace["STANDARD_PATH"]
+    assert paths.catalog_path == namespace["CATALOG_PATH"]
+    assert paths.as_of_metadata_paths == namespace["AS_OF_METADATA_PATHS"]

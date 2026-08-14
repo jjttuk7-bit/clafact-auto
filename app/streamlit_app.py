@@ -45,6 +45,7 @@ from core.verdict_explainer import explain_verdict
 from core.operator_artifact_loader import load_operator_run
 from core.operational_error import OperationalStageError, run_operational_stage
 from core.official_evidence_service import OfficialEvidenceService
+from core.official_engine_factory import OfficialEnginePaths, build_official_evidence_service
 from core.claim_verification_service import VerificationTraceRecorder
 from core.verification_trace import attach_trace
 from schemas.candidate import KosisCandidateSchema
@@ -65,6 +66,10 @@ AS_OF_METADATA_PATHS = [
     DATA_ROOT / "kosis_snapshots" / "official_cpi_202510.json",
     DATA_ROOT / "kosis_snapshots" / "official_goldset_v3_news_b023.json",
     DATA_ROOT / "kosis_snapshots" / "official_cpi_detail_current_axes_v1.json",
+]
+
+METADATA_MANIFEST_PATHS = [
+    DATA_ROOT / "kosis_snapshots" / "cpi_detail_metadata_v1_manifest.json",
 ]
 
 
@@ -156,15 +161,15 @@ def _official_fetcher(settings: Settings) -> OfficialValueFetcher:
 
 
 def _official_evidence_service(settings: Settings) -> OfficialEvidenceService:
-    """Build the one Core Engine used by interactive and batch verification."""
-    return OfficialEvidenceService(
-        concept_mapper=lambda claim: normalize_concept(
-            claim, load_standard_concepts(STANDARD_PATH)
+    """Build the shared Core Engine for interactive and batch verification."""
+    return build_official_evidence_service(
+        OfficialEnginePaths(
+            standard_path=STANDARD_PATH,
+            catalog_path=CATALOG_PATH,
+            as_of_metadata_paths=AS_OF_METADATA_PATHS,
+            metadata_manifest_paths=METADATA_MANIFEST_PATHS,
         ),
-        catalog_resolver=lambda claim, concept: _find_catalog_candidates(
-            claim, concept, settings
-        ),
-        official_fetcher=_official_fetcher(settings),
+        kosis_api_key=settings.kosis_api_key,
     )
 
 class _InvalidArticleDateError(ValueError):
