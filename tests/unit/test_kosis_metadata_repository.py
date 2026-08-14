@@ -63,6 +63,15 @@ def test_repository_reads_official_snapshot_before_live_transport(tmp_path: Path
     assert calls == []
 
 
+def test_repository_finds_snapshot_table_identity_for_concept_member_code(tmp_path: Path) -> None:
+    path = tmp_path / "official.json"
+    _snapshot(path)
+
+    repository = KosisMetadataRepository([path])
+
+    assert repository.table_identities_for_member_code("781") == [("360", "DT_EXPORT")]
+    assert repository.table_identities_for_member_code("missing") == []
+
 def test_repository_caches_one_live_response_per_official_coordinate() -> None:
     calls: list[tuple[str, str, str]] = []
 

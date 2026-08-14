@@ -1,3 +1,6 @@
 pydantic>=2.0,<3.0
 openpyxl>=3.1,<4.0
 streamlit>=1.40
+
+fastapi>=0.110,<1.0
+uvicorn>=0.29,<1.0

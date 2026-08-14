@@ -118,6 +118,20 @@ class KosisMetadataRepository:
                 self._cache[coordinate] = rows
             return [dict(row) for row in rows]
 
+    def table_identities_for_member_code(self, member_code: str) -> list[tuple[str, str]]:
+        """Return snapshot tables containing an official ITM member code."""
+        target = member_code.strip()
+        if not target:
+            return []
+        identities: set[tuple[str, str]] = set()
+        for snapshot in self._loaded_snapshots():
+            for key, rows in snapshot.metadata.items():
+                parts = key.split("|")
+                if len(parts) != 3 or parts[2].upper() != "ITM":
+                    continue
+                if any(str(row.get("ITM_ID", "")).strip() == target for row in rows):
+                    identities.add((parts[0], parts[1]))
+        return sorted(identities)
     def _from_snapshots(
         self, org_id: str, table_id: str, meta_type: str
     ) -> list[MetadataRow] | None:

@@ -36,6 +36,17 @@ def test_settings_reads_kosis_api_key_only_from_environment(monkeypatch) -> None
     assert Settings().kosis_api_key == "test-key"
 
 
+
+def test_settings_reads_official_gateway_url_from_environment(monkeypatch) -> None:
+    monkeypatch.setenv("CLAFACT_OFFICIAL_GATEWAY_URL", "https://gateway.example.internal/")
+
+    assert Settings().official_gateway_url == "https://gateway.example.internal"
+
+def test_settings_reads_gateway_token_from_environment(monkeypatch) -> None:
+    monkeypatch.setenv("CLAFACT_GATEWAY_TOKEN", "shared-token")
+
+    assert Settings().gateway_token == "shared-token"
+
 def test_settings_reads_hcx_api_key_only_from_environment(monkeypatch) -> None:
     monkeypatch.setenv("HCX_API_KEY", "test-hcx-key")
 

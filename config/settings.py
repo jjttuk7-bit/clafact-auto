@@ -85,12 +85,24 @@ class Settings:
         in {"1", "true", "yes", "on"}
     )
 
+    official_gateway_url: str | None = field(
+        default_factory=lambda: _environment_value("CLAFACT_OFFICIAL_GATEWAY_URL"), repr=False
+    )
+    gateway_token: str | None = field(
+        default_factory=lambda: _environment_value("CLAFACT_GATEWAY_TOKEN"), repr=False
+    )
     def __post_init__(self) -> None:
         object.__setattr__(
             self,
             "claim_provider",
             self.claim_provider.strip().casefold(),
         )
+        if self.official_gateway_url:
+            object.__setattr__(
+                self,
+                "official_gateway_url",
+                self.official_gateway_url.strip().rstrip("/"),
+            )
         object.__setattr__(
             self,
             "hcx_extraction_mode",
