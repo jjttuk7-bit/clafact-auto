@@ -6,6 +6,7 @@ import json
 from collections.abc import Callable
 from datetime import date
 from typing import Any
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 from core.official_evidence_service import OfficialEvidenceResolution
@@ -70,6 +71,14 @@ def _post_json(url: str, payload: dict[str, object], gateway_token: str) -> dict
     try:
         with urlopen(request, timeout=75) as response:
             body: Any = json.loads(response.read())
+    except HTTPError as error:
+        if error.code in {401, 403}:
+            code = "KOSIS_GATEWAY_AUTH_FAILED"
+        elif error.code >= 500:
+            code = "KOSIS_GATEWAY_SERVICE_FAILED"
+        else:
+            code = "KOSIS_GATEWAY_UNAVAILABLE"
+        raise OfficialGatewayTransportError(code) from error
     except Exception as error:
         raise OfficialGatewayTransportError("KOSIS_GATEWAY_UNAVAILABLE") from error
     if not isinstance(body, dict):

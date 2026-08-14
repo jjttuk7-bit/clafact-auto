@@ -1,5 +1,6 @@
 from datetime import date
 from unittest.mock import patch
+from urllib.error import HTTPError
 
 import pytest
 
@@ -65,3 +66,13 @@ def test_gateway_client_allows_render_free_cold_start_before_holding() -> None:
 
     # Render Free may take roughly 50 seconds to resume; keep a margin above that.
     assert gateway_urlopen.call_args.kwargs["timeout"] == 75
+
+def test_gateway_client_classifies_token_rejection_without_response_body() -> None:
+    from core.official_gateway_client import OfficialGatewayTransportError, _post_json
+
+    with patch(
+        "core.official_gateway_client.urlopen",
+        side_effect=HTTPError("https://clafact-auto.onrender.com/verify", 401, "", {}, None),
+    ):
+        with pytest.raises(OfficialGatewayTransportError, match="KOSIS_GATEWAY_AUTH_FAILED"):
+            _post_json("https://clafact-auto.onrender.com/verify", {}, "wrong-token")
