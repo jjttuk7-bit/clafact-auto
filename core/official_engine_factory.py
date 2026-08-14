@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass, field
+import re
 from pathlib import Path
 
 from core.catalog_discovery import discover_catalog_candidates
@@ -55,11 +57,32 @@ def build_official_evidence_service(
         discovered = _add_official_concept_candidates(discovered, concept, repository)
         if live and not local and live.attempted_queries and live.failed_queries == live.attempted_queries:
             raise RuntimeError("KOSIS_CATALOG_UNAVAILABLE")
+        metadata_diagnostics: Counter[str] = Counter()
+
+        def observed_metadata_fetcher(
+            api_key: str,
+            org_id: str,
+            table_id: str,
+            *,
+            meta_type: str = "ITM",
+            **kwargs: object,
+        ):
+            phase = meta_type.strip().lower() or "unknown"
+            metadata_diagnostics[f"metadata_{phase}_attempted"] += 1
+            try:
+                rows = repository(api_key, org_id, table_id, meta_type=meta_type, **kwargs)
+            except (RuntimeError, TypeError, ValueError) as error:
+                metadata_diagnostics[f"metadata_{phase}_failed"] += 1
+                metadata_diagnostics[f"metadata_failure_{_safe_metadata_failure_code(error)}"] += 1
+                raise
+            metadata_diagnostics[f"metadata_{phase}_succeeded"] += 1
+            return rows
+
         refreshed = refresh_item_metadata_for_claim(
             discovered,
             claim,
             kosis_api_key,
-            metadata_fetcher=repository,
+            metadata_fetcher=observed_metadata_fetcher,
             max_candidates=None,
             time_budget_seconds=live_time_budget_seconds,
             retries=2,
@@ -73,6 +96,7 @@ def build_official_evidence_service(
                 "failed_queries": live.failed_queries if live else 0,
                 "empty_queries": live.empty_queries if live else 0,
                 "candidate_count": len(refreshed),
+                **dict(metadata_diagnostics),
             },
         )
 
@@ -82,6 +106,12 @@ def build_official_evidence_service(
         official_fetcher=fetcher,
     )
 
+def _safe_metadata_failure_code(error: Exception) -> str:
+    """Return a stable, non-sensitive KOSIS metadata failure classification."""
+    code = str(error).strip()
+    if re.fullmatch(r"KOSIS_METADATA_(?:FETCH_FAILED|INVALID_RESPONSE|EMPTY_RESPONSE|API_ERROR_\d+)", code):
+        return code
+    return "KOSIS_METADATA_UNCLASSIFIED_FAILURE"
 def _add_official_concept_candidates(
     candidates: list[KosisCandidateSchema],
     concept: StandardConceptSchema,

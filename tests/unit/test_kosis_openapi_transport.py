@@ -35,6 +35,12 @@ def test_get_meta_normalizes_kosis_error_code_without_message(monkeypatch) -> No
         transport.get_meta("secret", "101", "DT_TEST", retries=1)
 
 
+def test_get_meta_normalizes_json_kosis_error_code_without_message(monkeypatch) -> None:
+    monkeypatch.setattr(transport, "urlopen", lambda *_args, **_kwargs: Response(b'{"err":"30","errMsg":"not available"}'))
+
+    with pytest.raises(RuntimeError, match="KOSIS_METADATA_API_ERROR_30"):
+        transport.get_meta("secret", "101", "DT_TEST", retries=1)
+
 def test_get_meta_accepts_legacy_kosis_array_metadata(monkeypatch) -> None:
     monkeypatch.setattr(transport, "urlopen", lambda *_args, **_kwargs: Response(b'[{STAT_ID:"1964001",DEPT_NM:"department"}]'))
     assert transport.get_meta("secret", "101", "DT_TEST", retries=1) == [{"STAT_ID": "1964001", "DEPT_NM": "department"}]

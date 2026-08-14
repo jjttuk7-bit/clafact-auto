@@ -39,6 +39,8 @@ def get_meta(api_key: str, org_id: str, table_id: str, *, meta_type: str = "SOUR
             with urlopen(url, timeout=timeout_seconds, context=create_kosis_tls_context()) as response:
                 payload = response.read()
             decoded = _decode_kosis_payload(payload)
+            if error_code := _decoded_kosis_error_code(decoded):
+                raise RuntimeError(f"KOSIS_METADATA_API_ERROR_{error_code}")
             if not isinstance(decoded, (dict, list)):
                 raise RuntimeError("KOSIS_METADATA_INVALID_RESPONSE")
             if meta_type in {"ITM", "PRD"} and decoded == []:
@@ -87,6 +89,14 @@ def _decode_kosis_payload(payload: bytes) -> Any:
         except json.JSONDecodeError as legacy_error:
             raise RuntimeError("KOSIS_METADATA_INVALID_RESPONSE") from legacy_error
 
+
+def _decoded_kosis_error_code(payload: object) -> str | None:
+    """Extract a numeric KOSIS error code from a decoded JSON object only."""
+    if not isinstance(payload, dict):
+        return None
+    value = payload.get("err") or payload.get("error")
+    code = str(value).strip() if value is not None else ""
+    return code if code.isdigit() else None
 
 def _kosis_error_code(payload: bytes) -> str | None:
     """Extract only a KOSIS error code from its legacy JavaScript-object response."""
