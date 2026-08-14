@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 
 from core import dynamic_kosis_verifier
@@ -14,8 +14,15 @@ from schemas.claim import ClaimSchema
 from schemas.concept import StandardConceptSchema
 from schemas.verdict import VerdictSchema
 
+@dataclass(frozen=True, slots=True)
+class CatalogResolution:
+    """Safe operational summary of one Catalog search; never contains credentials or raw payloads."""
+
+    candidates: list[KosisCandidateSchema]
+    diagnostics: dict[str, int] = field(default_factory=dict)
+
 ConceptMapper = Callable[[ClaimSchema], StandardConceptSchema]
-CatalogResolver = Callable[[ClaimSchema, StandardConceptSchema], list[KosisCandidateSchema]]
+CatalogResolver = Callable[[ClaimSchema, StandardConceptSchema], list[KosisCandidateSchema] | CatalogResolution]
 
 
 @dataclass(frozen=True, slots=True)
@@ -25,6 +32,7 @@ class OfficialEvidenceResolution:
     concept: StandardConceptSchema
     candidates: list[KosisCandidateSchema]
     verdict: VerdictSchema
+    catalog_diagnostics: dict[str, int] = field(default_factory=dict)
 
 
 class OfficialEvidenceService:
@@ -45,7 +53,7 @@ class OfficialEvidenceService:
         self, claim: ClaimSchema, *, article_date: date
     ) -> OfficialEvidenceResolution:
         concept = self._concept_mapper(claim)
-        candidates = (
+        catalog_result = (
             run_operational_stage(
                 "KOSIS_CATALOG",
                 lambda: self._catalog_resolver(claim, concept),
@@ -53,6 +61,12 @@ class OfficialEvidenceService:
             if concept.status == "MATCHED"
             else []
         )
+        if isinstance(catalog_result, CatalogResolution):
+            candidates = catalog_result.candidates
+            catalog_diagnostics = dict(catalog_result.diagnostics)
+        else:
+            candidates = catalog_result
+            catalog_diagnostics = {}
         verdict = run_operational_stage(
             "VERIFICATION",
             lambda: dynamic_kosis_verifier.verify_claim_against_kosis(
@@ -67,4 +81,5 @@ class OfficialEvidenceService:
             concept=concept,
             candidates=candidates,
             verdict=verdict,
+            catalog_diagnostics=catalog_diagnostics,
         )

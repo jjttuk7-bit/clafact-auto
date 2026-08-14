@@ -62,3 +62,23 @@ def test_official_evidence_service_runs_catalog_and_verdict_through_one_core_ent
     assert result.candidates == [candidate]
     assert result.verdict.route_status == "AUTO"
     assert result.verdict.verdict == "MATCH"
+
+def test_official_evidence_service_preserves_safe_catalog_diagnostics() -> None:
+    from core.official_evidence_service import CatalogResolution, OfficialEvidenceService
+
+    claim = ClaimSchema(claim_id="c", source_sentence="", indicator="통계", parse_status="AUTO_OK")
+    concept = StandardConceptSchema(concept_id="C", canonical_name="통계", standard_key="stat", status="MATCHED")
+    service = OfficialEvidenceService(
+        concept_mapper=lambda _: concept,
+        catalog_resolver=lambda *_: CatalogResolution(
+            candidates=[],
+            diagnostics={"attempted_queries": 3, "failed_queries": 1, "empty_queries": 2, "candidate_count": 0},
+        ),
+        official_fetcher=object(),
+    )
+
+    result = service.resolve(claim, article_date=date(2025, 1, 1))
+
+    assert result.catalog_diagnostics == {
+        "attempted_queries": 3, "failed_queries": 1, "empty_queries": 2, "candidate_count": 0,
+    }

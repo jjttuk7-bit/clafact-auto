@@ -21,6 +21,7 @@ from core.claim_extractor_factory import create_claim_extractor
 from core.secret_fingerprint import describe_secret_fingerprint
 from core.calculator import calculate
 from core.catalog_binding import apply_catalog_binding
+from core.hard_guard import apply_hard_guard
 from core.catalog_discovery import discover_catalog_candidates, has_unresolved_live_metadata
 from core.catalog_search import search_semantic_catalog
 from core.data_loader import load_kosis_catalog, load_standard_concepts
@@ -327,6 +328,22 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
                 [{"표 ID": item.tbl_id, "통계표": item.tbl_name, "단위": " | ".join(item.unit_names), "주기": item.frequency} for item in candidates]
             )
 
+        if resolution_ready and resolution.catalog_diagnostics:
+            with st.expander("KOSIS Catalog 진단 (안전 정보)"):
+                st.json(
+                    {
+                        "search": resolution.catalog_diagnostics,
+                        "candidates": [
+                            {
+                                "org_id": item.org_id,
+                                "tbl_id": item.tbl_id,
+                                "metadata_status": item.metadata_status,
+                                "hard_guard_reject_codes": apply_hard_guard(claim, item).reject_codes,
+                            }
+                            for item in candidates[:20]
+                        ],
+                    }
+                )
         official_value = None
         evidence_cells = []
         if not article_date and not requires_parse_review:

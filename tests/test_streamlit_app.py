@@ -9,6 +9,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+import streamlit as st
 from streamlit.testing.v1 import AppTest
 
 import config.settings as settings_module
@@ -739,16 +740,18 @@ def test_cabbage_cpi_single_and_batch_paths_share_auto_result(monkeypatch) -> No
             return_value=FakeCpiExtractor(),
         ),
         patch(
-            "core.catalog_discovery.discover_catalog_candidates",
+            "core.official_engine_factory.discover_catalog_candidates",
             return_value=[table_identity],
         ),
         patch(
-            "core.catalog_metadata_refresh.refresh_item_metadata",
+            "core.official_engine_factory.refresh_item_metadata_for_claim",
             return_value=[hydrated],
         ),
-        patch("core.kosis_api_adapter.build_kosis_api_lookup", return_value=FakeLiveLookup()),
-        patch("core.kosis_publication.KosisPublicationLookup", FakePublicationLookup),
+        patch("core.official_engine_factory.build_kosis_api_lookup", return_value=FakeLiveLookup()),
+        patch("core.official_engine_factory.KosisPublicationLookup", FakePublicationLookup),
     ):
+        st.cache_data.clear()
+        st.cache_resource.clear()
         app = AppTest.from_file("app/streamlit_app.py", default_timeout=40)
         app.run()
         app.text_area[0].input(
@@ -769,6 +772,7 @@ def test_cabbage_cpi_single_and_batch_paths_share_auto_result(monkeypatch) -> No
     metrics = _metric_values(app)
     assert metrics["판정"] == "일치"
     assert metrics["경로"] == "자동"
+    assert any(element.label == "KOSIS Catalog 진단 (안전 정보)" for element in app.expander)
     rendered_json = " ".join(str(element.value) for element in app.json)
     assert "CPI_DETAIL:A02A01701" in rendered_json
     assert "A02A01701" in rendered_json

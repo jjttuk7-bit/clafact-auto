@@ -14,7 +14,7 @@ from core.kosis_fetcher import OfficialValueFetcher
 from core.kosis_live_catalog import KosisLiveCatalogSearch
 from core.kosis_metadata_repository import KosisMetadataRepository
 from core.kosis_publication import KosisPublicationLookup
-from core.official_evidence_service import OfficialEvidenceService
+from core.official_evidence_service import CatalogResolution, OfficialEvidenceService
 from core.semantic_normalizer import normalize_concept
 from schemas.candidate import KosisCandidateSchema
 from schemas.claim import ClaimSchema
@@ -55,7 +55,7 @@ def build_official_evidence_service(
         discovered = _add_official_concept_candidates(discovered, concept, repository)
         if live and not local and live.attempted_queries and live.failed_queries == live.attempted_queries:
             raise RuntimeError("KOSIS_CATALOG_UNAVAILABLE")
-        return refresh_item_metadata_for_claim(
+        refreshed = refresh_item_metadata_for_claim(
             discovered,
             claim,
             kosis_api_key,
@@ -64,6 +64,16 @@ def build_official_evidence_service(
             time_budget_seconds=live_time_budget_seconds,
             retries=2,
             timeout_seconds=min(10, live_time_budget_seconds),
+        )
+        return CatalogResolution(
+            candidates=refreshed,
+            diagnostics={
+                "local_candidate_count": len(local),
+                "attempted_queries": live.attempted_queries if live else 0,
+                "failed_queries": live.failed_queries if live else 0,
+                "empty_queries": live.empty_queries if live else 0,
+                "candidate_count": len(refreshed),
+            },
         )
 
     return OfficialEvidenceService(
