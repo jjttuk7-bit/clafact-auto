@@ -46,6 +46,7 @@ from core.verdict_explainer import explain_verdict
 from core.operator_artifact_loader import load_operator_run
 from core.operational_error import OperationalStageError, run_operational_stage
 from core.official_evidence_service import OfficialEvidenceService
+from core.official_gateway_client import OfficialGatewayClient
 from core.official_engine_factory import OfficialEnginePaths, build_official_evidence_service
 from core.claim_verification_service import VerificationTraceRecorder
 from core.verification_trace import attach_trace
@@ -161,8 +162,19 @@ def _official_fetcher(settings: Settings) -> OfficialValueFetcher:
     )
 
 
-def _official_evidence_service(settings: Settings) -> OfficialEvidenceService:
-    """Build the shared Core Engine for interactive and batch verification."""
+def _official_evidence_service(
+    settings: Settings,
+) -> OfficialEvidenceService | OfficialGatewayClient:
+    """Build the shared direct-KOSIS engine or token-protected Gateway client."""
+    gateway_url = getattr(settings, "official_gateway_url", None)
+    gateway_token = getattr(settings, "gateway_token", None)
+    if isinstance(gateway_url, str) and gateway_url.strip():
+        if not isinstance(gateway_token, str) or not gateway_token.strip():
+            raise RuntimeError("CLAFACT_GATEWAY_TOKEN_REQUIRED")
+        return OfficialGatewayClient(
+            f"{gateway_url.rstrip('/')}/verify",
+            gateway_token=gateway_token,
+        )
     return build_official_evidence_service(
         OfficialEnginePaths(
             standard_path=STANDARD_PATH,

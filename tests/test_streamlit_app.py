@@ -806,3 +806,17 @@ def test_streamlit_official_service_uses_shared_engine_factory() -> None:
     assert paths.standard_path == namespace["STANDARD_PATH"]
     assert paths.catalog_path == namespace["CATALOG_PATH"]
     assert paths.as_of_metadata_paths == namespace["AS_OF_METADATA_PATHS"]
+
+
+def test_streamlit_official_service_uses_gateway_when_url_and_token_are_configured() -> None:
+    settings = MagicMock(
+        kosis_api_key=None,
+        official_gateway_url="https://clafact-auto.onrender.com",
+        gateway_token="test-gateway-token",
+    )
+
+    namespace = runpy.run_path(str(APP_PATH), run_name="__gateway_service_test__")
+    service = namespace["_official_evidence_service"](settings)
+
+    assert service.__class__.__name__ == "OfficialGatewayClient"
+    assert service._verify_url == "https://clafact-auto.onrender.com/verify"
