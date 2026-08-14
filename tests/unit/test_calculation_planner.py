@@ -147,3 +147,32 @@ def test_builds_difference_plan_with_two_year_over_year_cells() -> None:
     assert plan is not None
     assert plan.calculation_type == "DIFFERENCE"
     assert [cell.prd_de for cell in plan.required_cells] == ["2024-12", "2023-12"]
+
+def test_share_counterpart_rewrites_single_dimension_member_and_canonical_key() -> None:
+    from schemas.candidate import KosisCandidateSchema
+
+    claim = ClaimSchema(
+        claim_id="share-key", source_sentence="여성 취업자 수는 전체의 44%였다.",
+        calculation="SHARE", comparison={"denominator_member": "전체"}, parse_status="AUTO_OK",
+    )
+    current = EvidenceCellSchema(
+        org_id="101", tbl_id="DT_EMP", itm_id="T30", obj_id="B", member_code="여자",
+        prd_se="월", prd_de="2024-12", dimension_members={"B": "여자"},
+        dimension_codes={"B": "3"},
+        canonical_key="ORG=101|TBL=DT_EMP|ITM=T30|OBJ=B|MEMBER=여자|PRD_SE=월|PRD_DE=2024-12",
+        unit="천명", status="CONFIRMED",
+    )
+    candidate = KosisCandidateSchema(
+        org_id="101", tbl_id="DT_EMP", tbl_name="성별 취업자", core_item_ids=["T30"],
+        core_item_names=["취업자"], dimension_ids=["B"], dimension_names=["성별"],
+        dimension_members={"B": ["계", "여자"]}, dimension_member_codes={"B": {"계": "0", "여자": "3"}},
+        unit_names=["천명"], frequency="월", metadata_status="OFFICIAL_METADATA_READY",
+    )
+
+    plan = build_calculation_plan(claim, current, candidate)
+
+    assert plan is not None
+    denominator = plan.required_cells[1]
+    assert denominator.member_code == "계"
+    assert denominator.canonical_key.endswith("MEMBER=계|PRD_SE=월|PRD_DE=2024-12")
+    assert denominator.canonical_key != current.canonical_key

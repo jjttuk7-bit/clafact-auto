@@ -1,3 +1,5 @@
+import ssl
+
 import core.kosis_value_transport as transport
 
 
@@ -28,6 +30,23 @@ def test_get_parameter_data_uses_explicit_coordinate(monkeypatch) -> None:
     assert "LST_CHN_DE" in requested[0]
     assert "apiKey=secret" not in str(rows)
 
+
+def test_get_parameter_data_uses_tls_12_compatibility_context(monkeypatch) -> None:
+    observed: dict[str, object] = {}
+
+    def fake_urlopen(_url, *, timeout, context):
+        observed["context"] = context
+        return Response()
+
+    monkeypatch.setattr(transport, "urlopen", fake_urlopen)
+
+    transport.get_parameter_data(
+        "secret", "101", "DT_TEST", "T", "M", "202405", "202405", ["T10"], retries=1
+    )
+
+    context = observed["context"]
+    assert isinstance(context, ssl.SSLContext)
+    assert context.maximum_version == ssl.TLSVersion.TLSv1_2
 
 def test_get_parameter_data_retries_transient_connection_failure(monkeypatch) -> None:
     attempts = 0

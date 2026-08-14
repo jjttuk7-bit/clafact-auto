@@ -108,9 +108,7 @@ class OfficialValueFetcher:
         try:
             rows = batch_lookup(cells)
         except Exception:
-            return [
-                KosisValue(None, "FETCH_FAILED", "", "NONE") for _cell in cells
-            ]
+            return [self.fetch(cell, article_date=article_date) for cell in cells]
         digest = hashlib.sha256(
             json.dumps(
                 rows, ensure_ascii=False, sort_keys=True, separators=(",", ":")
@@ -166,6 +164,8 @@ class OfficialValueFetcher:
                 [{**row, "official_published_at": publication.published_at.isoformat()} for row in rows],
                 publication,
             )
+        if self._require_verified_release_metadata and publication is not None:
+            return None, publication
         published_at: str | None = None
         for path in self._as_of_metadata_paths:
             try:

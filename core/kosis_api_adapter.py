@@ -14,8 +14,10 @@ _FREQUENCY = {"월": "M", "monthly": "M", "month": "M", "년": "Y", "year": "Y",
 class KosisApiLookup:
     """Read one coordinate or a period range through the official Parameter API."""
 
-    def __init__(self, api_key: str) -> None:
+    def __init__(self, api_key: str, *, retries: int = 2, timeout_seconds: float = 10) -> None:
         self._api_key = api_key
+        self._retries = max(1, retries)
+        self._timeout_seconds = max(0.1, timeout_seconds)
 
     def __call__(self, cell: EvidenceCellSchema) -> list[dict[str, Any]]:
         return self.fetch_many([cell])
@@ -43,12 +45,15 @@ class KosisApiLookup:
         return get_parameter_data(
             self._api_key, first.org_id, first.tbl_id, first.itm_id,
             period_type, periods[0], periods[-1], list(coordinate[-1]),
+            retries=self._retries, timeout_seconds=self._timeout_seconds,
         )
 
 
-def build_kosis_api_lookup(api_key: str) -> KosisApiLookup:
+def build_kosis_api_lookup(
+    api_key: str, *, retries: int = 2, timeout_seconds: float = 10
+) -> KosisApiLookup:
     """Return a read-only lookup that rejects incomplete C1~C8 coordinates."""
-    return KosisApiLookup(api_key)
+    return KosisApiLookup(api_key, retries=retries, timeout_seconds=timeout_seconds)
 
 
 def _ordered_codes(cell: EvidenceCellSchema) -> list[str]:

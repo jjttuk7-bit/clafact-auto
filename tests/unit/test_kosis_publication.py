@@ -1,4 +1,5 @@
 from datetime import date
+import ssl
 
 import core.kosis_publication as publication
 from core.kosis_publication import KosisPublicationLookup
@@ -17,6 +18,22 @@ class Response:
     def read(self) -> bytes:
         return self._payload
 
+
+def test_default_kosis_publication_opener_uses_tls_12_context(monkeypatch) -> None:
+    observed: dict[str, object] = {}
+
+    def fake_urlopen(_request, *, timeout, context):
+        observed["context"] = context
+        return Response(b"[]")
+
+    monkeypatch.setattr(publication, "urlopen", fake_urlopen)
+
+    with publication._default_kosis_opener("https://kosis.kr/test", timeout=5):
+        pass
+
+    context = observed["context"]
+    assert isinstance(context, ssl.SSLContext)
+    assert context.maximum_version == ssl.TLSVersion.TLSv1_2
 
 def test_publication_lookup_fetches_official_explanation_and_preserves_provenance() -> None:
     observed: dict[str, object] = {}
@@ -184,7 +201,68 @@ def test_publication_lookup_finds_exact_kostat_release_when_kosis_has_only_sched
 
     assert result.status == "VERIFIED"
     assert result.published_at == date(2025, 1, 15)
-    assert result.source_url == "https://mods.go.kr/board.es?act=view&bid=210&list_no=434801"
+    assert result.source_url == "https://www.kostat.go.kr/board.es?act=view&bid=210&list_no=434801"
+
+def test_release_links_parse_kostat_javascript_detail_links() -> None:
+    raw = (
+        '<a class="board_link" '
+        'href="javascript:addSearchParam(\'/board.es?mid=a10301010000&bid=213&act=view&list_no=439120\');">'
+        '<span></span><span>2025년 10월 소비자물가동향</span></a>'
+    ).encode("utf-8")
+
+    assert publication._release_links(raw) == [
+        (
+            "https://www.kostat.go.kr/board.es?mid=a10301010000&bid=213&act=view&list_no=439120",
+            "2025년 10월 소비자물가동향",
+        )
+    ]
+
+def test_publication_lookup_accepts_matching_release_title_when_body_uses_different_stat_label() -> None:
+    explanation = (
+        '[{"statsNm":"소비자물가조사","pubDate":"조사대상월 익월",'
+        '"publictMth":"KOSIS 및 보도자료"}]'
+    ).encode("utf-8")
+    search_page = (
+        '<a href="javascript:addSearchParam(\'/board.es?mid=a10301010000&bid=213&act=view&list_no=439120\');">'
+        '<span>2025년 10월 소비자물가동향</span></a>'
+    ).encode("utf-8")
+    release_page = (
+        '<h1>2025년 10월 소비자물가동향</h1><p>게시일 2025-11-04</p>'
+    ).encode("utf-8")
+
+    def opener(request, *, timeout):
+        if "statisticsExplData" in request.full_url:
+            return Response(explanation)
+        if "act=list" in request.full_url:
+            return Response(search_page)
+        return Response(release_page)
+
+    result = KosisPublicationLookup("secret", opener=opener, retries=1).fetch(
+        "101", "DT_CPI", period="202510"
+    )
+
+    assert result.status == "VERIFIED"
+    assert result.published_at == date(2025, 11, 4)
+
+def test_kostat_press_search_uses_official_title_search_parameters() -> None:
+    explanation = (
+        '[{"statsNm":"소비자물가조사","pubDate":"조사대상월 익월",'
+        '"publictMth":"KOSIS 및 보도자료"}]'
+    ).encode("utf-8")
+    seen: list[str] = []
+
+    def opener(request, *, timeout):
+        seen.append(request.full_url)
+        return Response(explanation)
+
+    KosisPublicationLookup("secret", opener=opener, retries=1).fetch(
+        "101", "DT_CPI", period="202510"
+    )
+
+    search_url = next(url for url in seen if "act=list" in url)
+    assert "bid=213" in search_url
+    assert "keyField=T" in search_url
+    assert "keyWord=2025%EB%85%84+10%EC%9B%94+%EC%86%8C%EB%B9%84%EC%9E%90%EB%AC%BC%EA%B0%80%EB%8F%99%ED%96%A5" in search_url
 
 def test_kostat_search_uses_human_period_label() -> None:
     assert publication._period_label("2024-12") == "2024년 12월"
@@ -207,3 +285,69 @@ def test_official_release_transport_failure_is_not_downgraded_to_unresolved() ->
 
     assert result.status == "FETCH_FAILED"
     assert result.source_url == "https://kostat.go.kr/board.es?act=view&list_no=4"
+def test_extract_official_url_decodes_html_query_and_removes_attached_statistics_name() -> None:
+    value = (
+        'https://mods.go.kr/board.es?mid=a10301010000&amp;bid=210&amp;'
+        'list_no=445948&amp;act=view&amp;mainXml=Y경제활동인구'
+    )
+
+    assert publication._extract_official_url(value) == (
+        'https://mods.go.kr/board.es?mid=a10301010000&bid=210&'
+        'list_no=445948&act=view&mainXml=Y'
+    )
+
+def test_official_release_request_uses_browser_compatible_user_agent() -> None:
+    explanation = (
+        '[{"pubDate":"매월 15일경",'
+        '"publictMth":"https://kostat.go.kr/board.es?act=view&list_no=434801"}]'
+    ).encode("utf-8")
+    release = (
+        "<h1>2024년 12월 고용동향</h1><span>게시일 2025-01-15</span>"
+    ).encode("utf-8")
+    requests = []
+
+    def opener(request, *, timeout):
+        requests.append(request)
+        return Response(release if "kostat.go.kr" in request.full_url else explanation)
+
+    KosisPublicationLookup("secret", opener=opener, retries=1).fetch(
+        "101", "DT_EMPLOYMENT", period="2024-12"
+    )
+
+    assert requests[1].get_header("User-agent").startswith("Mozilla/")
+def test_official_release_transport_failure_is_retried_before_hold() -> None:
+    explanation = (
+        '[{"pubDate":"매월 15일경",'
+        '"publictMth":"https://kostat.go.kr/board.es?act=view&list_no=7"}]'
+    ).encode("utf-8")
+    release = "<h1>2024년 12월 고용동향</h1><span>게시일 2025-01-15</span>".encode("utf-8")
+    release_attempts = 0
+
+    def opener(request, *, timeout):
+        nonlocal release_attempts
+        if "statisticsExplData" in request.full_url:
+            return Response(explanation)
+        release_attempts += 1
+        if release_attempts == 1:
+            raise OSError("temporary reset")
+        return Response(release)
+
+    result = KosisPublicationLookup("secret", opener=opener, retries=2).fetch(
+        "101", "DT_EMPLOYMENT", period="2024-12"
+    )
+
+    assert result.status == "VERIFIED"
+    assert result.published_at == date(2025, 1, 15)
+    assert release_attempts == 2
+
+
+def test_employment_release_search_uses_official_board_and_december_annual_title() -> None:
+    assert publication._press_release_board_id("경제활동인구조사") == "210"
+    assert publication._press_release_queries("경제활동인구조사", "2024-12") == [
+        "2024년 12월 및 연간 고용동향"
+    ]
+
+def test_annual_employment_release_search_uses_december_annual_title() -> None:
+    assert publication._press_release_queries("경제활동인구조사", "2024") == [
+        "2024년 12월 및 연간 고용동향"
+    ]

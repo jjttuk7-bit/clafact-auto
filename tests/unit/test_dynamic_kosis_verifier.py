@@ -294,3 +294,75 @@ def test_publication_failure_hold_preserves_attempt_provenance() -> None:
     assert len(verdict.official_value_provenance) == 1
     assert verdict.official_value_provenance[0].publication is not None
     assert verdict.official_value_provenance[0].publication.content_hash == "e" * 64
+def test_direct_value_tie_is_resolved_only_when_official_values_and_publication_dates_match() -> None:
+    claim = ClaimSchema(
+        claim_id="employment-tie", source_sentence="2024년 12월 취업자 수는 2804만1000명이었다.",
+        indicator="취업자 수", value=28_041_000, unit="명", time="2024년 12월",
+        frequency="월", region="한국", calculation="DIRECT_VALUE", parse_status="AUTO_OK",
+    )
+    concept = StandardConceptSchema(
+        concept_id="employment_count", canonical_name="취업자 수", standard_key="employment_count",
+        matched_alias="취업자 수", status="MATCHED",
+    )
+    candidates = [
+        KosisCandidateSchema(
+            org_id="101", tbl_id=table_id, tbl_name="경제활동인구 총괄", core_item_ids=["T30"],
+            core_item_names=["취업자"], dimension_ids=["B"], dimension_names=["성별"],
+            dimension_members={"B": ["계"]}, dimension_member_codes={"B": {"계": "0"}},
+            unit_names=["천명"], frequency="월", metadata_status="OFFICIAL_METADATA_READY",
+        )
+        for table_id in ("DT_A", "DT_B")
+    ]
+
+    class Fetcher:
+        def fetch(self, _cell, *, article_date):
+            return KosisValue(
+                28041.0, "SUCCESS", "official", "API",
+                PublicationEvidence(
+                    status="VERIFIED", published_at=date(2025, 1, 15), source_url="https://kostat.go.kr/release",
+                    retrieved_at="2025-01-15T00:00:00Z", content_hash="a" * 64,
+                ),
+            )
+
+    verdict = verify_claim_against_kosis(
+        claim, concept, candidates, article_date=date(2025, 1, 15), official_fetcher=Fetcher()
+    )
+
+    assert verdict.route_status == "AUTO"
+    assert verdict.reason_code == "WITHIN_TOLERANCE"
+    assert verdict.verdict == "MATCH"
+
+def test_direct_value_tie_with_different_official_values_remains_hold() -> None:
+    claim = ClaimSchema(
+        claim_id="employment-unequal-tie", source_sentence="2024년 12월 취업자 수는 2804만1000명이었다.",
+        indicator="취업자 수", value=28_041_000, unit="명", time="2024년 12월",
+        frequency="월", region="한국", calculation="DIRECT_VALUE", parse_status="AUTO_OK",
+    )
+    concept = StandardConceptSchema(
+        concept_id="employment_count", canonical_name="취업자 수", standard_key="employment_count",
+        matched_alias="취업자 수", status="MATCHED",
+    )
+    candidates = [
+        KosisCandidateSchema(
+            org_id="101", tbl_id=table_id, tbl_name="경제활동인구 총괄", core_item_ids=["T30"],
+            core_item_names=["취업자"], dimension_ids=["B"], dimension_names=["성별"],
+            dimension_members={"B": ["계"]}, dimension_member_codes={"B": {"계": "0"}},
+            unit_names=["천명"], frequency="월", metadata_status="OFFICIAL_METADATA_READY",
+        )
+        for table_id in ("DT_A", "DT_B")
+    ]
+
+    class Fetcher:
+        def fetch(self, cell, *, article_date):
+            value = 28041.0 if cell.tbl_id == "DT_A" else 28042.0
+            return KosisValue(
+                value, "SUCCESS", "official", "API",
+                PublicationEvidence(status="VERIFIED", published_at=date(2025, 1, 15)),
+            )
+
+    verdict = verify_claim_against_kosis(
+        claim, concept, candidates, article_date=date(2025, 1, 15), official_fetcher=Fetcher()
+    )
+
+    assert verdict.route_status == "HOLD"
+    assert verdict.reason_code == "AMBIGUOUS_MARGIN"

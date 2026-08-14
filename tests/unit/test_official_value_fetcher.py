@@ -281,6 +281,24 @@ def test_publication_transport_failure_is_distinct_from_unresolved_asof() -> Non
 
     assert result.status == "PUBLICATION_FETCH_FAILED"
 
+def test_direct_publication_unresolved_is_not_hidden_by_static_metadata(tmp_path) -> None:
+    release = tmp_path / "release.json"
+    release.write_text(json.dumps({
+        "org_id": "101", "tbl_id": "DT", "item_id": "T",
+        "records": [{"period": "202505", "official_published_at": "2025-06-01", "official_release_verified": True}],
+    }), encoding="utf-8")
+    rows = [{"TBL_ID": "DT", "ITM_ID": "T", "PRD_DE": "202505", "DT": "109.67"}]
+
+    class PublicationLookup:
+        def fetch(self, _org_id: str, _table_id: str, *, period: str) -> PublicationEvidence:
+            return PublicationEvidence(status="UNRESOLVED")
+
+    result = OfficialValueFetcher([], api_lookup=lambda _cell: rows, prefer_api=True,
+        as_of_metadata_paths=[release], publication_lookup=PublicationLookup(),
+        require_verified_release_metadata=True).fetch(cell(), article_date=date(2025, 6, 26))
+
+    assert result.status == "AS_OF_UNAVAILABLE"
+
 def test_direct_publication_failure_is_not_hidden_by_static_metadata(tmp_path) -> None:
     release = tmp_path / "release.json"
     release.write_text(json.dumps({
@@ -306,3 +324,25 @@ def test_direct_publication_failure_is_not_hidden_by_static_metadata(tmp_path) -
     ).fetch(cell(), article_date=date(2025, 6, 26))
 
     assert result.status == "PUBLICATION_FETCH_FAILED"
+def test_fetch_many_falls_back_to_single_official_calls_when_range_request_fails() -> None:
+    class Lookup:
+        def __init__(self) -> None:
+            self.single_calls: list[str] = []
+
+        def __call__(self, selected):
+            self.single_calls.append(selected.prd_de)
+            return [{"TBL_ID": "DT", "ITM_ID": "T", "PRD_DE": selected.prd_de.replace("-", ""), "DT": "10"}]
+
+        def fetch_many(self, _cells):
+            raise RuntimeError("range unavailable")
+
+    lookup = Lookup()
+    cells = [
+        EvidenceCellSchema(org_id="101", tbl_id="DT", itm_id="T", prd_se="M", prd_de=period, canonical_key=period, status="CONFIRMED")
+        for period in ("2025-10", "2024-10")
+    ]
+
+    results = OfficialValueFetcher([], api_lookup=lookup, prefer_api=True).fetch_many(cells)
+
+    assert lookup.single_calls == ["2025-10", "2024-10"]
+    assert [result.value for result in results] == [10.0, 10.0]

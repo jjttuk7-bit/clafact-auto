@@ -57,3 +57,19 @@ def test_api_lookup_fetches_comparison_periods_in_one_range_request(monkeypatch)
 
     assert captured == {"calls": 1, "start_end": ("202410", "202510")}
     assert [row["DT"] for row in rows] == ["208.57", "136.62"]
+def test_api_lookup_passes_configured_timeout_and_retry_budget(monkeypatch) -> None:
+    captured = {}
+
+    def fake_get(*args, **kwargs):
+        captured.update(kwargs)
+        return [{"TBL_ID": "DT", "ITM_ID": "T1", "PRD_DE": "202405", "DT": "70"}]
+
+    monkeypatch.setattr(adapter, "get_parameter_data", fake_get)
+    cell = EvidenceCellSchema(
+        org_id="101", tbl_id="DT", itm_id="T1", prd_se="월", prd_de="202405",
+        dimension_codes={"C1": "00"}, canonical_key="key", status="CONFIRMED",
+    )
+
+    adapter.build_kosis_api_lookup("secret", retries=1, timeout_seconds=4)(cell)
+
+    assert captured == {"retries": 1, "timeout_seconds": 4}

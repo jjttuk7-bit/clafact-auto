@@ -76,8 +76,16 @@ def _counterpart_cell(
     dimensions[dimension_id] = member
     codes[dimension_id] = code
     key = current.canonical_key.replace(f"{dimension_id}:{previous}", f"{dimension_id}:{member}")
-    return current.model_copy(update={"dimension_members": dimensions, "dimension_codes": codes, "canonical_key": key})
-
+    if key == current.canonical_key and current.obj_id == dimension_id and current.member_code:
+        key = key.replace(f"|MEMBER={current.member_code}|", f"|MEMBER={member}|")
+    if key == current.canonical_key:
+        key = f"{key}|DIMS={dimension_id}:{member}"
+    return current.model_copy(update={
+        "member_code": member if current.obj_id == dimension_id else current.member_code,
+        "dimension_members": dimensions,
+        "dimension_codes": codes,
+        "canonical_key": key,
+    })
 
 def _is_total_member(member: str) -> bool:
     return member.replace(" ", "") in {"계", "전체", "합계", "총계", "전국"}

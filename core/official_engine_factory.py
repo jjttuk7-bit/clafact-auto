@@ -1,0 +1,103 @@
+"""Build the shared live KOSIS official-evidence engine outside the UI."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from pathlib import Path
+
+from core.catalog_discovery import discover_catalog_candidates
+from core.catalog_metadata_refresh import refresh_item_metadata_for_claim
+from core.catalog_search import search_semantic_catalog
+from core.data_loader import load_kosis_catalog, load_standard_concepts
+from core.kosis_api_adapter import build_kosis_api_lookup
+from core.kosis_fetcher import OfficialValueFetcher
+from core.kosis_live_catalog import KosisLiveCatalogSearch
+from core.kosis_metadata_repository import KosisMetadataRepository
+from core.kosis_publication import KosisPublicationLookup
+from core.official_evidence_service import OfficialEvidenceService
+from core.semantic_normalizer import normalize_concept
+from schemas.candidate import KosisCandidateSchema
+from schemas.claim import ClaimSchema
+from schemas.concept import StandardConceptSchema
+
+
+@dataclass(frozen=True, slots=True)
+class OfficialEnginePaths:
+    standard_path: Path
+    catalog_path: Path
+    as_of_metadata_paths: list[Path]
+    metadata_manifest_paths: list[Path] = field(default_factory=list)
+
+
+def build_official_evidence_service(
+    paths: OfficialEnginePaths,
+    *,
+    kosis_api_key: str | None,
+    live_time_budget_seconds: float = 45.0,
+) -> OfficialEvidenceService:
+    """Create the one live engine used by UI, batch, and API acceptance."""
+    repository = (KosisMetadataRepository.from_manifests(paths.metadata_manifest_paths) if paths.metadata_manifest_paths else KosisMetadataRepository([]))
+    fetcher = OfficialValueFetcher(
+        [],
+        api_lookup=(build_kosis_api_lookup(
+            kosis_api_key, retries=1, timeout_seconds=max(1.0, live_time_budget_seconds / 2)
+        ) if kosis_api_key else None),
+        prefer_api=bool(kosis_api_key),
+        as_of_metadata_paths=paths.as_of_metadata_paths,
+        publication_lookup=KosisPublicationLookup(kosis_api_key),
+        require_verified_release_metadata=True,
+    )
+
+    def resolve_catalog(claim: ClaimSchema, concept: StandardConceptSchema):
+        local = search_semantic_catalog(claim, concept, load_kosis_catalog(paths.catalog_path))
+        live = KosisLiveCatalogSearch(kosis_api_key, max_attempts=2, timeout_seconds=10) if kosis_api_key else None
+        discovered = discover_catalog_candidates(claim, concept, local, live, time_budget_seconds=live_time_budget_seconds)
+        discovered = _add_official_concept_candidates(discovered, concept, repository)
+        if live and not local and live.attempted_queries and live.failed_queries == live.attempted_queries:
+            raise RuntimeError("KOSIS_CATALOG_UNAVAILABLE")
+        return refresh_item_metadata_for_claim(
+            discovered,
+            claim,
+            kosis_api_key,
+            metadata_fetcher=repository,
+            max_candidates=None,
+            time_budget_seconds=live_time_budget_seconds,
+            retries=2,
+            timeout_seconds=min(10, live_time_budget_seconds),
+        )
+
+    return OfficialEvidenceService(
+        concept_mapper=lambda claim: normalize_concept(claim, load_standard_concepts(paths.standard_path)),
+        catalog_resolver=resolve_catalog,
+        official_fetcher=fetcher,
+    )
+
+def _add_official_concept_candidates(
+    candidates: list[KosisCandidateSchema],
+    concept: StandardConceptSchema,
+    repository: KosisMetadataRepository,
+) -> list[KosisCandidateSchema]:
+    """Prioritize only tables whose versioned KOSIS ITM metadata contains Concept code."""
+    if ":" not in concept.concept_id:
+        return candidates
+    code = concept.concept_id.rsplit(":", 1)[-1].strip()
+    official_identities = set(repository.table_identities_for_member_code(code))
+    prioritized = [
+        candidate.model_copy(update={"source_stat_id": "OFFICIAL_CONCEPT_METADATA_SEED"})
+        if (candidate.org_id, candidate.tbl_id) in official_identities
+        else candidate
+        for candidate in candidates
+    ]
+    existing = {(candidate.org_id, candidate.tbl_id) for candidate in prioritized}
+    seeded = [
+        KosisCandidateSchema(
+            org_id=org_id,
+            tbl_id=table_id,
+            tbl_name=concept.canonical_name,
+            source_stat_id="OFFICIAL_CONCEPT_METADATA_SEED",
+            metadata_status="LIVE_SEARCH_UNRESOLVED",
+        )
+        for org_id, table_id in official_identities
+        if (org_id, table_id) not in existing
+    ]
+    return [*seeded, *prioritized]

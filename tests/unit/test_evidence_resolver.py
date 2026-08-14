@@ -259,6 +259,22 @@ def test_resolve_country_export_from_json_encoded_raw_dimension() -> None:
     assert cell.prd_se == "년"
 
 
+def test_resolve_evidence_cell_matches_official_region_and_age_spelling_variants() -> None:
+    resolved = resolve_evidence_cell(
+        claim(indicator="취업자 수", unit="명", time="2024년 12월", frequency="MONTHLY", region="서울", population="15~29세", dimension={"sex": "여성"}),
+        KosisCandidateSchema(
+            org_id="101", tbl_id="DT_MULTI", tbl_name="지역 성별 연령 취업자",
+            core_item_ids=["T30"], core_item_names=["취업자"],
+            dimension_ids=["A", "B", "G"], dimension_names=["시도별", "성별", "연령계층별"],
+            dimension_members={"A": ["서울특별시"], "B": ["여자"], "G": ["15 - 29세"]},
+            dimension_member_codes={"A": {"서울특별시": "11"}, "B": {"여자": "3"}, "G": {"15 - 29세": "75"}},
+            unit_names=["천명"], frequency="월", metadata_status="OFFICIAL_METADATA_READY",
+        ),
+    )
+
+    assert resolved.status == "CONFIRMED"
+    assert resolved.dimension_codes == {"A": "11", "B": "3", "G": "75"}
+
 def test_resolve_evidence_cell_normalizes_korean_quarter_to_kosis_period_key() -> None:
     cell = resolve_evidence_cell(
         claim(
@@ -427,3 +443,14 @@ def test_resolve_evidence_cell_maps_named_nonstandard_c7_and_c8_axes() -> None:
 
     assert cell.status == "CONFIRMED"
     assert cell.dimension_codes == {"C1": "11", "C7": "REG", "C8": "L"}
+
+def test_resolve_evidence_cell_normalizes_korean_annual_frequency_for_multi_frequency_table() -> None:
+    cell = resolve_evidence_cell(
+        claim(indicator="취업자 수", unit="명", time="2024년", frequency="연간", region=None),
+        candidate(
+            core_item_ids=["T30"], core_item_names=["취업자"], unit_names=["천명"],
+            frequency="분기|년",
+        ),
+    )
+
+    assert cell.prd_se == "년"

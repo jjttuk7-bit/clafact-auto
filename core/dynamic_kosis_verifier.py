@@ -73,14 +73,23 @@ def verify_claim_against_kosis(
         return _hold(claim, recorder, reason, "No KOSIS candidate has a complete official coordinate.")
 
     best = matches[0]
-    recorder.hard_guard_passed().semantic_matched(
-        best.route_status,
-        best.reason_code or "MATCH_ACCEPTED",
-        best.top1_top2_margin,
-    )
-    selected = next(candidate for candidate in candidates if candidate.tbl_id == best.candidate_tbl_id)
+    selected = next(candidate for candidate in eligible_candidates if candidate.tbl_id == best.candidate_tbl_id)
     cell = resolve_evidence_cell(claim, selected)
-    if best.route_status != "AUTO" or cell.status != "CONFIRMED":
+    tie_selected = _resolve_direct_value_tie(
+        claim, matches, eligible_candidates, resolved_cells, official_fetcher, article_date
+    )
+    if best.route_status != "AUTO" and tie_selected is not None:
+        selected, cell = tie_selected
+        recorder.hard_guard_passed().semantic_matched(
+            "AUTO", "OFFICIAL_VALUE_EQUIVALENT", best.top1_top2_margin
+        )
+    else:
+        recorder.hard_guard_passed().semantic_matched(
+            best.route_status,
+            best.reason_code or "MATCH_ACCEPTED",
+            best.top1_top2_margin,
+        )
+    if (best.route_status != "AUTO" and tie_selected is None) or cell.status != "CONFIRMED":
         recorder.evidence_held(best.reason_code or "EVIDENCE_COORDINATE_UNRESOLVED")
         return _hold(
             claim,
@@ -89,7 +98,6 @@ def verify_claim_against_kosis(
             "KOSIS item or dimension coordinate is not confirmed.",
             evidence_cells=[cell],
         )
-
     calculation_type = claim.calculation or "DIRECT_VALUE"
     plan = build_calculation_plan(claim, cell, selected)
     if plan is None:
@@ -152,6 +160,42 @@ def verify_claim_against_kosis(
         recorder.build(),
     )
 
+
+
+def _resolve_direct_value_tie(
+    claim: ClaimSchema,
+    matches: list[object],
+    candidates: list[KosisCandidateSchema],
+    resolved_cells: dict[str, EvidenceCellSchema],
+    official_fetcher: OfficialValueFetcher,
+    article_date: date,
+) -> tuple[KosisCandidateSchema, EvidenceCellSchema] | None:
+    """Resolve direct-value ties only when official values and dates are identical."""
+    if claim.calculation not in {None, "DIRECT_VALUE"} or len(matches) < 2:
+        return None
+    top_score = getattr(matches[0], "semantic_score", None)
+    tied_ids = [getattr(match, "candidate_tbl_id") for match in matches if getattr(match, "semantic_score", None) == top_score]
+    if len(tied_ids) < 2:
+        return None
+    by_table = {candidate.tbl_id: candidate for candidate in candidates}
+    signatures: set[tuple[float, str | None, date]] = set()
+    selected: tuple[KosisCandidateSchema, EvidenceCellSchema] | None = None
+    for table_id in tied_ids:
+        candidate = by_table.get(table_id)
+        cell = resolved_cells.get(table_id)
+        if candidate is None or cell is None or cell.status != "CONFIRMED":
+            return None
+        try:
+            official = official_fetcher.fetch(cell, article_date=article_date)
+        except Exception:
+            return None
+        publication = official.publication
+        if (official.status != "SUCCESS" or official.value is None or publication is None
+                or publication.status != "VERIFIED" or publication.published_at is None):
+            return None
+        signatures.add((official.value, cell.unit, publication.published_at))
+        selected = selected or (candidate, cell)
+    return selected if len(signatures) == 1 else None
 
 def _prefer_exact_concept_code(
     concept: StandardConceptSchema,

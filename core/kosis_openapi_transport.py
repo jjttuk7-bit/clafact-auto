@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import ssl
 from time import sleep
 from typing import Any
 from urllib.parse import urlencode
@@ -12,6 +13,17 @@ from urllib.request import urlopen
 _ERROR_CODE = re.compile(r'^\s*\{\s*err\s*:\s*["\'](?P<code>\d+)["\']')
 _LEGACY_KEY = re.compile(r'([\[{,]\s*)([A-Za-z_][A-Za-z0-9_]*)(\s*:)')
 
+
+class _RetryableMetadataResponse(RuntimeError):
+    """A syntactically valid but transiently empty KOSIS metadata response."""
+
+
+def create_kosis_tls_context() -> ssl.SSLContext:
+    """Use TLS 1.2 for KOSIS legacy endpoints that reset modern handshakes."""
+    context = ssl.create_default_context()
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
+    context.maximum_version = ssl.TLSVersion.TLSv1_2
+    return context
 
 def get_meta(api_key: str, org_id: str, table_id: str, *, meta_type: str = "SOURCE", obj_id: str | None = None, itm_id: str | None = None, retries: int = 3, timeout_seconds: float = 20) -> dict[str, Any] | list[dict[str, Any]]:
     """Fetch KOSIS metadata without exposing API keys or raw failure responses."""
@@ -24,12 +36,18 @@ def get_meta(api_key: str, org_id: str, table_id: str, *, meta_type: str = "SOUR
     last: Exception | None = None
     for attempt in range(retries):
         try:
-            with urlopen(url, timeout=timeout_seconds) as response:
+            with urlopen(url, timeout=timeout_seconds, context=create_kosis_tls_context()) as response:
                 payload = response.read()
             decoded = _decode_kosis_payload(payload)
             if not isinstance(decoded, (dict, list)):
                 raise RuntimeError("KOSIS_METADATA_INVALID_RESPONSE")
+            if meta_type in {"ITM", "PRD"} and decoded == []:
+                raise _RetryableMetadataResponse("KOSIS_METADATA_EMPTY_RESPONSE")
             return _repair_kosis_mojibake(decoded)
+        except _RetryableMetadataResponse as error:
+            last = error
+            if attempt + 1 < retries:
+                sleep(2**attempt)
         except RuntimeError:
             raise
         except Exception as error:
@@ -37,8 +55,6 @@ def get_meta(api_key: str, org_id: str, table_id: str, *, meta_type: str = "SOUR
             if attempt + 1 < retries:
                 sleep(2**attempt)
     raise RuntimeError("KOSIS_METADATA_FETCH_FAILED") from last
-
-
 
 def _repair_kosis_mojibake(value: Any) -> Any:
     """Repair KOSIS metadata that arrives as CP949 bytes re-encoded as UTF-8 text."""

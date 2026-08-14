@@ -69,3 +69,42 @@ def test_semantic_match_prefers_total_table_for_dimensionless_national_aggregate
 
     assert results[0].candidate_tbl_id == "DT_TOTAL_TRADE"
     assert results[0].route_status == "AUTO"
+def test_semantic_match_penalizes_unrequested_extra_axes() -> None:
+    result = semantic_match(
+        claim(indicator="취업자 수", unit="명", time="2024", frequency="년", dimension={"sex": "여성"}),
+        [
+            candidate("SEX", "성별 취업자", core_item_names=["취업자"], unit_names=["천명"], frequency="년", dimension_names=["성별"], dimension_members={"B": ["여자"]}),
+            candidate("SEX_AGE", "성 연령별 취업자", core_item_names=["취업자"], unit_names=["천명"], frequency="년", dimension_names=["성별", "연령계층별"], dimension_members={"B": ["여자"], "G": ["15-29세"]}),
+        ],
+    )
+
+    assert result[0].candidate_tbl_id == "SEX"
+    assert result[0].route_status == "AUTO"
+
+def test_semantic_match_rejects_seasonally_adjusted_series_when_claim_is_unqualified() -> None:
+    employment_claim = claim(
+        source_sentence="2024년 12월 취업자 수는 2804만1000명이었다.",
+        indicator="취업자 수", unit="명", time="2024년 12월", frequency="월", region="한국",
+    )
+    results = semantic_match(
+        employment_claim,
+        [
+            candidate("RAW", "성별 경제활동인구 총괄", core_item_names=["취업자"], unit_names=["천명"], frequency="월"),
+            candidate("SEASONAL", "계절조정 경제활동인구 총괄", core_item_names=["취업자"], unit_names=["천명"], frequency="월"),
+        ],
+    )
+
+    assert results[0].candidate_tbl_id == "RAW"
+    assert results[0].route_status == "AUTO"
+
+def test_semantic_match_prefers_fewer_total_axes_when_claim_requests_only_sex() -> None:
+    result = semantic_match(
+        claim(indicator="취업자 수", unit="명", time="2024년 12월", frequency="월", dimension={"sex": "여성"}),
+        [
+            candidate("SEX", "성별 경제활동인구", core_item_ids=["T30"], core_item_names=["취업자"], unit_names=["천명"], frequency="월", dimension_ids=["B"], dimension_names=["성별"], dimension_members={"B": ["계", "여자"]}, dimension_member_codes={"B": {"계": "0", "여자": "3"}}),
+            candidate("SEX_AGE", "성 연령별 경제활동인구", core_item_ids=["T30"], core_item_names=["취업자"], unit_names=["천명"], frequency="월", dimension_ids=["B", "G"], dimension_names=["성별", "연령별"], dimension_members={"B": ["계", "여자"], "G": ["계", "15-29세"]}, dimension_member_codes={"B": {"계": "0", "여자": "3"}, "G": {"계": "00", "15-29세": "75"}}),
+        ],
+    )
+
+    assert result[0].candidate_tbl_id == "SEX"
+    assert result[0].route_status == "AUTO"

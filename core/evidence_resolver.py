@@ -181,7 +181,7 @@ def _resolve_frequency(claim_frequency: str | None, candidate_frequency: str | N
 def _frequency_label(value: str | None) -> str | None:
     normalized = (value or "").strip().casefold()
     return {
-        "y": "년", "year": "년", "yearly": "년", "annual": "년", "연": "년", "년": "년",
+        "y": "년", "year": "년", "yearly": "년", "annual": "년", "연": "년", "연간": "년", "년": "년",
         "m": "월", "month": "월", "monthly": "월", "월": "월",
         "q": "분기", "quarter": "분기", "quarterly": "분기", "분기": "분기",
     }.get(normalized, (value or "").strip() or None)
@@ -213,9 +213,12 @@ def _resolve_dimension_codes(
 
 
 def _normalize(value: str | None) -> str:
-    normalized = (value or "").replace(" ", "").replace("-", "")
-    return normalized.replace("여성", "여자").replace("남성", "남자").replace("대한민국", "전국").replace("한국", "전국")
-
+    normalized = (value or "").replace(" ", "").replace("-", "").replace("~", "")
+    return (normalized.replace("서울특별시", "서울").replace("부산광역시", "부산")
+        .replace("대구광역시", "대구").replace("인천광역시", "인천")
+        .replace("광주광역시", "광주").replace("대전광역시", "대전")
+        .replace("울산광역시", "울산").replace("여성", "여자")
+        .replace("남성", "남자").replace("대한민국", "전국").replace("한국", "전국"))
 
 def _key(org: str, table: str, item: str, obj: str | None, member: str | None, prd_se: str, prd_de: str, dimensions: dict[str, str], *, include_dimensions: bool) -> str:
     base = f"ORG={org}|TBL={table}|ITM={item}|OBJ={obj}|MEMBER={member}|PRD_SE={prd_se}|PRD_DE={prd_de}"

@@ -18,13 +18,21 @@ def semantic_match(
     minimum_score: float = 0.7,
     min_margin: float = 0.1,
 ) -> list[MatchResult]:
-    """Run Hard Guard first, score survivors, and hold ambiguous selections."""
-    scored = [(_score(claim, candidate), candidate) for candidate in candidates if apply_hard_guard(claim, candidate).passed]
-    scored.sort(key=lambda item: (-item[0], item[1].tbl_id, item[1].org_id))
-    if not scored:
+    """Run Hard Guard first; use structural simplicity only to break ties."""
+    scored = [
+        (_score(claim, candidate), candidate)
+        for candidate in candidates
+        if apply_hard_guard(claim, candidate).passed
+    ]
+    ranked = [
+        (score - 0.15 * _unrequested_axis_count(claim, candidate), score, candidate)
+        for score, candidate in scored
+    ]
+    ranked.sort(key=lambda item: (-item[0], -item[1], item[2].tbl_id, item[2].org_id))
+    if not ranked:
         return []
-    margin = scored[0][0] - scored[1][0] if len(scored) > 1 else 1.0
-    route_status, reason = _route(scored[0][0], margin, minimum_score, min_margin)
+    margin = ranked[0][0] - ranked[1][0] if len(ranked) > 1 else 1.0
+    route_status, reason = _route(ranked[0][1], margin, minimum_score, min_margin)
     return [
         MatchResult(
             candidate_tbl_id=candidate.tbl_id,
@@ -33,9 +41,8 @@ def semantic_match(
             route_status=route_status if index == 0 else "HOLD",
             reason_code=reason if index == 0 else "NON_TOP_CANDIDATE",
         )
-        for index, (score, candidate) in enumerate(scored)
+        for index, (_rank_score, score, candidate) in enumerate(ranked)
     ]
-
 
 def _score(claim: ClaimSchema, candidate: KosisCandidateSchema) -> float:
     indicators = _indicator_variants(claim)
@@ -52,7 +59,30 @@ def _score(claim: ClaimSchema, candidate: KosisCandidateSchema) -> float:
     }:
         compatibility += 0.1
     compatibility += _aggregate_scope_score(claim, candidate)
+    compatibility -= _series_transformation_penalty(claim, candidate)
+
     return 0.8 * label_score + compatibility
+
+
+def _series_transformation_penalty(claim: ClaimSchema, candidate: KosisCandidateSchema) -> float:
+    """Do not treat seasonal-adjusted and raw series as interchangeable."""
+    candidate_name = _normalize(candidate.tbl_name)
+    claim_text = _normalize(" ".join(
+        value for value in [claim.source_sentence, claim.indicator, *(claim.dimension or {}).values()] if value
+    ))
+    is_seasonally_adjusted = "계절조정" in candidate_name
+    asks_for_seasonal_adjustment = "계절조정" in claim_text or "계절조절" in claim_text
+    if is_seasonally_adjusted and not asks_for_seasonal_adjustment:
+        return 0.25
+    return 0.0
+
+def _unrequested_axis_count(claim: ClaimSchema, candidate: KosisCandidateSchema) -> int:
+    """Prefer the least-disaggregated table after Claim slots are satisfied."""
+    requested_axes = len(claim.dimension or {})
+    if claim.region and claim.region not in {"전국", "대한민국", "한국"}:
+        requested_axes += 1
+    candidate_axes = len(candidate.dimension_ids or candidate.dimension_names)
+    return max(0, candidate_axes - requested_axes)
 
 
 def _indicator_variants(claim: ClaimSchema) -> set[str]:

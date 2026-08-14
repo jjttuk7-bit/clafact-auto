@@ -7,7 +7,7 @@ from typing import Any
 from urllib.parse import urlencode
 from urllib.request import urlopen
 
-from core.kosis_openapi_transport import _decode_kosis_payload
+from core.kosis_openapi_transport import _decode_kosis_payload, create_kosis_tls_context
 
 
 def get_parameter_data(
@@ -21,6 +21,7 @@ def get_parameter_data(
     object_codes: list[str],
     *,
     retries: int = 3,
+    timeout_seconds: float = 20,
 ) -> list[dict[str, Any]]:
     """Fetch values for an explicit KOSIS coordinate; never infer dimensions."""
     if not 1 <= len(object_codes) <= 8:
@@ -36,7 +37,7 @@ def get_parameter_data(
     last: Exception | None = None
     for attempt in range(retries):
         try:
-            with urlopen(url, timeout=20) as response:
+            with urlopen(url, timeout=timeout_seconds, context=create_kosis_tls_context()) as response:
                 decoded = _decode_kosis_payload(response.read())
             if isinstance(decoded, dict) and isinstance(decoded.get("err"), str):
                 raise RuntimeError(f"KOSIS_VALUE_API_ERROR_{decoded['err']}")
