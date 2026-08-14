@@ -611,6 +611,45 @@ def test_single_claim_normalizes_selected_provider_when_actual_provider_is_unava
     assert _metric_values(app)["실제 주장 추출기"] == expected_label
 
 
+
+def test_streamlit_shows_every_split_claim_in_a_persistent_summary(monkeypatch) -> None:
+    _set_provider_environment(monkeypatch, claim_provider="openai", openai_api_key="openai-secret")
+
+    class FakeExtractor:
+        last_provider = "openai"
+
+        def extract(self, source_sentence: str, *, article_published_at=None) -> ClaimSchema:
+            value = 60 if "2023" in source_sentence else 61
+            return ClaimSchema(
+                claim_id=f"claim-{value}",
+                source_sentence=source_sentence,
+                indicator="고용률",
+                value=value,
+                unit="%",
+                time="2023년" if value == 60 else "2024년",
+                frequency="YEAR",
+                parse_status="HOLD",
+                parse_reason="SOURCE_CONTEXT_UNCLEAR",
+            )
+
+    with patch("core.claim_extractor_factory.create_claim_extractor", return_value=FakeExtractor()):
+        app = AppTest.from_file("app/streamlit_app.py", default_timeout=15)
+        app.run()
+        app.text_area[0].input("2023년 고용률은 60%였고 2024년 고용률은 61%였다.")
+        app.text_input[0].input("2025-06-26")
+        app.button[0].click()
+        app.run()
+
+    assert app.text_area[0].label == "검증할 뉴스 문장 또는 기사 본문"
+    assert any(element.value == "Claim 결과 요약" for element in app.subheader)
+    assert len(app.dataframe) >= 1
+    summary = str(app.dataframe[0].value)
+    assert "2023년 고용률은 60%" in summary
+    assert "2024년 고용률은 61%" in summary
+    assert any(element.label == "검토할 Claim 선택" for element in app.selectbox)
+    app.selectbox[0].set_value(1)
+    app.run()
+    assert _metric_values(app)["기사값"] == "61.0"
 def test_streamlit_mvp_renders_batch_upload_control() -> None:
     app = AppTest.from_file("app/streamlit_app.py")
     app.run()

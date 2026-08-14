@@ -258,10 +258,11 @@ st.caption("키 값은 표시하거나 로그에 기록하지 않습니다.")
 if is_openai_primary:
     st.caption(f"OpenAI API 키 지문: {describe_secret_fingerprint(settings.openai_api_key)}")
 
-sentence = st.text_area("검증할 뉴스 문장", placeholder="예: 2024년 전국 고용률은 70%였다.")
+sentence = st.text_area("검증할 뉴스 문장 또는 기사 본문", placeholder="예: 2024년 전국 고용률은 70%였다.")
 article_date_text = st.text_input("기사 기준일 (YYYY-MM-DD)", placeholder="예: 2025-06-26")
 
-if st.button("자동 검증 실행", type="primary") and sentence.strip():
+run_article_verification = st.button("자동 검증 실행", type="primary")
+if run_article_verification and sentence.strip():
     try:
         article_date = _parse_article_date(article_date_text)
         extractor = run_operational_stage(
@@ -278,22 +279,11 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
         )
         if not claims:
             raise ValueError("NO_NUMERICAL_CLAIM_CANDIDATE")
-        st.caption(f"Claim Split: {len(claims)}개 독립 Claim")
-        selected_claim_index = (
-            st.selectbox(
-                "검토할 Claim 선택",
-                range(len(claims)),
-                format_func=lambda index: claims[index].source_sentence,
-            )
-            if len(claims) > 1 else 0
-        )
-        claim = claims[selected_claim_index]
         actual_provider = getattr(extractor, "last_provider", None)
         actual_provider_label = {
             "openai": "OpenAI",
             "hcx": "HCX",
         }.get(actual_provider, selected_provider_display_label)
-        st.metric("실제 주장 추출기", actual_provider_label)
         resolutions_by_claim_id = {}
         if article_date and any(parsed_claim.parse_status == "AUTO_OK" for parsed_claim in claims):
             service = _official_evidence_service(settings)
@@ -302,81 +292,137 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
                     resolutions_by_claim_id[parsed_claim.claim_id] = service.resolve(
                         parsed_claim, article_date=article_date
                     )
-        ui_trace = VerificationTraceRecorder(claim.claim_id).claim_parsed()
-        requires_parse_review = claim.parse_status != "AUTO_OK"
-        resolution_ready = False
-        if requires_parse_review:
-            concept = None
-            candidates = []
-            verdict = make_verdict(claim.claim_id, claim.value, [], None).model_copy(
-                update={
-                    "route_status": "HOLD",
-                    "reason_code": claim.parse_reason or "CLAIM_PARSE_UNCERTAIN",
-                    "explanation": "Claim parsing requires human review.",
+        st.session_state["article_verification_run"] = {
+            "article_date": article_date,
+            "claims": claims,
+            "provider_label": actual_provider_label,
+            "resolutions_by_claim_id": resolutions_by_claim_id,
+        }
+        st.session_state.pop("article_claim_select", None)
+    except _InvalidArticleDateError:
+        st.error("보류: 기사 기준일은 YYYY-MM-DD 형식이어야 합니다.")
+    except OperationalStageError as error:
+        st.error(f"보류: {error.safe_message}")
+    except OfficialGatewayTransportError as error:
+        st.error(f"보류: {error}")
+    except Exception as error:
+        st.error(f"보류: {type(error).__name__}")
+
+article_verification_run = st.session_state.get("article_verification_run")
+if article_verification_run:
+    article_date = article_verification_run["article_date"]
+    claims = article_verification_run["claims"]
+    actual_provider_label = article_verification_run["provider_label"]
+    resolutions_by_claim_id = article_verification_run["resolutions_by_claim_id"]
+    st.caption(f"Claim Split: {len(claims)}개 독립 Claim")
+    st.subheader("Claim 결과 요약")
+    st.dataframe(
+        [
+            {
+                "번호": index + 1,
+                "Claim": parsed_claim.source_sentence,
+                "지표": parsed_claim.indicator or "미확정",
+                "기사값": f"{parsed_claim.value or ''} {parsed_claim.unit or ''}".strip() or "미확정",
+                "기준시점": parsed_claim.time or "미확정",
+                "파싱 상태": translate_status(parsed_claim.parse_status),
+                "판정 경로": (
+                    translate_status(resolutions_by_claim_id[parsed_claim.claim_id].verdict.route_status)
+                    if parsed_claim.claim_id in resolutions_by_claim_id
+                    else "보류"
+                ),
+            }
+            for index, parsed_claim in enumerate(claims)
+        ],
+        hide_index=True,
+        width="stretch",
+    )
+    selected_claim_index = (
+        st.selectbox(
+            "검토할 Claim 선택",
+            range(len(claims)),
+            format_func=lambda index: claims[index].source_sentence,
+            key="article_claim_select",
+        )
+        if len(claims) > 1 else 0
+    )
+    claim = claims[selected_claim_index]
+    st.metric("실제 주장 추출기", actual_provider_label)
+    ui_trace = VerificationTraceRecorder(claim.claim_id).claim_parsed()
+    requires_parse_review = claim.parse_status != "AUTO_OK"
+    resolution_ready = False
+    if requires_parse_review:
+        concept = None
+        candidates = []
+        verdict = make_verdict(claim.claim_id, claim.value, [], None).model_copy(
+            update={
+                "route_status": "HOLD",
+                "reason_code": claim.parse_reason or "CLAIM_PARSE_UNCERTAIN",
+                "explanation": "Claim parsing requires human review.",
+            }
+        )
+    elif article_date:
+        resolution = resolutions_by_claim_id[claim.claim_id]
+        concept = resolution.concept
+        candidates = resolution.candidates
+        verdict = resolution.verdict
+        resolution_ready = True
+    else:
+        concept = normalize_concept(claim, load_standard_concepts(STANDARD_PATH))
+        candidates = []
+        verdict = make_verdict(claim.claim_id, claim.value, [], None)
+    requires_semantic_review = concept is not None and concept.status != "MATCHED"
+    st.subheader("기사 주장")
+    claim_columns = st.columns(4)
+    claim_columns[0].metric("지표", claim.indicator or "미확정")
+    claim_columns[1].metric("기사값", f"{claim.value or ''} {claim.unit or ''}".strip() or "미확정")
+    claim_columns[2].metric("기준시점", claim.time or "미확정")
+    claim_columns[3].metric("파싱 상태", translate_status(claim.parse_status))
+    with st.expander("구조화된 주장 상세"):
+        st.json({"claim": claim.model_dump(), "concept": concept.model_dump() if concept else None})
+    if not requires_parse_review:
+        st.subheader("KOSIS 후보")
+        st.dataframe(
+            [{"표 ID": item.tbl_id, "통계표": item.tbl_name, "단위": " | ".join(item.unit_names), "주기": item.frequency} for item in candidates]
+        )
+
+    if resolution_ready and resolution.catalog_diagnostics:
+        with st.expander("KOSIS Catalog 진단 (안전 정보)"):
+            st.json(
+                {
+                    "search": resolution.catalog_diagnostics,
+                    "candidates": [
+                        {
+                            "org_id": item.org_id,
+                            "tbl_id": item.tbl_id,
+                            "metadata_status": item.metadata_status,
+                            "hard_guard_reject_codes": apply_hard_guard(claim, item).reject_codes,
+                        }
+                        for item in candidates[:20]
+                    ],
                 }
             )
-        elif article_date:
-            resolution = resolutions_by_claim_id[claim.claim_id]
-            concept = resolution.concept
-            candidates = resolution.candidates
-            verdict = resolution.verdict
-            resolution_ready = True
+    official_value = None
+    evidence_cells = []
+    if not article_date and not requires_parse_review:
+        st.warning("보류: 기사 기준일이 없어 사후 개정값을 차단할 수 없습니다.")
+    elif resolution_ready:
+        evidence_cells = verdict.evidence_cells
+        if evidence_cells:
+            st.subheader("근거 좌표")
+            st.json([cell.model_dump() for cell in evidence_cells])
+        if verdict.route_status != "AUTO":
+            st.warning(f"보류: {verdict.reason_code}")
         else:
-            concept = normalize_concept(claim, load_standard_concepts(STANDARD_PATH))
-            candidates = []
-            verdict = make_verdict(claim.claim_id, claim.value, [], None)
-        requires_semantic_review = concept is not None and concept.status != "MATCHED"
-        st.subheader("기사 주장")
-        claim_columns = st.columns(4)
-        claim_columns[0].metric("지표", claim.indicator or "미확정")
-        claim_columns[1].metric("기사값", f"{claim.value or ''} {claim.unit or ''}".strip() or "미확정")
-        claim_columns[2].metric("기준시점", claim.time or "미확정")
-        claim_columns[3].metric("파싱 상태", translate_status(claim.parse_status))
-        with st.expander("구조화된 주장 상세"):
-            st.json({"claim": claim.model_dump(), "concept": concept.model_dump() if concept else None})
-        if not requires_parse_review:
-            st.subheader("KOSIS 후보")
-            st.dataframe(
-                [{"표 ID": item.tbl_id, "통계표": item.tbl_name, "단위": " | ".join(item.unit_names), "주기": item.frequency} for item in candidates]
-            )
-
-        if resolution_ready and resolution.catalog_diagnostics:
-            with st.expander("KOSIS Catalog 진단 (안전 정보)"):
-                st.json(
-                    {
-                        "search": resolution.catalog_diagnostics,
-                        "candidates": [
-                            {
-                                "org_id": item.org_id,
-                                "tbl_id": item.tbl_id,
-                                "metadata_status": item.metadata_status,
-                                "hard_guard_reject_codes": apply_hard_guard(claim, item).reject_codes,
-                            }
-                            for item in candidates[:20]
-                        ],
-                    }
-                )
-        official_value = None
-        evidence_cells = []
-        if not article_date and not requires_parse_review:
-            st.warning("보류: 기사 기준일이 없어 사후 개정값을 차단할 수 없습니다.")
-        elif resolution_ready:
-            evidence_cells = verdict.evidence_cells
-            if evidence_cells:
-                st.subheader("근거 좌표")
-                st.json([cell.model_dump() for cell in evidence_cells])
-            if verdict.route_status != "AUTO":
-                st.warning(f"보류: {verdict.reason_code}")
-            else:
-                st.success(f"{translate_status(verdict.verdict)}: KOSIS 공식값 {verdict.evidence_values[0]}")
-        if verdict.execution_trace is None:
-            verdict = attach_trace(verdict, ui_trace.build())
-        st.subheader("최종 판정")
-        verdict_columns = st.columns(4)
-        verdict_columns[0].metric("판정", translate_status(verdict.verdict))
-        verdict_columns[1].metric("경로", translate_status(verdict.route_status))
-        verdict_columns[2].metric("기사값", verdict.claim_value if verdict.claim_value is not None else "-")
-        verdict_columns[3].metric("KOSIS 공식값", verdict.calculated_value if verdict.calculated_value is not None else "-")
+            st.success(f"{translate_status(verdict.verdict)}: KOSIS 공식값 {verdict.evidence_values[0]}")
+    if verdict.execution_trace is None:
+        verdict = attach_trace(verdict, ui_trace.build())
+    st.subheader("최종 판정")
+    verdict_columns = st.columns(4)
+    verdict_columns[0].metric("판정", translate_status(verdict.verdict))
+    verdict_columns[1].metric("경로", translate_status(verdict.route_status))
+    verdict_columns[2].metric("기사값", verdict.claim_value if verdict.claim_value is not None else "-")
+    verdict_columns[3].metric("KOSIS 공식값", verdict.calculated_value if verdict.calculated_value is not None else "-")
+    try:
         verdict_explanation = run_operational_stage(
             "VERDICT_EXPLANATION",
             lambda: explain_verdict(
@@ -389,6 +435,9 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
                 model=settings.openai_model,
             ),
         )
+    except OperationalStageError as error:
+        st.error(f"보류: {error.safe_message}")
+    else:
         st.subheader("판정 설명")
         explanation_source = "AI 자연어 설명" if verdict_explanation.source == "LLM" else "규칙 기반 설명"
         st.caption(f"설명 방식: {explanation_source}")
@@ -434,14 +483,6 @@ if st.button("자동 검증 실행", type="primary") and sentence.strip():
             file_name=f"clafact_claim_{verdict.claim_id}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
-    except _InvalidArticleDateError:
-        st.error("보류: 기사 기준일은 YYYY-MM-DD 형식이어야 합니다.")
-    except OperationalStageError as error:
-        st.error(f"보류: {error.safe_message}")
-    except OfficialGatewayTransportError as error:
-        st.error(f"보류: {error}")
-    except Exception as error:
-        st.error(f"보류: {type(error).__name__}")
 st.divider()
 st.subheader("크롤링 뉴스 배치 검증")
 st.caption("기사형: article_id, published_at, body · 문장형: article_id, sentence · 선택 열: title, source_url · 업로드 파일은 저장하지 않습니다.")
