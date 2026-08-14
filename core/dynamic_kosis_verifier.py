@@ -329,8 +329,27 @@ def _hold(
     )
 
 
+def _percent_reporting_tolerance(claim: ClaimSchema) -> float | None:
+    """Return half the smallest percentage unit explicitly reported in the article."""
+    if claim.value is None or "%" not in (claim.unit or ""):
+        return None
+    decimal_places: list[int] = []
+    pattern = re.compile(
+        r"(?P<number>[+-]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.(?P<decimals>\d+))?)\s*[％%]"
+    )
+    for match in pattern.finditer(claim.source_sentence):
+        reported = float(match.group("number").replace(",", ""))
+        if abs(abs(reported) - abs(claim.value)) <= max(1e-12, abs(claim.value) * 1e-9):
+            decimal_places.append(len(match.group("decimals") or ""))
+    if not decimal_places:
+        return None
+    return 0.5 * (10 ** -max(decimal_places))
+
+
 def _claim_tolerance(claim: ClaimSchema) -> float:
     """Accept only the explicit reporting precision present in the article text."""
+    if percent_tolerance := _percent_reporting_tolerance(claim):
+        return percent_tolerance
     if claim.unit != "명":
         return 0.01
     source = claim.source_sentence
