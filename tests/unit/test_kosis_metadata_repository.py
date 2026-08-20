@@ -204,3 +204,22 @@ def test_repository_rejects_snapshot_internal_version_mismatch(tmp_path: Path) -
 
     with pytest.raises(RuntimeError, match="KOSIS_METADATA_SNAPSHOT_VERSION_MISMATCH"):
         repository("secret", "360", "DT_EXPORT")
+
+def test_repository_finds_official_table_identity_by_member_code(tmp_path: Path) -> None:
+    from core.kosis_metadata_repository import KosisMetadataRepository
+
+    snapshot_path = tmp_path / "metadata.json"
+    snapshot_path.write_text(
+        json.dumps({
+            "dataset_version": "v1", "metadata": {
+                "101|DT_CPI|ITM": [
+                    {"TBL_ID": "DT_CPI", "OBJ_ID": "I", "ITM_ID": "A02A01701", "ITM_NM": "배추"}
+                ]
+            }
+        }),
+        encoding="utf-8",
+    )
+
+    repository = KosisMetadataRepository([snapshot_path])
+
+    assert repository.table_identities_for_member_code("A02A01701") == [("101", "DT_CPI")]

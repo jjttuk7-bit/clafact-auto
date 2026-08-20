@@ -356,3 +356,44 @@ def test_hcx_extractor_does_not_convert_required_claim_id_to_none(monkeypatch: p
 
     assert extracted.claim_id == ""
     assert parsed.claim_id.startswith("claim_")
+
+def test_parse_claim_backfills_explicit_share_comparison_before_contract_check() -> None:
+    from core.claim_parser import parse_claim
+
+    class Extractor:
+        def extract(self, source_sentence, *, article_published_at=None):
+            return ClaimSchema(
+                claim_id="temporary", source_sentence=source_sentence, indicator="취업자 수",
+                value=40, unit="%", time="2024년 12월", frequency="MONTHLY",
+                calculation="SHARE", parse_status="AUTO_OK",
+            )
+
+    result = parse_claim("2024년 12월 여성 취업자 수는 전체 취업자 수의 40%였다.", Extractor())
+
+    assert result.comparison == {
+        "type": "SHARE_OF_TOTAL",
+        "numerator": "여성 취업자 수",
+        "denominator": "전체 취업자 수",
+        "denominator_member": "전체",
+    }
+    assert result.parse_status == "AUTO_OK"
+    assert result.parse_reason is None
+def test_parse_claim_normalizes_explicit_share_type_from_structured_output() -> None:
+    class Extractor:
+        def extract(self, source_sentence, *, article_published_at=None):
+            return ClaimSchema(
+                claim_id="temporary", source_sentence=source_sentence, indicator="취업자 수",
+                value=40, unit="%", time="2024년 12월", frequency="MONTHLY",
+                dimension={"sex": "여성"}, calculation="SHARE",
+                comparison={
+                    "type": "SHARE", "numerator": "여성 취업자 수",
+                    "denominator": "전체 취업자 수", "denominator_member": "전체",
+                },
+                parse_status="AUTO_OK",
+            )
+
+    result = parse_claim("2024년 12월 여성 취업자 수는 전체 취업자 수의 40%였다.", Extractor())
+
+    assert result.parse_status == "AUTO_OK"
+    assert result.comparison is not None
+    assert result.comparison["type"] == "SHARE_OF_TOTAL"

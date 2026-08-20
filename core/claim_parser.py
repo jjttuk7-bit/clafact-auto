@@ -126,6 +126,8 @@ def _with_explicit_comparison(claim: ClaimSchema, source_sentence: str) -> Claim
     if claim.comparison is not None:
         return claim
     compact_source = "".join(source_sentence.split())
+    if re.search(r"전체.+의\s*[-+]?\d+(?:\.\d+)?\s*%", source_sentence):
+        return claim.model_copy(update={"comparison": {"type": "SHARE_OF_TOTAL"}})
     if "전년동월대비" not in compact_source:
         return claim
     return claim.model_copy(

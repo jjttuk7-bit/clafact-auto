@@ -334,7 +334,7 @@ if article_verification_run:
             for index, parsed_claim in enumerate(claims)
         ],
         hide_index=True,
-        width="stretch",
+        use_container_width=True,
     )
     selected_claim_index = (
         st.selectbox(

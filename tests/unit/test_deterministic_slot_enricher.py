@@ -192,3 +192,32 @@ def test_apply_explicit_slots_keeps_existing_comparison_for_directional_wording(
     assert enriched.parse_status == "AUTO_OK"
     assert enriched.comparison == {"type": "YEAR_OVER_YEAR"}
     assert enriched.condition == {"direction": "INCREASE"}
+
+def test_apply_explicit_slots_splits_explicit_sex_and_age_from_population_into_dimension() -> None:
+    claim = ClaimSchema(
+        claim_id="C1",
+        source_sentence="2024년 12월 서울 여성 15~29세 취업자 수는 10만 명이었다.",
+        indicator="취업자 수",
+        value=100_000,
+        unit="명",
+        time="2024년 12월",
+        frequency="MONTHLY",
+        region="서울",
+        population="여성 15~29세",
+        parse_status="AUTO_OK",
+    )
+
+    enriched = apply_explicit_slots(claim)
+
+    assert enriched.dimension == {"sex": "여성", "age": "15~29세"}
+
+def test_infers_share_of_total_from_explicit_total_possessive_phrase() -> None:
+    result = infer_explicit_slots("2024년 12월 여성 취업자 수는 전체 취업자 수의 40%였다.")
+
+    assert result.comparison == {
+        "type": "SHARE_OF_TOTAL",
+        "numerator": "여성 취업자 수",
+        "denominator": "전체 취업자 수",
+        "denominator_member": "전체",
+    }
+    assert result.calculation == "SHARE"

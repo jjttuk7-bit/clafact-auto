@@ -37,8 +37,8 @@ def build_calculation_plan(
         if operator not in {"GT", "GTE", "LT", "LTE"}:
             return None
         return CalculationPlan(calculation_type="THRESHOLD", required_cells=[current], literal_values=[threshold], operator=operator)
-    if calculation in {"GROWTH_RATE", "DIFFERENCE"} and comparison and _is_year_over_year(comparison):
-        previous_period = _previous_year_same_period(current.prd_de)
+    if calculation in {"GROWTH_RATE", "DIFFERENCE"} and comparison:
+        previous_period = _previous_comparison_period(current.prd_de, comparison)
         if previous_period is None:
             return None
         prior = current.model_copy(update={"prd_de": previous_period, "canonical_key": _with_period(current.canonical_key, current.prd_de, previous_period)})
@@ -93,6 +93,19 @@ def _is_total_member(member: str) -> bool:
 def _is_year_over_year(comparison: dict[str, str]) -> bool:
     values = {str(value).replace(" ", "").replace("_", "").upper() for value in comparison.values()}
     return bool(values & {"YEAROVERYEAR", "YEAR_OVER_YEAR", "YEAROVERYEAR", "전년동월대비", "전년대비", "전년"})
+def _previous_comparison_period(period: str, comparison: dict[str, str]) -> str | None:
+    if _is_year_over_year(comparison):
+        return _previous_year_same_period(period)
+    values = {str(value).replace(" ", "").replace("_", "").upper() for value in comparison.values()}
+    if not values.intersection({"QUARTEROVERQUARTER", "QUARTER_OVER_QUARTER", "전분기대비", "전분기비", "전분기"}):
+        return None
+    quarterly = re.fullmatch(r"(\d{4})-Q([1-4])", period, re.IGNORECASE)
+    if quarterly is None:
+        return None
+    year, quarter = int(quarterly.group(1)), int(quarterly.group(2))
+    previous_year, previous_quarter = (year - 1, 4) if quarter == 1 else (year, quarter - 1)
+    return f"{previous_year:04d}-Q{previous_quarter}"
+
 def _previous_year_same_period(period: str) -> str | None:
     quarterly = re.fullmatch(r"(\d{4})-Q([1-4])", period, re.IGNORECASE)
     if quarterly:

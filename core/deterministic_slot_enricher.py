@@ -58,9 +58,9 @@ def infer_explicit_slots(source_sentence: str) -> ExplicitSlotValues:
             calculation="GROWTH_RATE",
             condition=condition,
         )
-    if any(signal in source_sentence for signal in _SHARE_SIGNALS):
+    if any(signal in source_sentence for signal in _SHARE_SIGNALS) or re.search(r"전체.+의\s*[-+]?\d+(?:\.\d+)?\s*%", source_sentence):
         return ExplicitSlotValues(
-            comparison={"type": "SHARE_OF_TOTAL"},
+            comparison=_explicit_share_comparison(source_sentence),
             calculation="SHARE",
             condition=condition,
         )
@@ -68,6 +68,25 @@ def infer_explicit_slots(source_sentence: str) -> ExplicitSlotValues:
         return ExplicitSlotValues(condition=None, reason_code="AMBIGUOUS_COMPARISON")
     return ExplicitSlotValues(calculation="DIRECT_VALUE", condition=condition)
 
+
+def _explicit_share_comparison(source_sentence: str) -> dict[str, str]:
+    """Return share operands only when the sentence explicitly names both sides."""
+    match = re.search(
+        r"(?P<numerator>.+?)는\s*(?P<denominator>전체\s*.+?)의\s*[-+]?\d+(?:\.\d+)?\s*%",
+        source_sentence,
+    )
+    if match is None:
+        return {"type": "SHARE_OF_TOTAL"}
+    numerator = re.sub(r"^\s*\d{4}년(?:\s*\d{1,2}월)?\s*", "", match["numerator"]).strip()
+    denominator = match["denominator"].strip()
+    if not numerator or not denominator:
+        return {"type": "SHARE_OF_TOTAL"}
+    return {
+        "type": "SHARE_OF_TOTAL",
+        "numerator": numerator,
+        "denominator": denominator,
+        "denominator_member": "전체",
+    }
 
 def _condition(source_sentence: str) -> dict[str, str] | None:
     if "계절조정" in source_sentence:
@@ -91,6 +110,20 @@ def _comparison_types(source_sentence: str) -> set[str]:
         types.add("QUARTER_OVER_QUARTER")
     return types
 
+def _with_explicit_dimension_members(claim: ClaimSchema) -> dict[str, str]:
+    """Move explicitly named sex/age values into their dedicated 12-slot axes."""
+    dimension = dict(claim.dimension or {})
+    source = f"{claim.population or ''} {claim.source_sentence}"
+    if "sex" not in dimension:
+        if "여성" in source or "여자" in source:
+            dimension["sex"] = "여성"
+        elif "남성" in source or "남자" in source:
+            dimension["sex"] = "남성"
+    if "age" not in dimension:
+        match = re.search(r"(?P<start>\d{1,2})\s*(?:~|[-–])\s*(?P<end>\d{1,2})\s*세", source)
+        if match:
+            dimension["age"] = f"{match.group('start')}~{match.group('end')}세"
+    return dimension
 def _direction_matches(source_sentence: str) -> list[tuple[int, str]]:
     patterns = (
         ("INCREASE", r"\uc99d\uac00(?:\ud588\ub2e4|\ud588[\uace0\uc73c\uba70]*|\ud55c|\ud574)|\uc0c1\uc2b9(?:\ud588\ub2e4|\ud588[\uace0\uc73c\uba70]*|\ud55c|\ud574)|\ub298\uc5c8|\ub298\uc5b4|\uc62c\ub790|\ubd88\uc5b4"),
@@ -125,11 +158,18 @@ def apply_explicit_slots(claim: ClaimSchema) -> ClaimSchema:
     condition = dict(claim.condition or {})
     for key, value in (explicit.comparison or {}).items():
         comparison.setdefault(key, value)
+    if (
+        (explicit.comparison or {}).get("type") == "SHARE_OF_TOTAL"
+        and str(comparison.get("type", "")).strip().upper() == "SHARE"
+    ):
+        comparison["type"] = "SHARE_OF_TOTAL"
     for key, value in (explicit.condition or {}).items():
         condition.setdefault(key, value)
     if (direction := _direction(claim.source_sentence)) is not None:
         condition.setdefault("direction", direction)
+    dimension = _with_explicit_dimension_members(claim)
     return claim.model_copy(update={
+        "dimension": dimension or claim.dimension,
         "comparison": comparison or claim.comparison,
         "calculation": claim.calculation or explicit.calculation,
         "condition": condition or claim.condition,
