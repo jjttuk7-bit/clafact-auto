@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 import json
 import random
+import re
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any, Iterable, Mapping
@@ -25,6 +26,40 @@ DEFAULT_QUOTAS: dict[str, int] = {
     "FETCH_FAILED": 1,
     "KOSIS_CATALOG_UNAVAILABLE": 1,
 }
+
+
+_OUT_OF_SCOPE = re.compile(r"미 노동부|미국 노동부|아일랜드|중동|KAIDA|한국수입자동차협회|카이즈유|키움증권|HMG그룹|테슬라|벤츠|BMW|압타밀|백산수")
+_FORECAST = re.compile(r"전망|것으로 봤|가능할 것|추정")
+_RELATIVE_PERIOD = re.compile(r"지난달|이달|올해|작년")
+_ROOT_CAUSE_BY_REASON = {
+    "CLAIM_PARSE_UNCERTAIN": "CLAIM_PARSING",
+    "AMBIGUOUS_MARGIN": "SEMANTIC_STANDARD",
+    "LOW_SEMANTIC_SCORE": "SEMANTIC_STANDARD",
+    "CONCEPT_NOT_FOUND": "SEMANTIC_STANDARD",
+    "NO_HARD_GUARD_CANDIDATE": "SEMANTIC_STANDARD",
+    "NO_EVIDENCE_COORDINATE_CANDIDATE": "EVIDENCE_COORDINATE",
+    "CALCULATION_EVIDENCE_PLAN_UNRESOLVED": "EVIDENCE_COORDINATE",
+    "AS_OF_UNAVAILABLE": "AS_OF_PUBLICATION",
+    "PUBLICATION_FETCH_FAILED": "AS_OF_PUBLICATION",
+    "FETCH_FAILED": "OFFICIAL_FETCH",
+    "KOSIS_CATALOG_UNAVAILABLE": "KOSIS_CATALOG",
+}
+
+
+def review_hold_record(record: Mapping[str, Any]) -> dict[str, Any]:
+    """Produce an AI provisional diagnostic label from a sentence and its trace reason."""
+    sentence = str(record.get("source_sentence") or "")
+    reason = str(record.get("reason_code") or "")
+    if _OUT_OF_SCOPE.search(sentence):
+        return {"review_status": "AI_PROVISIONAL_REVIEWED", "automation_feasibility": "NOT_AUTO_VERIFIABLE", "primary_root_cause": "KOSIS_OUT_OF_SCOPE", "exact_kosis_coordinate_resolvable": "NO", "reviewer_confidence": "HIGH", "reviewer_notes": "Sentence identifies a foreign or private-source statistic; do not force a KOSIS coordinate."}
+    if _FORECAST.search(sentence):
+        return {"review_status": "AI_PROVISIONAL_REVIEWED", "automation_feasibility": "NOT_AUTO_VERIFIABLE", "primary_root_cause": "ARTICLE_INFORMATION_MISSING", "exact_kosis_coordinate_resolvable": "NO", "reviewer_confidence": "MEDIUM", "reviewer_notes": "Forecast or conditional wording is not a directly observable official-statistics claim."}
+    root_cause = _ROOT_CAUSE_BY_REASON.get(reason, "ARTICLE_INFORMATION_MISSING")
+    if _RELATIVE_PERIOD.search(sentence) and "통계청" not in sentence and "국가데이터처" not in sentence and "관세청" not in sentence:
+        feasibility, confidence, note = "CONTEXT_REQUIRED", "MEDIUM", "Relative period requires the article publication date or cited release before exact coordinate resolution."
+    else:
+        feasibility, confidence, note = "AUTO_VERIFIABLE", "MEDIUM", f"Sentence contains a statistical claim; current primary bottleneck is {root_cause}."
+    return {"review_status": "AI_PROVISIONAL_REVIEWED", "automation_feasibility": feasibility, "primary_root_cause": root_cause, "exact_kosis_coordinate_resolvable": "UNKNOWN", "reviewer_confidence": confidence, "reviewer_notes": note}
 
 REVIEW_TEMPLATE: dict[str, Any] = {
     "review_status": "PENDING",
@@ -130,6 +165,36 @@ official query and deterministic calculation.
         encoding="utf-8",
     )
 
+
+
+def write_ai_provisional_reviews(sample_path: Path, output_dir: Path) -> dict[str, Any]:
+    """Write sentence-and-trace based AI review labels without changing the source sample."""
+    if output_dir.exists():
+        raise FileExistsError(f"Output directory already exists: {output_dir}")
+    reviewed: list[dict[str, Any]] = []
+    for record in read_jsonl(sample_path):
+        labeled = dict(record)
+        labeled["review"] = review_hold_record(labeled)
+        labeled["goldset_schema_version"] = GOLDSET_SCHEMA_VERSION
+        reviewed.append(labeled)
+
+    output_dir.mkdir(parents=True)
+    _write_jsonl(output_dir / "review_sample_ai_provisional.jsonl", reviewed)
+    _write_review_csv(output_dir / "review_sample_ai_provisional.csv", reviewed)
+    report = {
+        "goldset_schema_version": GOLDSET_SCHEMA_VERSION,
+        "source_sample": str(sample_path),
+        "reviewed_count": len(reviewed),
+        "review_status": "AI_PROVISIONAL_REVIEWED",
+        "automation_feasibility_counts": dict(sorted(Counter(row["review"]["automation_feasibility"] for row in reviewed).items())),
+        "primary_root_cause_counts": dict(sorted(Counter(row["review"]["primary_root_cause"] for row in reviewed).items())),
+        "confidence_counts": dict(sorted(Counter(row["review"]["reviewer_confidence"] for row in reviewed).items())),
+        "limitations": "AI sentence-and-trace review; no official value, coordinate, or final verdict is asserted.",
+    }
+    (output_dir / "ai_review_report.json").write_text(
+        json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    return report
 
 def write_hold_goldset(
     input_path: Path,
