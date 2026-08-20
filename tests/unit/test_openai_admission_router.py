@@ -88,3 +88,18 @@ def test_router_demotes_model_eligible_output_when_required_slot_is_missing() ->
 
     assert decision.label == "CONTEXT_REQUIRED"
     assert decision.reason_code == "MISSING_SLOT_CONTEXT"
+
+
+def test_request_tells_router_not_to_split_one_metric_from_its_comparison_baseline() -> None:
+    instructions = build_openai_admission_request(claim(), "gpt-test")["instructions"]
+
+    assert "independent verifiable assertions" in instructions
+    assert "comparison baseline" in instructions
+
+
+def test_request_can_include_only_bounded_admission_context() -> None:
+    request = build_openai_admission_request(
+        claim(), "gpt-test", article_context="제목: 고용 동향\n주변부: 지난달 취업자는 100명이었다."
+    )
+
+    assert json.loads(request["input"])["article_context"].startswith("제목:")

@@ -16,6 +16,7 @@ from schemas.claim_registry import ClaimRegistryRecord
 ContextReparser = Callable[[ClaimRegistryRecord, ClaimSchema], ClaimSchema]
 ChildParser = Callable[[ClaimRegistryRecord, ClaimSchema, str, str], ClaimSchema]
 AdmissionRouter = Callable[[ClaimSchema], AdmissionDecision]
+ContextualAdmissionRouter = Callable[[ClaimRegistryRecord, ClaimSchema], AdmissionDecision]
 
 
 def run_claim_admission_e2e_batch(
@@ -25,6 +26,7 @@ def run_claim_admission_e2e_batch(
     context_reparser: ContextReparser | None = None,
     child_parser: ChildParser | None = None,
     admission_router: AdmissionRouter | None = None,
+    contextual_admission_router: ContextualAdmissionRouter | None = None,
 ) -> list[dict[str, Any]]:
     """Route Registry records before calling the existing official batch runner.
 
@@ -40,7 +42,10 @@ def run_claim_admission_e2e_batch(
                 lambda claim: context_reparser(source_record, claim)
                 if context_reparser else None
             ),
-            admission_router=admission_router or route_claim_admission,
+            admission_router=(
+                (lambda claim: contextual_admission_router(source_record, claim))
+                if contextual_admission_router else admission_router or route_claim_admission
+            ),
             child_parser=(
                 lambda parent, text, child_id: child_parser(source_record, parent, text, child_id)
                 if child_parser else None

@@ -33,6 +33,7 @@ _INSTRUCTIONS = (
     "independent claims; NON_KOSIS_OR_PRIVATE for foreign, company, private, or "
     "non-KOSIS statistics; FORECAST_OPINION_UNVERIFIABLE for forecast/evaluation; "
     "NOT_A_VERIFIABLE_CLAIM for policy, definition, or non-factual numeric prose. "
+    "Use MULTI_CLAIM_SPLIT_REQUIRED only for independent verifiable assertions; do not split a simple comparison baseline from its metric. "
     "Never fetch, infer, or create KOSIS values, dates, evidence, or verdicts."
 )
 
@@ -47,7 +48,9 @@ class _AdmissionPayload(BaseModel):
         return AdmissionDecision(label=self.label, reason_code=self.reason_code)
 
 
-def build_openai_admission_request(claim: ClaimSchema, model: str) -> dict[str, object]:
+def build_openai_admission_request(
+    claim: ClaimSchema, model: str, *, article_context: str | None = None
+) -> dict[str, object]:
     """Build a narrow request containing source text and already-extracted slots only."""
     return {
         "model": model,
@@ -55,6 +58,7 @@ def build_openai_admission_request(claim: ClaimSchema, model: str) -> dict[str, 
         "input": json.dumps({
             "source_sentence": claim.source_sentence,
             "slots": claim.model_dump(exclude={"claim_id", "source_sentence"}, mode="json"),
+            "article_context": article_context,
         }, ensure_ascii=False),
         "tools": [_tool_definition()],
         "tool_choice": {"type": "function", "name": ADMISSION_FUNCTION_NAME},
@@ -85,12 +89,12 @@ class OpenAIAdmissionRouter:
         self.model = model
         self._transport = transport or urlopen
 
-    def route(self, claim: ClaimSchema) -> AdmissionDecision:
+    def route(self, claim: ClaimSchema, *, article_context: str | None = None) -> AdmissionDecision:
         if not self.api_key:
             raise OpenAIConfigurationError("OPENAI_API_KEY_NOT_CONFIGURED")
         request = Request(
             OPENAI_RESPONSES_URL,
-            data=json.dumps(build_openai_admission_request(claim, self.model)).encode(),
+            data=json.dumps(build_openai_admission_request(claim, self.model, article_context=article_context)).encode(),
             headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
             method="POST",
         )

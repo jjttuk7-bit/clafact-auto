@@ -13,7 +13,7 @@ from core.claim_admission_e2e_batch_runner import run_claim_admission_e2e_batch
 from core.claim_extractor_factory import create_claim_extractor
 from core.claim_parser import parse_claim
 from core.claim_registry_loader import load_claim_registry
-from core.context_claim_reparse_batch import reparse_records_with_limited_context
+from core.context_claim_reparse_batch import _limited_context, reparse_records_with_limited_context
 from core.official_engine_factory import OfficialEnginePaths, build_official_evidence_service
 from core.openai_admission_router import OpenAIAdmissionRouter
 from core.openai_function_claim_extractor import OpenAIClaimExtractorError
@@ -65,9 +65,16 @@ def main() -> None:
     extractor = create_claim_extractor(settings)
     admission_model = OpenAIAdmissionRouter(api_key=settings.openai_api_key, model=settings.openai_model)
 
-    def admission_router(claim: ClaimSchema) -> AdmissionDecision:
+    def contextual_admission_router(
+        record: ClaimRegistryRecord, claim: ClaimSchema
+    ) -> AdmissionDecision:
         try:
-            return admission_model.route(claim)
+            return admission_model.route(
+                claim,
+                article_context=_limited_context(
+                    contexts.get(record.article_id), claim.source_sentence, 500
+                ),
+            )
         except OpenAIClaimExtractorError:
             return AdmissionDecision(
                 label="CONTEXT_REQUIRED",
@@ -100,7 +107,7 @@ def main() -> None:
         records, service,
         context_reparser=context_reparser if contexts else None,
         child_parser=child_parser,
-        admission_router=admission_router,
+        contextual_admission_router=contextual_admission_router,
     )
     args.output_dir.mkdir(parents=True, exist_ok=True)
     (args.output_dir / "admission_e2e_results.jsonl").write_text(
