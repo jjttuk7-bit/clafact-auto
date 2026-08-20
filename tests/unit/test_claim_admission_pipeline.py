@@ -91,3 +91,22 @@ def test_pipeline_uses_injected_admission_router() -> None:
 
     assert execution.result.decision.reason_code == "GOLDSET_CLASSIFIER"
     assert execution.official_result is None
+
+def test_structural_multi_guard_prevents_an_injected_eligible_router_from_calling_kosis() -> None:
+    from schemas.claim_admission import AdmissionDecision
+
+    official_calls: list[str] = []
+    pipeline = ClaimAdmissionPipeline(
+        official_resolver=lambda candidate: official_calls.append(candidate.claim_id) or {"ok": True},
+        admission_router=lambda _candidate: AdmissionDecision(
+            label="KOSIS_PIPELINE_ELIGIBLE", reason_code="MODEL_ELIGIBLE"
+        ),
+    )
+
+    execution = pipeline.process(claim(
+        "지난달 제조업 취업자는 439만7000명으로 전년 동월 대비 12만4000명 줄었다."
+    ))[0]
+
+    assert official_calls == []
+    assert execution.result.decision.label == "MULTI_CLAIM_SPLIT_REQUIRED"
+    assert execution.result.decision.reason_code == "STRUCTURAL_MULTI_CLAIM"

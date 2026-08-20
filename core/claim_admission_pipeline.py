@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from core.claim_admission_router import route_claim_admission
-from core.claim_splitter import split_complex_claim
+from core.claim_splitter import detect_structural_multi_claim, split_complex_claim
 from schemas.claim import ClaimSchema
 from schemas.claim_admission import AdmissionDecision, AdmissionEvent, AdmissionRouteResult
 
@@ -55,7 +55,7 @@ class ClaimAdmissionPipeline:
         split_attempted: bool,
         events: list[AdmissionEvent],
     ) -> list[ClaimAdmissionExecution]:
-        decision = self._admission_router(claim)
+        decision = _structural_split_guard(claim) or self._admission_router(claim)
         admitted_events = [*events, _event("CLAIM_ADMISSION", claim, decision)]
         if decision.label == "KOSIS_PIPELINE_ELIGIBLE":
             official_result = self._official_resolver(claim)
@@ -101,6 +101,14 @@ class ClaimAdmissionPipeline:
             official_result=None,
         )]
 
+
+def _structural_split_guard(claim: ClaimSchema) -> AdmissionDecision | None:
+    """Block KOSIS admission before an injected model can choose ELIGIBLE."""
+    if not detect_structural_multi_claim(claim.source_sentence):
+        return None
+    return AdmissionDecision(
+        label="MULTI_CLAIM_SPLIT_REQUIRED", reason_code="STRUCTURAL_MULTI_CLAIM"
+    )
 
 def _event(
     stage: str, claim: ClaimSchema, decision: AdmissionDecision, *, detail: str | None = None

@@ -95,3 +95,11 @@ def test_korean_particle_does_not_turn_one_statistic_into_multi_claim() -> None:
 
     assert decision.label == "CONTEXT_REQUIRED"
     assert decision.reason_code == "MISSING_TIME_CONTEXT"
+
+def test_routes_current_value_and_change_to_structural_claim_split() -> None:
+    decision = route_claim_admission(claim(
+        "지난달 제조업 취업자는 439만7000명으로 전년 동월 대비 12만4000명 줄었다."
+    ))
+
+    assert decision.label == "MULTI_CLAIM_SPLIT_REQUIRED"
+    assert decision.reason_code == "STRUCTURAL_MULTI_CLAIM"

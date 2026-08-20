@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 
+from core.claim_splitter import detect_structural_multi_claim
 from schemas.claim import ClaimSchema
 from schemas.claim_admission import AdmissionDecision
 
@@ -31,6 +32,10 @@ def route_claim_admission(claim: ClaimSchema) -> AdmissionDecision:
     if _NON_KOSIS.search(sentence):
         return AdmissionDecision(
             label="NON_KOSIS_OR_PRIVATE", reason_code="PRIVATE_OR_COMPANY_SOURCE"
+        )
+    if detect_structural_multi_claim(sentence):
+        return AdmissionDecision(
+            label="MULTI_CLAIM_SPLIT_REQUIRED", reason_code="STRUCTURAL_MULTI_CLAIM"
         )
     if _is_multi_numeric_claim(sentence):
         return AdmissionDecision(

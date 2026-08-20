@@ -1,4 +1,7 @@
-from core.claim_splitter import split_complex_claim
+import json
+from pathlib import Path
+
+from core.claim_splitter import detect_structural_multi_claim, split_complex_claim
 
 
 def test_keeps_single_numeric_claim_as_one_sentence() -> None:
@@ -23,3 +26,18 @@ def test_does_not_split_a_single_quantity_with_a_comma() -> None:
     sentence = "예산은 1,000억원이었다."
 
     assert split_complex_claim(sentence) == [sentence]
+
+
+
+def test_detects_all_directly_reviewed_p0_multi_claims() -> None:
+    fixture = Path(__file__).parents[1] / "fixtures" / "admission_pre_split_p0_gold.jsonl"
+    rows = [json.loads(line) for line in fixture.read_text(encoding="utf-8").splitlines()]
+
+    assert len(rows) == 16
+    assert all(detect_structural_multi_claim(row["source_sentence"]) for row in rows)
+
+
+def test_does_not_split_one_direct_value_with_only_a_base_year_annotation() -> None:
+    sentence = "지난달 소비자물가지수는 116.31(2020년=100)이었다."
+
+    assert not detect_structural_multi_claim(sentence)
