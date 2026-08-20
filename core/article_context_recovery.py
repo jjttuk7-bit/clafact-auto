@@ -51,3 +51,19 @@ def recover_article_contexts(
     return output, {"requested": requested, "recovered": len(output), "failed": failed}
 
 
+
+
+def select_unrecovered_sources(
+    sources: Iterable[ArticleContextSource],
+    recovered_article_ids: set[str],
+    *,
+    limit: int,
+) -> list[ArticleContextSource]:
+    """Select a bounded, deterministic next batch without re-fetching saved articles."""
+    if limit < 1:
+        raise ValueError("limit must be positive")
+    return [
+        source
+        for source in sources
+        if source.article_id not in recovered_article_ids
+    ][:limit]

@@ -41,3 +41,17 @@ def test_recovery_preserves_article_identity_and_fetch_provenance() -> None:
         }
     ]
     assert report == {"requested": 1, "recovered": 1, "failed": 0}
+
+
+def test_select_unrecovered_sources_skips_existing_ids_and_respects_limit() -> None:
+    from core.article_context_recovery import select_unrecovered_sources
+
+    sources = [
+        ArticleContextSource("A1", "제목1", "2025-01-01", "https://example.test/1"),
+        ArticleContextSource("A2", "제목2", "2025-01-01", "https://example.test/2"),
+        ArticleContextSource("A3", "제목3", "2025-01-01", "https://example.test/3"),
+    ]
+
+    selected = select_unrecovered_sources(sources, {"A1"}, limit=1)
+
+    assert [item.article_id for item in selected] == ["A2"]
