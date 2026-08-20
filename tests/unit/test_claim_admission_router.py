@@ -81,3 +81,17 @@ def test_non_auto_parse_requires_context_without_promoting_to_kosis() -> None:
 
     assert decision.label == "CONTEXT_REQUIRED"
     assert decision.reason_code == "PARSE_UNCERTAIN"
+
+
+def test_korean_particle_does_not_turn_one_statistic_into_multi_claim() -> None:
+    decision = route_claim_admission(claim(
+        "경북 지역은 전국 사과 생산량의 62%를 차지하는 사과 주산지다.",
+        indicator="사과 생산량 비중",
+        value=62,
+        unit="%",
+        time=None,
+        calculation="SHARE",
+    ))
+
+    assert decision.label == "CONTEXT_REQUIRED"
+    assert decision.reason_code == "MISSING_TIME_CONTEXT"

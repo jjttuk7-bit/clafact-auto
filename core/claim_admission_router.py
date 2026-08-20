@@ -13,7 +13,8 @@ _NOT_A_CLAIM = re.compile(r"지급한다|지원한다|받는다|정의|뜻한다
 _NON_KOSIS = re.compile(
     r"현대차|기아|삼성|업비트|테슬라|메르세데스|한국GM|한국수입자동차협회|협회"
 )
-_MULTI = re.compile(r"(?:이고|이며|각각|와|과)\s*[^.]*\d")
+_MULTI_CONNECTOR = re.compile(r"(?:이고|이며|각각|동시에|뿐 아니라)")
+_NUMBER = re.compile(r"\d+(?:[,.]\d+)*(?:%|%p|명|원|건|배|억|만|천|ha|대)?")
 
 
 def route_claim_admission(claim: ClaimSchema) -> AdmissionDecision:
@@ -31,7 +32,7 @@ def route_claim_admission(claim: ClaimSchema) -> AdmissionDecision:
         return AdmissionDecision(
             label="NON_KOSIS_OR_PRIVATE", reason_code="PRIVATE_OR_COMPANY_SOURCE"
         )
-    if _MULTI.search(sentence):
+    if _is_multi_numeric_claim(sentence):
         return AdmissionDecision(
             label="MULTI_CLAIM_SPLIT_REQUIRED", reason_code="MULTIPLE_NUMERIC_CLAUSES"
         )
@@ -44,3 +45,9 @@ def route_claim_admission(claim: ClaimSchema) -> AdmissionDecision:
     return AdmissionDecision(
         label="KOSIS_PIPELINE_ELIGIBLE", reason_code="SINGLE_STATISTICAL_CLAIM"
     )
+
+
+def _is_multi_numeric_claim(sentence: str) -> bool:
+    return bool(_MULTI_CONNECTOR.search(sentence)) and len(_NUMBER.findall(sentence)) >= 2
+
+

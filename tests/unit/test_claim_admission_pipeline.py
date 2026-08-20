@@ -75,3 +75,19 @@ def test_excluded_route_never_calls_official_resolver() -> None:
     assert official_calls == []
     assert executions[0].result.route_status == "ADMISSION_ROUTED"
     assert executions[0].result.decision.label == "NOT_A_VERIFIABLE_CLAIM"
+
+
+def test_pipeline_uses_injected_admission_router() -> None:
+    from schemas.claim_admission import AdmissionDecision
+
+    pipeline = ClaimAdmissionPipeline(
+        official_resolver=lambda _candidate: {"ok": True},
+        admission_router=lambda _candidate: AdmissionDecision(
+            label="NOT_A_VERIFIABLE_CLAIM", reason_code="GOLDSET_CLASSIFIER"
+        ),
+    )
+
+    execution = pipeline.process(claim("지난달 제조업 취업자는 100명이었다."))[0]
+
+    assert execution.result.decision.reason_code == "GOLDSET_CLASSIFIER"
+    assert execution.official_result is None

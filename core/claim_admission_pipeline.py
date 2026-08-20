@@ -15,6 +15,7 @@ from schemas.claim_admission import AdmissionDecision, AdmissionEvent, Admission
 OfficialResolver = Callable[[ClaimSchema], Mapping[str, Any]]
 ContextReparser = Callable[[ClaimSchema], ClaimSchema]
 ChildParser = Callable[[ClaimSchema, str, str], ClaimSchema]
+AdmissionRouter = Callable[[ClaimSchema], AdmissionDecision]
 
 
 @dataclass(frozen=True)
@@ -35,10 +36,12 @@ class ClaimAdmissionPipeline:
         official_resolver: OfficialResolver,
         context_reparser: ContextReparser | None = None,
         child_parser: ChildParser | None = None,
+        admission_router: AdmissionRouter = route_claim_admission,
     ) -> None:
         self._official_resolver = official_resolver
         self._context_reparser = context_reparser
         self._child_parser = child_parser
+        self._admission_router = admission_router
 
     def process(self, claim: ClaimSchema) -> list[ClaimAdmissionExecution]:
         """Process a source candidate with at most one context and split generation."""
@@ -52,7 +55,7 @@ class ClaimAdmissionPipeline:
         split_attempted: bool,
         events: list[AdmissionEvent],
     ) -> list[ClaimAdmissionExecution]:
-        decision = route_claim_admission(claim)
+        decision = self._admission_router(claim)
         admitted_events = [*events, _event("CLAIM_ADMISSION", claim, decision)]
         if decision.label == "KOSIS_PIPELINE_ELIGIBLE":
             official_result = self._official_resolver(claim)
@@ -109,3 +112,4 @@ def _event(
         reason_code=decision.reason_code,
         detail=detail,
     )
+

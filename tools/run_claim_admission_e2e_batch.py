@@ -15,6 +15,9 @@ from core.claim_parser import parse_claim
 from core.claim_registry_loader import load_claim_registry
 from core.context_claim_reparse_batch import reparse_records_with_limited_context
 from core.official_engine_factory import OfficialEnginePaths, build_official_evidence_service
+from core.openai_admission_router import OpenAIAdmissionRouter
+from core.openai_function_claim_extractor import OpenAIClaimExtractorError
+from schemas.claim_admission import AdmissionDecision
 from schemas.claim import ClaimSchema
 from schemas.claim_registry import ClaimRegistryRecord
 
@@ -60,6 +63,16 @@ def main() -> None:
         live_time_budget_seconds=args.live_budget_seconds,
     )
     extractor = create_claim_extractor(settings)
+    admission_model = OpenAIAdmissionRouter(api_key=settings.openai_api_key, model=settings.openai_model)
+
+    def admission_router(claim: ClaimSchema) -> AdmissionDecision:
+        try:
+            return admission_model.route(claim)
+        except OpenAIClaimExtractorError:
+            return AdmissionDecision(
+                label="CONTEXT_REQUIRED",
+                reason_code="ADMISSION_CLASSIFIER_UNAVAILABLE",
+            )
 
     def context_reparser(record: ClaimRegistryRecord, claim: ClaimSchema) -> ClaimSchema:
         derived = record.model_copy(update={"claim": claim})
@@ -87,6 +100,7 @@ def main() -> None:
         records, service,
         context_reparser=context_reparser if contexts else None,
         child_parser=child_parser,
+        admission_router=admission_router,
     )
     args.output_dir.mkdir(parents=True, exist_ok=True)
     (args.output_dir / "admission_e2e_results.jsonl").write_text(
@@ -118,3 +132,4 @@ def _load_contexts(path: Path) -> dict[str, dict[str, Any]]:
 
 if __name__ == "__main__":
     main()
+

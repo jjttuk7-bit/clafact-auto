@@ -6,13 +6,16 @@ from collections.abc import Callable, Iterable, Mapping
 from typing import Any
 
 from core.claim_admission_pipeline import ClaimAdmissionPipeline
+from core.claim_admission_router import route_claim_admission
 from core.official_e2e_batch_runner import OfficialEvidenceResolver, run_official_e2e_batch
 from schemas.claim import ClaimSchema
+from schemas.claim_admission import AdmissionDecision
 from schemas.claim_registry import ClaimRegistryRecord
 
 
 ContextReparser = Callable[[ClaimRegistryRecord, ClaimSchema], ClaimSchema]
 ChildParser = Callable[[ClaimRegistryRecord, ClaimSchema, str, str], ClaimSchema]
+AdmissionRouter = Callable[[ClaimSchema], AdmissionDecision]
 
 
 def run_claim_admission_e2e_batch(
@@ -21,6 +24,7 @@ def run_claim_admission_e2e_batch(
     *,
     context_reparser: ContextReparser | None = None,
     child_parser: ChildParser | None = None,
+    admission_router: AdmissionRouter | None = None,
 ) -> list[dict[str, Any]]:
     """Route Registry records before calling the existing official batch runner.
 
@@ -36,6 +40,7 @@ def run_claim_admission_e2e_batch(
                 lambda claim: context_reparser(source_record, claim)
                 if context_reparser else None
             ),
+            admission_router=admission_router or route_claim_admission,
             child_parser=(
                 lambda parent, text, child_id: child_parser(source_record, parent, text, child_id)
                 if child_parser else None
@@ -82,3 +87,4 @@ def _base_row(record: ClaimRegistryRecord, claim: ClaimSchema) -> dict[str, Any]
         "article_published_at": record.article_published_at.isoformat()
         if record.article_published_at else None,
     }
+
