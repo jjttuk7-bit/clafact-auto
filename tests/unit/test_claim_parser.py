@@ -21,14 +21,17 @@ class FakeStructuredExtractor:
 class FakeContextualExtractor:
     response: ClaimSchema
     received_article_date: date | None = None
+    received_article_context: str | None = None
 
     def extract(
         self,
         source_sentence: str,
         *,
         article_published_at: date | None = None,
+        article_context: str | None = None,
     ) -> ClaimSchema:
         self.received_article_date = article_published_at
+        self.received_article_context = article_context
         return self.response
 
 
@@ -397,3 +400,18 @@ def test_parse_claim_normalizes_explicit_share_type_from_structured_output() -> 
     assert result.parse_status == "AUTO_OK"
     assert result.comparison is not None
     assert result.comparison["type"] == "SHARE_OF_TOTAL"
+
+
+def test_parse_claim_passes_limited_article_context_to_contextual_extractor() -> None:
+    extractor = FakeContextualExtractor(auto_claim())
+
+    parse_claim(
+        "고용률은 70%였다.",
+        extractor,
+        article_published_at=date(2025, 4, 5),
+        article_context="제목: 2025년 3월 고용 동향\n주변 문장: 지난달 고용률은 70%였다.",
+    )
+
+    assert extractor.received_article_context == (
+        "제목: 2025년 3월 고용 동향\n주변 문장: 지난달 고용률은 70%였다."
+    )

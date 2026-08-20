@@ -17,7 +17,7 @@ class StructuredClaimExtractor(Protocol):
     """External interpretation adapter that must return a validated schema object."""
 
     def extract(
-        self, source_sentence: str, *, article_published_at: date | None = None
+        self, source_sentence: str, *, article_published_at: date | None = None, article_context: str | None = None
     ) -> ClaimSchema:
         """Return only a Pydantic ClaimSchema, never an unstructured response."""
 
@@ -30,6 +30,7 @@ def parse_claim(
     extractor: StructuredClaimExtractor | None = None,
     *,
     article_published_at: date | None = None,
+    article_context: str | None = None,
 ) -> ClaimSchema:
     """Parse a sentence using structured output and conservatively route uncertainty."""
     normalized_source = source_sentence.strip()
@@ -45,11 +46,19 @@ def parse_claim(
             parse_reason="STRUCTURED_EXTRACTOR_NOT_CONFIGURED",
         )
 
-    extracted = (
-        extractor.extract(normalized_source, article_published_at=article_published_at)
-        if article_published_at is not None
-        else extractor.extract(normalized_source)
-    )
+    if article_context is not None:
+        extracted = extractor.extract(
+            normalized_source,
+            article_published_at=article_published_at,
+            article_context=article_context,
+        )
+    elif article_published_at is not None:
+        extracted = extractor.extract(
+            normalized_source,
+            article_published_at=article_published_at,
+        )
+    else:
+        extracted = extractor.extract(normalized_source)
     if not isinstance(extracted, ClaimSchema):
         raise TypeError("Structured extractor must return ClaimSchema")
 
@@ -138,3 +147,4 @@ def _with_explicit_comparison(claim: ClaimSchema, source_sentence: str) -> Claim
             }
         }
     )
+

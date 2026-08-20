@@ -118,7 +118,11 @@ def test_build_request_contains_only_concise_instructions_and_sentence_input() -
 def test_build_request_includes_article_date_as_claim_parsing_context() -> None:
     sentence = "지난달 가공식품 물가는 전년 대비 3.1% 올랐다."
     request = build_openai_claim_request(sentence, "gpt-5.6-luna", article_published_at=date(2025, 4, 5))
-    assert json.loads(request["input"]) == {"source_sentence": sentence, "article_published_at": "2025-04-05"}
+    assert json.loads(request["input"]) == {
+        "source_sentence": sentence,
+        "article_published_at": "2025-04-05",
+        "article_context": None,
+    }
     assert "target time" in request["instructions"]
     assert "comparison.reference_period" in request["instructions"]
 
@@ -492,3 +496,16 @@ def test_build_request_defines_complete_difference_contract() -> None:
     assert "comparison.reference_value" in instructions
     assert "comparison.operand_unit" in instructions
     assert "absolute difference" in instructions
+
+def test_build_request_includes_limited_article_context() -> None:
+    sentence = "고용률은 70%였다."
+    context = "제목: 2025년 3월 고용 동향\n주변 문장: 지난달 고용률은 70%였다."
+
+    request = build_openai_claim_request(
+        sentence,
+        "gpt-5.6-luna",
+        article_published_at=date(2025, 4, 5),
+        article_context=context,
+    )
+
+    assert json.loads(request["input"])["article_context"] == context
