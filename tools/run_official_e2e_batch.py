@@ -7,7 +7,7 @@ import json
 from collections import Counter
 from pathlib import Path
 
-from config.settings import Settings
+from config.settings import Settings`r`nfrom core.claim_applicability import annotate_result_rows
 from core.claim_registry_loader import load_claim_registry
 from core.official_e2e_batch_runner import run_official_e2e_batch
 from core.official_engine_factory import OfficialEnginePaths, build_official_evidence_service
@@ -41,7 +41,7 @@ def main() -> None:
         kosis_api_key=settings.kosis_api_key,
         live_time_budget_seconds=args.live_budget_seconds,
     )
-    rows = run_official_e2e_batch(registry.records, service, start=args.start, limit=args.limit)
+    rows = annotate_result_rows(run_official_e2e_batch(registry.records, service, start=args.start, limit=args.limit))
     args.output_dir.mkdir(parents=True, exist_ok=True)
     (args.output_dir / "e2e_results.jsonl").write_text(
         "".join(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n" for row in rows), encoding="utf-8"
@@ -56,7 +56,7 @@ def main() -> None:
     (queue_dir / "summary.json").write_text(json.dumps(queue_summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     report = {
         "total_records": len(rows),
-        "route_counts": dict(sorted(Counter(row["route_status"] for row in rows).items())),
+        "route_counts": dict(sorted(Counter(row["route_status"] for row in rows).items())),`r`n        "applicability_counts": dict(sorted(Counter(row["applicability_diagnosis"]["label"] for row in rows).items())),
         "hold_reason_counts": dict(sorted(Counter(row["reason_code"] for row in rows if row["route_status"] != "AUTO").items())),
         "registry_load_errors": [error.model_dump(mode="json") for error in registry.errors],
     }
@@ -66,3 +66,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
