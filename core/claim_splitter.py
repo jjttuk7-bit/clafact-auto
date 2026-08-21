@@ -10,6 +10,8 @@ _NUMBER = re.compile(r"\d+(?:[,.]\d+)*(?:(?:만|억|천)\d+(?:[,.]\d+)*)*(?:%|%p
 _CLAIM_VALUE = re.compile(r"\d+(?:[,.]\d+)*(?:(?:만|억|천)\d+(?:[,.]\d+)*)*(?:%p|%|명|원|건|배|억|만|천|ha|대|㏊)?")
 _BASE_YEAR_ANNOTATION = re.compile(r"\(\s*(?:19|20)\d{2}년\s*=\s*\d+(?:[.]\d+)?\s*\)")
 _HISTORICAL_REFERENCE = re.compile(r"(?:(?:작년|지난해|전년)\s*\d{1,2}월|(?:19|20)\d{2}년\s*\d{1,2}월)\s*\([^)]*\)\s*(?:이후|만에)")
+_COMPARISON_BASELINE = re.compile(r"(?:전년|작년|지난해|전월|전분기|동월|동기|1년 전)\s*\([^)]*\)(?=\s*(?:보다|비해))")
+_CHANGE_RATE_ANNOTATION = re.compile(r"\(\s*\d+(?:[,.]\d+)?%\s*\)")
 _CHANGE_OR_COMPARISON = re.compile(
     r"전년|전월|전분기|동월|동기|1년 전|대비|보다|비해|늘(?:었|었|어|어난)|"
     r"줄(?:었|었|어|어든)|증가|감소|상승|하락|올랐|내렸|확대|축소"
@@ -35,8 +37,13 @@ _TOTAL_AFTER_CHANGE_SPLIT = re.compile(
 
 def detect_structural_multi_claim(sentence: str) -> bool:
     """Return whether a sentence contains at least two statistical value assertions."""
+    if any(pattern.search(sentence) for pattern in (_GROWTH_WIDTH_SPLIT, _STREAK_SPLIT, _TOTAL_AFTER_CHANGE_SPLIT)):
+        return True
     normalized = _BASE_YEAR_ANNOTATION.sub("", sentence.strip())
     normalized = _HISTORICAL_REFERENCE.sub("", normalized)
+    normalized = _COMPARISON_BASELINE.sub("", normalized)
+    if _CHANGE_OR_COMPARISON.search(normalized):
+        normalized = _CHANGE_RATE_ANNOTATION.sub("", normalized)
     return (
         len(_statistical_values(normalized)) >= 2
         and bool(_CHANGE_OR_COMPARISON.search(normalized))
