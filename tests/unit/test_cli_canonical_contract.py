@@ -11,3 +11,4 @@ def test_registry_cli_uses_the_canonical_record_runtime() -> None:
     assert "runtime.verify_record(" in source
     assert "run_admission_recovery_batch_v3" not in source
     assert "build_run_report" in source
+    assert "--stored-slots-only" in source

@@ -9,6 +9,7 @@ from typing import Any
 
 from core.admission_recovery import OfficialEvidenceResolver
 from core.admission_recovery_v3 import recover_registry_record_v3
+from core.claim_admissibility import classify_admissibility
 from core.article_claim_pipeline import parse_article_claims
 from core.claim_parser import StructuredClaimExtractor
 from core.operational_error import OperationalStageError
@@ -75,15 +76,19 @@ def verify_registry_record(
     extractor: StructuredClaimExtractor,
     official_service: OfficialEvidenceResolver,
     article_context: str | None = None,
+    allow_structured_recovery: bool = True,
 ) -> list[PipelineEntry]:
     """Verify one Registry record through the same recovery used by articles."""
     try:
-        recovery = recover_registry_record_v3(
-            record,
-            extractor=extractor,
-            official_service=official_service,
-            article_context=article_context,
-        )
+        if allow_structured_recovery:
+            recovery = recover_registry_record_v3(
+                record,
+                extractor=extractor,
+                official_service=official_service,
+                article_context=article_context,
+            )
+        else:
+            return [_verify_stored_claim(record, official_service)]
     except OperationalStageError as error:
         return [
             PipelineEntry(
@@ -119,6 +124,38 @@ def verify_registry_record(
         )
     return entries
 
+
+def _verify_stored_claim(
+    record: ClaimRegistryRecord,
+    official_service: OfficialEvidenceResolver,
+) -> PipelineEntry:
+    """Use persisted slots without sending source or context to an extractor."""
+    claim = record.claim
+    decision = classify_admissibility(
+        claim.parse_reason,
+        "AUTO" if claim.parse_status == "AUTO_OK" else "HOLD",
+    )
+    route = {
+        "VERIFIABLE": "KOSIS_PIPELINE_ELIGIBLE",
+        "MULTI_CLAIM_SPLIT_REQUIRED": "MULTI_CLAIM_SPLIT_REQUIRED",
+        "CONTEXT_REQUIRED": "CONTEXT_REQUIRED",
+        "STRUCTURAL_HOLD": "STRUCTURAL_HOLD",
+    }[decision.route]
+    resolution = (
+        official_service.resolve(claim, article_date=record.article_published_at)
+        if route == "KOSIS_PIPELINE_ELIGIBLE" and record.article_published_at is not None
+        else None
+    )
+    status, reason = _terminal_result(resolution, route, record.article_published_at, claim)
+    return PipelineEntry(
+        claim.claim_id,
+        claim,
+        "DIRECT" if route == "KOSIS_PIPELINE_ELIGIBLE" else "NO_RECOVERY",
+        route,
+        status,
+        reason,
+        resolution,
+    )
 
 def _terminal_result(
     resolution: Any | None,

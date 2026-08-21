@@ -138,3 +138,44 @@ def test_registry_record_uses_the_same_pipeline_entry_contract_as_article() -> N
     assert entries[0].claim.claim_id == "registry-claim"
     assert entries[0].terminal_status == "AUTO"
     assert service.claims == [claim]
+
+
+def test_registry_stored_slots_mode_never_calls_structured_extractor() -> None:
+    service = _OfficialService()
+
+    class _ForbiddenExtractor:
+        def extract(self, source_sentence: str, **kwargs) -> ClaimSchema:
+            raise AssertionError("external structured extraction must stay disabled")
+
+    claim = ClaimSchema(
+        claim_id="stored-claim",
+        source_sentence="2024년 고용률은 60%였다.",
+        indicator="고용률",
+        value=60,
+        unit="%",
+        time="2024년",
+        frequency="년",
+        calculation="DIRECT_VALUE",
+        parse_status="AUTO_OK",
+    )
+    record = ClaimRegistryRecord(
+        article_id="article-safe",
+        sentence_id="1",
+        article_published_at=date(2025, 1, 10),
+        source_ref="test",
+        claim=claim,
+    )
+
+    entries = pipeline.verify_registry_record(
+        record,
+        extractor=_ForbiddenExtractor(),
+        official_service=service,
+        article_context="전송하면 안 되는 기사 본문",
+        allow_structured_recovery=False,
+    )
+
+    assert len(entries) == 1
+    assert entries[0].claim is claim
+    assert entries[0].recovery_action == "DIRECT"
+    assert entries[0].terminal_status == "AUTO"
+    assert service.claims == [claim]

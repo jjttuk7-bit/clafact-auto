@@ -33,6 +33,7 @@ def main() -> None:
     parser.add_argument("--live-budget-seconds", type=float, default=30.0)
     parser.add_argument("--max-workers", type=int, default=4)
     parser.add_argument("--no-resume", action="store_true")
+    parser.add_argument("--stored-slots-only", action="store_true")
     args = parser.parse_args()
     if args.max_workers < 1:
         parser.error("--max-workers must be at least one")
@@ -63,6 +64,7 @@ def main() -> None:
                     args.context_jsonl,
                     args.worker_timeout_seconds,
                     args.live_budget_seconds,
+                    args.stored_slots_only,
                 ): index
                 for index in pending_indices
             }
@@ -110,6 +112,7 @@ def _run_one(
     context_path: Path | None,
     timeout_seconds: float,
     live_budget_seconds: float,
+    stored_slots_only: bool,
 ) -> list[dict[str, Any]]:
     worker_root = temporary_root / f"worker-{index:05d}"
     worker_root.mkdir()
@@ -124,6 +127,8 @@ def _run_one(
         "--live-budget-seconds",
         str(live_budget_seconds),
     ]
+    if stored_slots_only:
+        command.append("--stored-slots-only")
     if context_path is not None:
         command.extend(["--context-jsonl", str(context_path.resolve())])
     result = run_bounded(

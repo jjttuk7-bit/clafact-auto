@@ -67,12 +67,14 @@ class CanonicalPipeline:
         record: ClaimRegistryRecord,
         *,
         article_context: str | None = None,
+        allow_structured_recovery: bool = True,
     ) -> list[PipelineEntry]:
         return verify_registry_record(
             record,
             extractor=self.extractor,
             official_service=self.official_service,
             article_context=article_context,
+            allow_structured_recovery=allow_structured_recovery,
         )
 
 

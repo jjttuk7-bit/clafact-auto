@@ -27,13 +27,14 @@ def main() -> None:
     parser.add_argument("output_dir", type=Path)
     parser.add_argument("--context-jsonl", type=Path)
     parser.add_argument("--live-budget-seconds", type=float, default=30.0)
+    parser.add_argument("--stored-slots-only", action="store_true")
     args = parser.parse_args()
     settings = Settings()
     if not settings.kosis_api_key:
         parser.error("KOSIS_API_KEY is required")
 
     registry = load_claim_registry(args.registry_path)
-    contexts = _load_context(args.context_jsonl)
+    contexts = {} if args.stored_slots_only else _load_context(args.context_jsonl)
     runtime = build_canonical_pipeline(
         settings,
         live_time_budget_seconds=args.live_budget_seconds,
@@ -46,6 +47,7 @@ def main() -> None:
                 lambda record=record: runtime.verify_record(
                     record,
                     article_context=contexts.get(record.article_id),
+                    allow_structured_recovery=not args.stored_slots_only,
                 ),
             )
         except OperationalStageError as error:
