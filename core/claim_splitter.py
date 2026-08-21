@@ -6,26 +6,41 @@ import re
 
 
 _CLAUSE_SEPARATOR = re.compile(r"\s*(?:,(?!\d)|(?:였|었|이)고|그리고)\s*")
-_NUMBER = re.compile(r"\d+(?:[,.]\d+)*(?:%|%p|명|원|건|배|억|만|천|ha|대|㏊)?")
+_NUMBER = re.compile(r"\d+(?:[,.]\d+)*(?:(?:만|억|천)\d+(?:[,.]\d+)*)*(?:%|%p|명|원|건|배|억|만|천|ha|대|㏊)?")
+_CLAIM_VALUE = re.compile(r"\d+(?:[,.]\d+)*(?:(?:만|억|천)\d+(?:[,.]\d+)*)*(?:%p|%|명|원|건|배|억|만|천|ha|대|㏊)?")
 _BASE_YEAR_ANNOTATION = re.compile(r"\(\s*(?:19|20)\d{2}년\s*=\s*\d+(?:[.]\d+)?\s*\)")
+_HISTORICAL_REFERENCE = re.compile(r"(?:(?:작년|지난해|전년)\s*\d{1,2}월|(?:19|20)\d{2}년\s*\d{1,2}월)\s*\([^)]*\)\s*(?:이후|만에)")
 _CHANGE_OR_COMPARISON = re.compile(
-    r"전년|작년|지난해|전월|전분기|동월|동기|1년 전|대비|보다|늘(?:었|었|어|어난)|"
+    r"전년|전월|전분기|동월|동기|1년 전|대비|보다|비해|늘(?:었|었|어|어난)|"
     r"줄(?:었|었|어|어든)|증가|감소|상승|하락|올랐|내렸|확대|축소"
 )
+_VALUE_UNIT = re.compile(r"(?:%p|%|명|원|건|배|억|만|천|ha|대|㏊)$")
+_TIME_OR_RANGE_SUFFIX = re.compile(r"\s*(?:~|년|월|일|분기|개월|일간|주|차례|번째|부터|까지)")
+_AGE_GROUP_SUFFIX = re.compile(r"\s*(?:취업자|인구|남성|여성|청년|고령|이상|미만)")
 
 
 def detect_structural_multi_claim(sentence: str) -> bool:
-    """Return whether a sentence asserts a current value and a separate change Claim.
-
-    A base-year annotation such as ``(2020년=100)`` is metadata for one value, not
-    a second Claim.  In contrast, a present value and a year-over-year change are
-    distinct verification targets under the approved Gold Set policy.
-    """
+    """Return whether a sentence contains at least two statistical value assertions."""
     normalized = _BASE_YEAR_ANNOTATION.sub("", sentence.strip())
+    normalized = _HISTORICAL_REFERENCE.sub("", normalized)
     return (
-        len(_NUMBER.findall(normalized)) >= 2
+        len(_statistical_values(normalized)) >= 2
         and bool(_CHANGE_OR_COMPARISON.search(normalized))
     )
+
+
+def _statistical_values(sentence: str) -> list[str]:
+    values: list[str] = []
+    for match in _CLAIM_VALUE.finditer(sentence):
+        token = match.group()
+        suffix = sentence[match.end():]
+        if _TIME_OR_RANGE_SUFFIX.match(suffix):
+            continue
+        if token.endswith("대") and _AGE_GROUP_SUFFIX.match(suffix):
+            continue
+        if _VALUE_UNIT.search(token) or "." in token or "," in token:
+            values.append(token)
+    return values
 
 
 def split_complex_claim(sentence: str) -> list[str]:

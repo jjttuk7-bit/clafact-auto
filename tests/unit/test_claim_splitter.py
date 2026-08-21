@@ -41,3 +41,12 @@ def test_does_not_split_one_direct_value_with_only_a_base_year_annotation() -> N
     sentence = "지난달 소비자물가지수는 116.31(2020년=100)이었다."
 
     assert not detect_structural_multi_claim(sentence)
+
+
+
+def test_ignores_dates_periods_scope_counts_and_reference_values_in_eligible_gold_cases() -> None:
+    fixture = Path(__file__).parents[1] / "fixtures" / "admission_pre_split_false_positive_gold.jsonl"
+    rows = [json.loads(line) for line in fixture.read_text(encoding="utf-8").splitlines()]
+
+    assert len(rows) == 23
+    assert not any(detect_structural_multi_claim(row["source_sentence"]) for row in rows)

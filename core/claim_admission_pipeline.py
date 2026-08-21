@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
@@ -16,6 +18,10 @@ OfficialResolver = Callable[[ClaimSchema], Mapping[str, Any]]
 ContextReparser = Callable[[ClaimSchema], ClaimSchema]
 ChildParser = Callable[[ClaimSchema, str, str], ClaimSchema]
 AdmissionRouter = Callable[[ClaimSchema], AdmissionDecision]
+
+_HISTORICAL_REFERENCE_ONLY = re.compile(
+    r"(?:지난해|작년|전년)\s*\d{1,2}월\s*\([^)]*\)\s*을?\s*(?:저점|고점|기록).*?(?:오름세|내림세|시사)"
+)
 
 
 @dataclass(frozen=True)
@@ -55,7 +61,7 @@ class ClaimAdmissionPipeline:
         split_attempted: bool,
         events: list[AdmissionEvent],
     ) -> list[ClaimAdmissionExecution]:
-        decision = _structural_split_guard(claim) or self._admission_router(claim)
+        decision = _structural_split_guard(claim) or _historical_context_guard(claim) or self._admission_router(claim)
         admitted_events = [*events, _event("CLAIM_ADMISSION", claim, decision)]
         if decision.label == "KOSIS_PIPELINE_ELIGIBLE":
             official_result = self._official_resolver(claim)
@@ -101,6 +107,14 @@ class ClaimAdmissionPipeline:
             official_result=None,
         )]
 
+
+def _historical_context_guard(claim: ClaimSchema) -> AdmissionDecision | None:
+    """Require context when a sentence states only a historical reference and trend."""
+    if not _HISTORICAL_REFERENCE_ONLY.search(claim.source_sentence):
+        return None
+    return AdmissionDecision(
+        label="CONTEXT_REQUIRED", reason_code="HISTORICAL_REFERENCE_CONTEXT"
+    )
 
 def _structural_split_guard(claim: ClaimSchema) -> AdmissionDecision | None:
     """Block KOSIS admission before an injected model can choose ELIGIBLE."""

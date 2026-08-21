@@ -110,3 +110,22 @@ def test_structural_multi_guard_prevents_an_injected_eligible_router_from_callin
     assert official_calls == []
     assert execution.result.decision.label == "MULTI_CLAIM_SPLIT_REQUIRED"
     assert execution.result.decision.reason_code == "STRUCTURAL_MULTI_CLAIM"
+
+def test_historical_reference_without_a_current_value_requires_context_before_kosis() -> None:
+    from schemas.claim_admission import AdmissionDecision
+
+    official_calls: list[str] = []
+    pipeline = ClaimAdmissionPipeline(
+        official_resolver=lambda candidate: official_calls.append(candidate.claim_id) or {"ok": True},
+        admission_router=lambda _candidate: AdmissionDecision(
+            label="KOSIS_PIPELINE_ELIGIBLE", reason_code="MODEL_ELIGIBLE"
+        ),
+    )
+
+    execution = pipeline.process(claim(
+        "생활물가지수는 지난해 10월(1.2%)을 저점으로 꾸준히 오름세를 보이고 있다."
+    ))[0]
+
+    assert official_calls == []
+    assert execution.result.decision.label == "CONTEXT_REQUIRED"
+    assert execution.result.decision.reason_code == "HISTORICAL_REFERENCE_CONTEXT"
