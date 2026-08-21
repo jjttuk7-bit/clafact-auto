@@ -8,6 +8,7 @@ from datetime import date
 
 from core import dynamic_kosis_verifier
 from core.dynamic_kosis_verifier import OfficialValueFetcher
+from core.official_author_fallback import OfficialAuthorFallback
 from core.operational_error import run_operational_stage
 from schemas.candidate import KosisCandidateSchema
 from schemas.claim import ClaimSchema
@@ -44,10 +45,12 @@ class OfficialEvidenceService:
         concept_mapper: ConceptMapper,
         catalog_resolver: CatalogResolver,
         official_fetcher: OfficialValueFetcher,
+        official_author_fallback: OfficialAuthorFallback | None = None,
     ) -> None:
         self._concept_mapper = concept_mapper
         self._catalog_resolver = catalog_resolver
         self._official_fetcher = official_fetcher
+        self._official_author_fallback = official_author_fallback
 
     def resolve(
         self, claim: ClaimSchema, *, article_date: date
@@ -75,6 +78,7 @@ class OfficialEvidenceService:
                 candidates,
                 article_date=article_date,
                 official_fetcher=self._official_fetcher,
+                official_author_fallback=self._official_author_fallback,
             ),
         )
         return OfficialEvidenceResolution(

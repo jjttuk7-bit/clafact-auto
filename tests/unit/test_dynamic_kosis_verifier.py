@@ -366,3 +366,43 @@ def test_direct_value_tie_with_different_official_values_remains_hold() -> None:
 
     assert verdict.route_status == "HOLD"
     assert verdict.reason_code == "AMBIGUOUS_MARGIN"
+
+def test_coordinate_hold_preserves_candidate_resolution_diagnostic() -> None:
+    claim = ClaimSchema(
+        claim_id="coordinate-diagnostic",
+        source_sentence="2024년 고용률은 70%였다.",
+        indicator="고용률",
+        value=70.0,
+        unit="%",
+        time="2024년",
+        frequency="년",
+        parse_status="AUTO_OK",
+    )
+    concept = StandardConceptSchema(
+        concept_id="employment_rate",
+        canonical_name="고용률",
+        standard_key="employment_rate",
+        matched_alias="고용률",
+        status="MATCHED",
+    )
+    unresolved = KosisCandidateSchema(
+        org_id="101",
+        tbl_id="DT_UNRESOLVED_RATE",
+        tbl_name="고용 통계",
+        core_item_ids=["T1"],
+        core_item_names=["실업률"],
+        unit_names=["%"],
+        frequency="년",
+        metadata_status="OFFICIAL_METADATA_READY",
+    )
+
+    verdict = verify_claim_against_kosis(
+        claim,
+        concept,
+        [unresolved],
+        article_date=date(2025, 1, 15),
+        official_fetcher=FixedOfficialFetcher(),
+    )
+
+    assert verdict.reason_code == "NO_EVIDENCE_COORDINATE_CANDIDATE"
+    assert verdict.evidence_cells[0].resolution_reason == "ITEM_UNRESOLVED"

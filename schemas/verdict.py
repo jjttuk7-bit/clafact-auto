@@ -6,6 +6,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from schemas.evidence import EvidenceCellSchema
+from schemas.official_author import OfficialAuthorEvidenceSchema
 from schemas.pipeline_trace import PipelineTraceSchema
 
 
@@ -29,9 +30,10 @@ class OfficialValueProvenanceSchema(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     evidence_key: str
-    source: Literal["SNAPSHOT", "API", "NONE"]
+    source: Literal["SNAPSHOT", "API", "NONE", "OFFICIAL_AUTHOR_RELEASE"]
     content_hash: str
     publication: OfficialPublicationProvenanceSchema | None = None
+    official_author_evidence: OfficialAuthorEvidenceSchema | None = None
 
 
 class VerdictSchema(BaseModel):

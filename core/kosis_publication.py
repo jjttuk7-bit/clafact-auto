@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from html import unescape
 from time import sleep
-from typing import Any, Callable, Literal
+from typing import Any, Callable, Iterable, Literal
 from urllib.parse import urlencode, urljoin, urlparse, urlsplit, urlunsplit
 from urllib.request import Request, urlopen
 
@@ -63,8 +63,10 @@ class _KostatPressReleaseSearch:
                 "keyWord": search_term,
             }
             search_url = f"{_KOSTAT_PRESS_RELEASE_LIST}?{urlencode(params)}"
+            if params["bid"] == "229":
+                params["bodo_b_type"] = "all"
             try:
-                request = Request(search_url, headers={"Accept": "text/html", "User-Agent": "Mozilla/5.0 (compatible; CLAFACT-AUTO/0.1)"})
+                request = Request(search_url, data=urlencode(params).encode("utf-8"), headers={"Accept": "text/html", "Content-Type": "application/x-www-form-urlencoded", "User-Agent": "Mozilla/5.0 (compatible; CLAFACT-AUTO/0.1)"})
                 with self._opener(request, timeout=self._timeout_seconds) as response:
                     search_raw = response.read()
             except (OSError, RuntimeError, TypeError, ValueError):
@@ -72,7 +74,6 @@ class _KostatPressReleaseSearch:
             for url, title in _release_links(search_raw):
                 if url in seen_urls or not _period_appears(title, period):
                     continue
-                seen_urls.add(url)
                 try:
                     request = Request(url, headers={"Accept": "text/html", "User-Agent": "Mozilla/5.0 (compatible; CLAFACT-AUTO/0.1)"})
                     with self._opener(request, timeout=self._timeout_seconds) as response:
@@ -81,9 +82,10 @@ class _KostatPressReleaseSearch:
                     return PublicationEvidence(status="FETCH_FAILED", pub_period=pub_period, pub_date_text=pub_date_text, publication_method_url=search_url, source_url=url, retrieved_at=_now())
                 text = _html_text(raw)
                 published_at = _parse_release_date(text)
-                title_matches = _normalized_text(search_term) in _normalized_text(title)
+                title_matches = _release_title_matches(search_term, title)
                 survey_matches = _normalized_text(stats_name) in _normalized_text(text)
                 if (title_matches or survey_matches) and published_at:
+                    seen_urls.add(url)
                     matches.append(PublicationEvidence(status="VERIFIED", published_at=published_at, pub_period=pub_period, pub_date_text=pub_date_text, publication_method_url=search_url, source_url=url, retrieved_at=_now(), content_hash=hashlib.sha256(raw).hexdigest()))
         return matches[0] if len(matches) == 1 else None
 
@@ -108,7 +110,7 @@ class KosisPublicationLookup:
         self._retries = max(1, retries)
         self._timeout_seconds = max(1, timeout_seconds)
 
-    def fetch(self, org_id: str, table_id: str, *, period: str | None = None) -> PublicationEvidence:
+    def fetch(self, org_id: str, table_id: str, *, period: str | None = None, search_terms: Iterable[str] = ()) -> PublicationEvidence:
         public_params = {
             "method": "getList", "format": "json", "jsonVD": "Y",
             "orgId": org_id, "tblId": table_id, "metaItm": "All",
@@ -135,11 +137,14 @@ class KosisPublicationLookup:
                     release = self._fetch_official_release(method, period, pub_period, pub_date_text)
                     if release is not None:
                         return release
-                    release = _KostatPressReleaseSearch(self._opener, self._timeout_seconds).find(
-                        stats_name, period, pub_period, pub_date_text
+                    release_search = _KostatPressReleaseSearch(self._opener, self._timeout_seconds)
+                    release_names = dict.fromkeys(
+                        name.strip() for name in (stats_name, *search_terms) if name and name.strip()
                     )
-                    if release is not None:
-                        return release
+                    for release_name in release_names:
+                        release = release_search.find(release_name, period, pub_period, pub_date_text)
+                        if release is not None:
+                            return release
                 return PublicationEvidence(
                     status="VERIFIED" if published_at else "UNRESOLVED",
                     published_at=published_at,
@@ -260,12 +265,25 @@ def _text(value: object) -> str | None:
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
+def _decode_korean_html(raw: bytes) -> str:
+    """Decode an official Korean HTML response without silently mojibaking CP949."""
+    declared = re.search(br"charset\s*=\s*[\"']?([A-Za-z0-9_-]+)", raw[:4096], re.IGNORECASE)
+    encodings = [declared.group(1).decode("ascii").casefold()] if declared else []
+    encodings.extend(["utf-8", "cp949", "euc-kr"])
+    for encoding in dict.fromkeys(encodings):
+        try:
+            return raw.decode(encoding)
+        except (LookupError, UnicodeDecodeError):
+            continue
+    return raw.decode("utf-8", errors="replace")
+
+
 def _html_text(raw: bytes) -> str:
-    return unescape(_TAGS.sub(" ", raw.decode("utf-8", errors="replace")))
+    return unescape(_TAGS.sub(" ", _decode_korean_html(raw)))
 
 
 def _release_links(raw: bytes) -> list[tuple[str, str]]:
-    page = raw.decode("utf-8", errors="replace")
+    page = _decode_korean_html(raw)
     links: list[tuple[str, str]] = []
     seen: set[str] = set()
     for pattern in (_VIEW_LINK, _JS_VIEW_LINK):
@@ -277,10 +295,13 @@ def _release_links(raw: bytes) -> list[tuple[str, str]]:
             links.append((url, _html_text(match.group("title").encode("utf-8")).strip()))
     return links
 
-
 def _press_release_board_id(stats_name: str) -> str:
     """Return the official press board for the survey's release family."""
-    return "210" if _normalized_text(stats_name) == _normalized_text("경제활동인구조사") else "213"
+    if "재배면적" in _normalized_text(stats_name):
+        return "229"
+    if _normalized_text(stats_name) == _normalized_text("경제활동인구조사"):
+        return "210"
+    return "213"
 
 
 def _press_release_queries(stats_name: str, period: str) -> list[str]:
@@ -294,7 +315,11 @@ def _press_release_queries(stats_name: str, period: str) -> list[str]:
             if month == 12:
                 return [f"{year}년 12월 및 연간 고용동향"]
             return [f"{year}년 {month}월 고용동향"]
-    return [f"{_period_label(period)} {_press_release_title(stats_name)}"]
+    title = _press_release_title(stats_name)
+    queries = [f"{_period_label(period)} {title}"]
+    if len(parts := title.split()) > 1:
+        queries.append(parts[0])
+    return queries
 
 
 def _press_release_title(stats_name: str) -> str:
@@ -311,5 +336,30 @@ def _period_label(period: str) -> str:
     return f"{normalized}년" if re.fullmatch(r"\d{4}", normalized) else period
 
 
+
+def _release_title_matches(search_term: str, title: str) -> bool:
+    normalized_title = _normalized_text(title)
+    terms = [_normalized_text(term) for term in search_term.split() if _normalized_text(term)]
+    return bool(terms) and all(term in normalized_title for term in terms)
+
+
 def _normalized_text(value: str) -> str:
     return re.sub(r"\s+", "", value).casefold()
+
+
+def extract_official_release_value(
+    text: str, *, period: str, indicator: str, unit: str
+) -> float | None:
+    """Extract one explicitly stated official value from a release document."""
+    period_match = re.fullmatch(r"\d{4}", period.strip())
+    indicator_parts = [re.escape(part) for part in indicator.split() if part]
+    unit_pattern = r"(?:ha|헥타르)" if _normalized_text(unit) in {"ha", "헥타르"} else re.escape(unit)
+    if period_match is None or not indicator_parts or not unit_pattern:
+        return None
+    indicator_pattern = r"\s*".join(indicator_parts)
+    pattern = re.compile(
+        rf"{period_match.group()}\s*년\s*{indicator_pattern}[^0-9]{{0,40}}(?P<value>[0-9][0-9,]*(?:\.\d+)?)\s*{unit_pattern}",
+        re.IGNORECASE,
+    )
+    values = {float(match.group("value").replace(",", "")) for match in pattern.finditer(text)}
+    return next(iter(values)) if len(values) == 1 else None

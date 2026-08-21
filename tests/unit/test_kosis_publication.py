@@ -203,6 +203,29 @@ def test_publication_lookup_finds_exact_kostat_release_when_kosis_has_only_sched
     assert result.published_at == date(2025, 1, 15)
     assert result.source_url == "https://www.kostat.go.kr/board.es?act=view&bid=210&list_no=434801"
 
+
+def test_publication_lookup_uses_official_item_name_when_table_name_is_generic() -> None:
+    explanation = ('[{"statsNm":"남한 경지면적","pubDate":"조사기준 년 익년 2월","publictMth":"KOSIS 및 보도자료"}]').encode("utf-8")
+    search_page = ('<a href="/board.es?act=view&bid=213&list_no=445001">2025년 벼 재배면적조사 결과</a>').encode("utf-8")
+    release_page = ('<h1>2025년 벼 재배면적조사 결과</h1><p>게시일 2025-10-02</p>').encode("utf-8")
+
+    def opener(request, *, timeout):
+        if "statisticsExplData" in request.full_url:
+            return Response(explanation)
+        if "bid=229" in request.full_url and "keyWord=2025%EB%85%84+%EB%B2%BC+%EC%9E%AC%EB%B0%B0%EB%A9%B4%EC%A0%81" in request.full_url:
+            return Response(search_page)
+        if "act=list" in request.full_url:
+            return Response(b"")
+        return Response(release_page)
+
+    result = KosisPublicationLookup("secret", opener=opener, retries=1).fetch(
+        "101", "DT_RICE", period="2025", search_terms=["벼 재배면적"]
+    )
+
+    assert result.status == "VERIFIED"
+    assert result.published_at == date(2025, 10, 2)
+
+    assert result.published_at == date(2025, 10, 2)
 def test_release_links_parse_kostat_javascript_detail_links() -> None:
     raw = (
         '<a class="board_link" '
@@ -334,6 +357,7 @@ def test_official_release_transport_failure_is_retried_before_hold() -> None:
 
     result = KosisPublicationLookup("secret", opener=opener, retries=2).fetch(
         "101", "DT_EMPLOYMENT", period="2024-12"
+
     )
 
     assert result.status == "VERIFIED"
@@ -350,4 +374,35 @@ def test_employment_release_search_uses_official_board_and_december_annual_title
 def test_annual_employment_release_search_uses_december_annual_title() -> None:
     assert publication._press_release_queries("경제활동인구조사", "2024") == [
         "2024년 12월 및 연간 고용동향"
+
     ]
+def test_extract_official_release_value_requires_period_indicator_and_unit() -> None:
+    text = "2025년 벼 재배면적은 677,597ha로 전년 697,713ha보다 2.9% 감소"
+
+    assert publication.extract_official_release_value(
+        text, period="2025", indicator="벼 재배면적", unit="ha"
+    ) == 677_597.0
+    assert publication.extract_official_release_value(
+        text, period="2025", indicator="고추 재배면적", unit="ha"
+    ) is None
+
+
+
+def test_release_links_decode_cp949_statistics_korea_list_titles() -> None:
+    raw = (
+        '<a href="board.es?act=view&amp;list_no=438232">'
+        '2025년 논벼(쌀) 재배면적조사 결과</a>'
+    ).encode("cp949")
+
+    links = publication._release_links(raw)
+
+    assert links == [(
+        "https://www.kostat.go.kr/board.es?act=view&list_no=438232",
+        "2025년 논벼(쌀) 재배면적조사 결과",
+    )]
+
+
+def test_html_text_honors_declared_cp949_charset() -> None:
+    raw = '<meta charset="euc-kr"><span>게시일 2025-08-28</span>'.encode("cp949")
+
+    assert publication._html_text(raw).strip() == "게시일 2025-08-28"

@@ -15,7 +15,10 @@ from core.kosis_api_adapter import build_kosis_api_lookup
 from core.kosis_fetcher import OfficialValueFetcher
 from core.kosis_live_catalog import KosisLiveCatalogSearch
 from core.kosis_metadata_repository import KosisMetadataRepository
-from core.kosis_publication import KosisPublicationLookup
+from core.kosis_publication import KosisPublicationLookup, _KostatPressReleaseSearch, _default_kosis_opener
+from core.kostat_release_value_fetcher import KostatReleaseDocumentFetcher
+from core.official_author_fallback import ConfiguredOfficialAuthorFallback, KostatOfficialReleaseAdapter, OfficialAuthorRouteContext
+from core.official_author_registry import OfficialAuthorSourceRegistration, OfficialAuthorSourceRegistry
 from core.official_evidence_service import CatalogResolution, OfficialEvidenceService
 from core.semantic_normalizer import normalize_concept
 from schemas.candidate import KosisCandidateSchema
@@ -101,10 +104,29 @@ def build_official_evidence_service(
             },
         )
 
+    kostat_adapter = KostatOfficialReleaseAdapter(
+        release_search=_KostatPressReleaseSearch(_default_kosis_opener, 10),
+        document_fetcher=KostatReleaseDocumentFetcher(),
+    )
+    official_author_fallback = ConfiguredOfficialAuthorFallback(
+        registry=OfficialAuthorSourceRegistry(registrations=(
+            OfficialAuthorSourceRegistration(
+                source_authority="KOSTAT", statistical_domain="cultivated_area",
+                indicator_search_terms=("재배면적",), adapter=kostat_adapter,
+            ),
+        )),
+        route_contexts={
+            "cultivated_area": OfficialAuthorRouteContext(
+                source_authority="KOSTAT", statistical_domain="cultivated_area",
+                concept_terms=("재배면적",),
+            ),
+        },
+    )
     return OfficialEvidenceService(
         concept_mapper=lambda claim: normalize_concept(claim, load_standard_concepts(paths.standard_path)),
         catalog_resolver=resolve_catalog,
         official_fetcher=fetcher,
+        official_author_fallback=official_author_fallback,
     )
 
 def _safe_metadata_failure_code(error: Exception) -> str:

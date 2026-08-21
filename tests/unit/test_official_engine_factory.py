@@ -145,3 +145,15 @@ def test_factory_bounds_official_value_request_budget(tmp_path: Path, monkeypatc
     build_official_evidence_service(paths, kosis_api_key="key", live_time_budget_seconds=8)
 
     assert captured == {"retries": 1, "timeout_seconds": 4.0}
+
+
+def test_factory_routes_cultivated_area_and_rejects_unknown_official_author_keys(tmp_path: Path) -> None:
+    paths = OfficialEnginePaths(tmp_path / "concepts.json", tmp_path / "catalog.json", [])
+    paths.standard_path.write_text("[]", encoding="utf-8")
+    paths.catalog_path.write_text("[]", encoding="utf-8")
+
+    fallback = build_official_evidence_service(paths, kosis_api_key=None)._official_author_fallback
+
+    assert fallback is not None
+    assert "cultivated_area" in fallback._route_contexts
+    assert "unknown_key" not in fallback._route_contexts

@@ -22,6 +22,12 @@ class VerificationTraceRecorder:
     def evidence_confirmed(self) -> 'VerificationTraceRecorder':
         self._trace = self._trace.pass_stage('EVIDENCE_CELL'); return self
 
+    def official_author_fallback_attempted(self, kosis_reason: str) -> 'VerificationTraceRecorder':
+        """Keep the completed KOSIS failure visible before a configured fallback."""
+        self._trace = self._trace.pass_stage(
+            'EVIDENCE_CELL', output_ref=f'KOSIS_ATTEMPT:{kosis_reason}'
+        ); return self
+
     def official_value_fetched(self) -> 'VerificationTraceRecorder':
         self._trace = self._trace.pass_stage('OFFICIAL_VALUE_FETCH'); return self
 
@@ -39,6 +45,13 @@ class VerificationTraceRecorder:
 
     def hard_guard_held(self, reason_code: str) -> 'VerificationTraceRecorder':
         self._trace = self._trace.hold('HARD_GUARD', reason_code); return self
+
+    def official_author_guard_attempted(self, kosis_reason: str) -> 'VerificationTraceRecorder':
+        """Record a rejected KOSIS guard without converting fallback success to HOLD."""
+        self._trace = self._trace.pass_stage(
+            'HARD_GUARD', output_ref=f'KOSIS_ATTEMPT:{kosis_reason}'
+        ); return self
+
 
     def semantic_matched(self, route_status: str, reason_code: str, margin: float | None) -> 'VerificationTraceRecorder':
         output_ref = f'margin={margin}' if margin is not None else None

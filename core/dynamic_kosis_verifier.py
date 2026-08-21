@@ -13,6 +13,7 @@ from core.hard_guard import apply_hard_guard
 from core.claim_verification_service import VerificationTraceRecorder
 from core.evidence_resolver import resolve_evidence_cell
 from core.kosis_fetcher import KosisValue
+from core.official_author_fallback import OfficialAuthorFallback, OfficialAuthorFallbackValue
 from core.semantic_matcher import semantic_match
 from core.unit_normalizer import convert_value
 from core.verdict_engine import make_verdict
@@ -39,6 +40,7 @@ def verify_claim_against_kosis(
     *,
     article_date: date,
     official_fetcher: OfficialValueFetcher,
+    official_author_fallback: OfficialAuthorFallback | None = None,
 ) -> VerdictSchema:
     """Verify one already-structured Claim through the normal KOSIS pipeline.
 
@@ -53,8 +55,13 @@ def verify_claim_against_kosis(
     guarded_candidates = [candidate for candidate in candidates if apply_hard_guard(claim, candidate).passed]
     if not guarded_candidates:
         reason = "NO_HARD_GUARD_CANDIDATE"
-        recorder.hard_guard_held(reason)
-        return _hold(claim, recorder, reason, "No KOSIS candidate satisfies required Claim slots.")
+        recorder.official_author_guard_attempted(reason)
+        return _fallback_or_hold(
+            claim, concept, recorder, reason,
+            "No KOSIS candidate satisfies required Claim slots.",
+            article_date=article_date, official_author_fallback=official_author_fallback,
+            evidence_cells=[],
+        )
 
     resolved_cells = {
         candidate.tbl_id: resolve_evidence_cell(claim, candidate)
@@ -69,8 +76,12 @@ def verify_claim_against_kosis(
     matches = semantic_match(claim, eligible_candidates)
     if not matches:
         reason = "NO_EVIDENCE_COORDINATE_CANDIDATE"
-        recorder.hard_guard_held(reason)
-        return _hold(claim, recorder, reason, "No KOSIS candidate has a complete official coordinate.")
+        return _fallback_or_hold(
+            claim, concept, recorder, reason,
+            "No KOSIS candidate has a complete official coordinate.",
+            article_date=article_date, official_author_fallback=official_author_fallback,
+            evidence_cells=list(resolved_cells.values()),
+        )
 
     best = matches[0]
     selected = next(candidate for candidate in eligible_candidates if candidate.tbl_id == best.candidate_tbl_id)
@@ -90,12 +101,10 @@ def verify_claim_against_kosis(
             best.top1_top2_margin,
         )
     if (best.route_status != "AUTO" and tie_selected is None) or cell.status != "CONFIRMED":
-        recorder.evidence_held(best.reason_code or "EVIDENCE_COORDINATE_UNRESOLVED")
-        return _hold(
-            claim,
-            recorder,
-            best.reason_code or "EVIDENCE_COORDINATE_UNRESOLVED",
+        return _fallback_or_hold(
+            claim, concept, recorder, best.reason_code or "EVIDENCE_COORDINATE_UNRESOLVED",
             "KOSIS item or dimension coordinate is not confirmed.",
+            article_date=article_date, official_author_fallback=official_author_fallback,
             evidence_cells=[cell],
         )
     calculation_type = claim.calculation or "DIRECT_VALUE"
@@ -122,17 +131,17 @@ def verify_claim_against_kosis(
             ]
         )
     except Exception:
-        recorder.official_value_held("FETCH_FAILED")
-        return _hold(
-            claim, recorder, "FETCH_FAILED", "Official value fetch failed.",
+        return _fallback_or_hold(
+            claim, concept, recorder, "FETCH_FAILED", "Official value fetch failed.",
+            article_date=article_date, official_author_fallback=official_author_fallback,
             evidence_cells=evidence_cells,
         )
     for evidence_cell, official_value in zip(evidence_cells, fetched_values, strict=True):
         provenance.append(_value_provenance(evidence_cell, official_value))
         if official_value.status != "SUCCESS" or official_value.value is None:
-            recorder.official_value_held(official_value.status)
-            return _hold(
-                claim, recorder, official_value.status, "Official value is unavailable.",
+            return _fallback_or_hold(
+                claim, concept, recorder, official_value.status, "Official value is unavailable.",
+                article_date=article_date, official_author_fallback=official_author_fallback,
                 evidence_cells=evidence_cells, official_value_provenance=provenance,
             )
         official_values.append(official_value.value)
@@ -333,3 +342,74 @@ def _claim_tolerance(claim: ClaimSchema) -> float:
         # the nearest thousand people; a KOSIS 천명 value can retain hundreds.
         return 500.0
     return 0.01
+
+
+def _fallback_or_hold(
+    claim: ClaimSchema,
+    concept: StandardConceptSchema,
+    recorder: VerificationTraceRecorder,
+    kosis_reason: str,
+    kosis_explanation: str,
+    *,
+    article_date: date,
+    official_author_fallback: OfficialAuthorFallback | None,
+    evidence_cells: list[EvidenceCellSchema],
+    official_value_provenance: list[OfficialValueProvenanceSchema] | None = None,
+) -> VerdictSchema:
+    """Use a configured direct official-author value only after a KOSIS attempt."""
+    if (
+        official_author_fallback is None
+        or (claim.calculation or "DIRECT_VALUE") != "DIRECT_VALUE"
+        or claim.value is None
+        or not claim.indicator
+        or not claim.time
+        or not claim.unit
+    ):
+        recorder.evidence_held(kosis_reason)
+        return _hold(
+            claim, recorder, kosis_reason, kosis_explanation,
+            evidence_cells=evidence_cells,
+            official_value_provenance=official_value_provenance,
+        )
+    recorder.official_author_fallback_attempted(kosis_reason)
+    try:
+        fallback_value = official_author_fallback.fetch(
+            claim=claim, concept=concept, article_date=article_date
+        )
+    except Exception:
+        fallback_value = None
+    if fallback_value is None:
+        # The KOSIS cause remains auditable in the preceding trace event.  This
+        # distinct code means the configured official-author route was attempted
+        # but could not produce one scoped, pre-article, direct official value.
+        recorder.evidence_held("OFFICIAL_AUTHOR_VALUE_UNRESOLVED")
+        return _hold(
+            claim,
+            recorder,
+            "OFFICIAL_AUTHOR_VALUE_UNRESOLVED",
+            f"KOSIS attempt ended at {kosis_reason}; no usable official-author direct value was resolved.",
+            evidence_cells=evidence_cells,
+            official_value_provenance=official_value_provenance,
+        )
+    calculated = calculate(CalculationPlan(calculation_type="DIRECT_VALUE"), [fallback_value.value])
+    verdict = make_verdict(
+        claim.claim_id, claim.value, [fallback_value.value], calculated,
+        tolerance=_claim_tolerance(claim),
+    )
+    recorder.official_value_fetched().calculation_completed().verdict_completed()
+    provenance = [
+        *(official_value_provenance or []),
+        OfficialValueProvenanceSchema(
+            evidence_key=f"OFFICIAL_AUTHOR:{concept.standard_key}:{claim.time}",
+            source="OFFICIAL_AUTHOR_RELEASE",
+            content_hash=fallback_value.evidence.document_hash,
+            official_author_evidence=fallback_value.evidence,
+        ),
+    ]
+    return attach_trace(
+        verdict.model_copy(update={
+            "evidence_cells": evidence_cells,
+            "official_value_provenance": provenance,
+        }),
+        recorder.build(),
+    )
