@@ -33,30 +33,104 @@ class ArticlePipelineResult:
     entries: list[PipelineEntry]
 
 
-def verify_article(article_text: str, *, article_published_at: date | None, extractor: StructuredClaimExtractor, official_service: OfficialEvidenceResolver, article_id: str | None = None) -> ArticlePipelineResult:
-    """Run every numerical Claim through split, 12 slots, re-Admission, and KOSIS."""
+def verify_article(
+    article_text: str,
+    *,
+    article_published_at: date | None,
+    extractor: StructuredClaimExtractor,
+    official_service: OfficialEvidenceResolver,
+    article_id: str | None = None,
+) -> ArticlePipelineResult:
+    """Run every numerical Claim through the canonical record-level pipeline."""
     stable_article_id = article_id or _article_id(article_text)
-    claims = parse_article_claims(article_text, extractor, article_published_at=article_published_at)
+    claims = parse_article_claims(
+        article_text,
+        extractor,
+        article_published_at=article_published_at,
+    )
     entries: list[PipelineEntry] = []
     for index, claim in enumerate(claims, start=1):
-        record = ClaimRegistryRecord(article_id=stable_article_id, sentence_id=str(index), article_published_at=article_published_at, source_ref="unified_claim_pipeline_v2", claim=claim)
-        try:
-            recovery = recover_registry_record_v3(record, extractor=extractor, official_service=official_service, article_context=article_text)
-        except OperationalStageError as error:
-            entries.append(PipelineEntry(claim.claim_id, claim, "NO_RECOVERY", "KOSIS_PIPELINE_ELIGIBLE", "HOLD", f"{error.stage}_UNAVAILABLE", None))
-            continue
-        for recovered in recovery.entries:
-            status, reason = _terminal_result(recovered.official_resolution, recovered.admission_route, article_published_at, recovered.record.claim)
-            entries.append(PipelineEntry(recovered.parent_claim_id, recovered.record.claim, recovery.recovery_action, recovered.admission_route, status, reason, recovered.official_resolution))
+        record = ClaimRegistryRecord(
+            article_id=stable_article_id,
+            sentence_id=str(index),
+            article_published_at=article_published_at,
+            source_ref="unified_claim_pipeline_v3",
+            claim=claim,
+        )
+        entries.extend(
+            verify_registry_record(
+                record,
+                extractor=extractor,
+                official_service=official_service,
+                article_context=article_text,
+            )
+        )
     return ArticlePipelineResult(stable_article_id, entries)
 
 
-def _terminal_result(resolution: Any | None, admission_route: str, article_published_at: date | None, claim: ClaimSchema) -> tuple[str, str | None]:
+def verify_registry_record(
+    record: ClaimRegistryRecord,
+    *,
+    extractor: StructuredClaimExtractor,
+    official_service: OfficialEvidenceResolver,
+    article_context: str | None = None,
+) -> list[PipelineEntry]:
+    """Verify one Registry record through the same recovery used by articles."""
+    try:
+        recovery = recover_registry_record_v3(
+            record,
+            extractor=extractor,
+            official_service=official_service,
+            article_context=article_context,
+        )
+    except OperationalStageError as error:
+        return [
+            PipelineEntry(
+                record.claim.claim_id,
+                record.claim,
+                "NO_RECOVERY",
+                "KOSIS_PIPELINE_ELIGIBLE",
+                "HOLD",
+                f"{error.stage}_UNAVAILABLE",
+                None,
+            )
+        ]
+
+    entries: list[PipelineEntry] = []
+    for recovered in recovery.entries:
+        status, reason = _terminal_result(
+            recovered.official_resolution,
+            recovered.admission_route,
+            record.article_published_at,
+            recovered.record.claim,
+        )
+        entries.append(
+            PipelineEntry(
+                recovered.parent_claim_id,
+                recovered.record.claim,
+                recovery.recovery_action,
+                recovered.admission_route,
+                status,
+                reason,
+                recovered.official_resolution,
+            )
+        )
+    return entries
+
+
+def _terminal_result(
+    resolution: Any | None,
+    admission_route: str,
+    article_published_at: date | None,
+    claim: ClaimSchema,
+) -> tuple[str, str | None]:
     if resolution is not None:
         verdict = getattr(resolution, "verdict", None)
-        if verdict is None and isinstance(resolution, dict): return str(resolution.get("route_status") or "HOLD"), resolution.get("reason_code")
+        if verdict is None and isinstance(resolution, dict):
+            return str(resolution.get("route_status") or "HOLD"), resolution.get("reason_code")
         return str(getattr(verdict, "route_status", "HOLD")), getattr(verdict, "reason_code", None)
-    if article_published_at is None and admission_route == "KOSIS_PIPELINE_ELIGIBLE": return "HOLD", "ARTICLE_DATE_REQUIRED"
+    if article_published_at is None and admission_route == "KOSIS_PIPELINE_ELIGIBLE":
+        return "HOLD", "ARTICLE_DATE_REQUIRED"
     return "HOLD", claim.parse_reason or admission_route
 
 

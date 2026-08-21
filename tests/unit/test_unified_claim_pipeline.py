@@ -3,8 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 
-from core.unified_claim_pipeline import verify_article
+import core.unified_claim_pipeline as pipeline
 from schemas.claim import ClaimSchema
+from schemas.claim_registry import ClaimRegistryRecord
 
 
 class _Extractor:
@@ -72,7 +73,7 @@ class _OfficialService:
 def test_article_multi_claims_all_reenter_the_same_official_service() -> None:
     service = _OfficialService()
 
-    result = verify_article(
+    result = pipeline.verify_article(
         "2023년 고용률은 60%였고 2024년 고용률은 61%였다.",
         article_published_at=date(2025, 1, 10),
         extractor=_Extractor(),
@@ -88,7 +89,7 @@ def test_article_multi_claims_all_reenter_the_same_official_service() -> None:
 def test_context_required_claim_reparses_article_context_and_reenters_official_service() -> None:
     service = _OfficialService()
 
-    result = verify_article(
+    result = pipeline.verify_article(
         "고용동향 발표. 지난달 고용률은 60%였다.",
         article_published_at=date(2025, 1, 10),
         extractor=_Extractor(),
@@ -99,3 +100,38 @@ def test_context_required_claim_reparses_article_context_and_reenters_official_s
     assert result.entries[0].recovery_action == "CONTEXT_REPARSE"
     assert result.entries[0].terminal_status == "AUTO"
     assert len(service.claims) == 1
+
+
+def test_registry_record_uses_the_same_pipeline_entry_contract_as_article() -> None:
+    service = _OfficialService()
+    claim = ClaimSchema(
+        claim_id="registry-claim",
+        source_sentence="2024년 고용률은 60%였다.",
+        indicator="고용률",
+        value=60,
+        unit="%",
+        time="2024년",
+        frequency="년",
+        calculation="DIRECT_VALUE",
+        parse_status="AUTO_OK",
+    )
+    record = ClaimRegistryRecord(
+        article_id="article-1",
+        sentence_id="1",
+        article_published_at=date(2025, 1, 10),
+        source_ref="test",
+        claim=claim,
+    )
+
+    entries = pipeline.verify_registry_record(
+        record,
+        extractor=_Extractor(),
+        official_service=service,
+        article_context="기사 본문",
+    )
+
+    assert len(entries) == 1
+    assert isinstance(entries[0], pipeline.PipelineEntry)
+    assert entries[0].claim.claim_id == "registry-claim"
+    assert entries[0].terminal_status == "AUTO"
+    assert service.claims == [claim]
