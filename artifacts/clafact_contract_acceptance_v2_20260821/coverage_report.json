@@ -1,0 +1,29 @@
+{
+  "admission_route_counts": {
+    "KOSIS_PIPELINE_ELIGIBLE": 34,
+    "STRUCTURAL_HOLD": 4
+  },
+  "all_claims_terminal": true,
+  "derived_claims": 38,
+  "input_registry_records": 16,
+  "official_resolution_count": 34,
+  "recovery_action_counts": {
+    "MULTI_CLAIM_SPLIT": 38
+  },
+  "registry_load_errors": [],
+  "terminal_reason_counts": {
+    "AMBIGUOUS_MARGIN": 1,
+    "AS_OF_UNAVAILABLE": 5,
+    "CALCULATION_EVIDENCE_PLAN_UNRESOLVED": 1,
+    "FETCH_FAILED": 3,
+    "LOW_SEMANTIC_SCORE": 1,
+    "NO_EVIDENCE_COORDINATE_CANDIDATE": 5,
+    "NO_HARD_GUARD_CANDIDATE": 10,
+    "STRUCTURAL_HOLD": 4,
+    "WITHIN_TOLERANCE": 8
+  },
+  "terminal_route_counts": {
+    "AUTO": 8,
+    "HOLD": 30
+  }
+}

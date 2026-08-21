@@ -351,5 +351,18 @@
       "배추 소비자물가지수",
       "품목별 소비자물가지수 배추"
     ]
-  }
-]
+  },
+  {
+    "concept_id": "C000039",
+    "canonical_name": "수출물가지수",
+    "standard_key": "export_price_index",
+    "aliases": ["수출물가지수", "수출 물가 지수"],
+    "kosis_search_terms": ["수출물가지수", "수출물가"]
+  },
+  {
+    "concept_id": "C000040",
+    "canonical_name": "비정규직 근로자",
+    "standard_key": "nonregular_worker",
+    "aliases": ["비정규직 규모/비율", "비정규직 근로자", "비정규직 비중"],
+    "kosis_search_terms": ["경제활동인구조사 근로형태별 부가조사", "비정규직 근로자"]
+  }]

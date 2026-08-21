@@ -1,0 +1,101 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import date
+
+from core.unified_claim_pipeline import verify_article
+from schemas.claim import ClaimSchema
+
+
+class _Extractor:
+    def extract(self, source_sentence: str, *, article_published_at: date | None = None) -> ClaimSchema:
+        if source_sentence.startswith("고용동향 발표."):
+            return ClaimSchema(
+                claim_id="temporary",
+                source_sentence=source_sentence,
+                indicator="고용률",
+                value=60,
+                unit="%",
+                time="2024년 12월",
+                frequency="월",
+                region="전국",
+                calculation="DIRECT_VALUE",
+                parse_status="AUTO_OK",
+            )
+        if "지난달" in source_sentence:
+            return ClaimSchema(
+                claim_id="temporary",
+                source_sentence=source_sentence,
+                parse_status="HOLD",
+                parse_reason="지난달 기준 시점에 기사 문맥이 필요함",
+            )
+        year = "2023년" if "2023" in source_sentence else "2024년"
+        value = 60 if "60%" in source_sentence else 61
+        return ClaimSchema(
+            claim_id="temporary",
+            source_sentence=source_sentence,
+            indicator="고용률",
+            value=value,
+            unit="%",
+            time=year,
+            frequency="년",
+            calculation="DIRECT_VALUE",
+            parse_status="AUTO_OK",
+        )
+
+
+@dataclass
+class _Verdict:
+    route_status: str = "AUTO"
+    reason_code: str | None = None
+
+    def model_dump(self, *, mode: str) -> dict[str, object]:
+        return {"route_status": self.route_status, "reason_code": self.reason_code}
+
+
+@dataclass
+class _Resolution:
+    verdict: _Verdict
+    concept: None = None
+    candidates: tuple[()] = ()
+
+
+class _OfficialService:
+    def __init__(self) -> None:
+        self.claims: list[ClaimSchema] = []
+
+    def resolve(self, claim: ClaimSchema, *, article_date: date) -> _Resolution:
+        self.claims.append(claim)
+        return _Resolution(_Verdict())
+
+
+def test_article_multi_claims_all_reenter_the_same_official_service() -> None:
+    service = _OfficialService()
+
+    result = verify_article(
+        "2023년 고용률은 60%였고 2024년 고용률은 61%였다.",
+        article_published_at=date(2025, 1, 10),
+        extractor=_Extractor(),
+        official_service=service,
+    )
+
+    assert len(result.entries) == 2
+    assert len(service.claims) == 2
+    assert {entry.terminal_status for entry in result.entries} == {"AUTO"}
+    assert all(entry.recovery_action == "DIRECT" for entry in result.entries)
+
+
+def test_context_required_claim_reparses_article_context_and_reenters_official_service() -> None:
+    service = _OfficialService()
+
+    result = verify_article(
+        "고용동향 발표. 지난달 고용률은 60%였다.",
+        article_published_at=date(2025, 1, 10),
+        extractor=_Extractor(),
+        official_service=service,
+    )
+
+    assert len(result.entries) == 1
+    assert result.entries[0].recovery_action == "CONTEXT_REPARSE"
+    assert result.entries[0].terminal_status == "AUTO"
+    assert len(service.claims) == 1

@@ -14,15 +14,21 @@ from schemas.claim import ClaimSchema
 from schemas.concept import StandardConceptSchema
 from schemas.verdict import VerdictSchema
 
+
 @dataclass(frozen=True, slots=True)
 class CatalogResolution:
-    """Safe operational summary of one Catalog search; never contains credentials or raw payloads."""
+    """Safe operational summary of one Catalog search."""
 
     candidates: list[KosisCandidateSchema]
     diagnostics: dict[str, int] = field(default_factory=dict)
 
+
 ConceptMapper = Callable[[ClaimSchema], StandardConceptSchema]
 CatalogResolver = Callable[[ClaimSchema, StandardConceptSchema], list[KosisCandidateSchema] | CatalogResolution]
+CandidateSelector = Callable[
+    [ClaimSchema, StandardConceptSchema, list[KosisCandidateSchema]],
+    list[KosisCandidateSchema],
+]
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,20 +50,19 @@ class OfficialEvidenceService:
         concept_mapper: ConceptMapper,
         catalog_resolver: CatalogResolver,
         official_fetcher: OfficialValueFetcher,
+        candidate_selector: CandidateSelector | None = None,
     ) -> None:
         self._concept_mapper = concept_mapper
         self._catalog_resolver = catalog_resolver
         self._official_fetcher = official_fetcher
+        self._candidate_selector = candidate_selector or (
+            lambda _claim, _concept, candidates: candidates
+        )
 
-    def resolve(
-        self, claim: ClaimSchema, *, article_date: date
-    ) -> OfficialEvidenceResolution:
+    def resolve(self, claim: ClaimSchema, *, article_date: date) -> OfficialEvidenceResolution:
         concept = self._concept_mapper(claim)
         catalog_result = (
-            run_operational_stage(
-                "KOSIS_CATALOG",
-                lambda: self._catalog_resolver(claim, concept),
-            )
+            run_operational_stage("KOSIS_CATALOG", lambda: self._catalog_resolver(claim, concept))
             if concept.status == "MATCHED"
             else []
         )
@@ -67,6 +72,10 @@ class OfficialEvidenceService:
         else:
             candidates = catalog_result
             catalog_diagnostics = {}
+        # Explicit bindings are applied only after live Catalog and official
+        # metadata hydration. They therefore narrow verified candidates; they
+        # never replace either official lookup.
+        candidates = self._candidate_selector(claim, concept, candidates)
         verdict = run_operational_stage(
             "VERIFICATION",
             lambda: dynamic_kosis_verifier.verify_claim_against_kosis(

@@ -1,4 +1,16 @@
 [
-  {"standard_key":"employment_count","frequency":"월","region":null,"population":null,"tbl_id":"DT_1DA7028S","evidence_profile":"national_total"},
-  {"standard_key":"year_on_year_cpi_rate","frequency":"월","region":null,"population":null,"tbl_id":"DT_1J22042","evidence_profile":"national_total"}
+  {"standard_key":"cultivated_area","frequencies":["년"],"indicator_contains_any":["벼"],"tbl_id":"DT_1ET0012","org_id":"101","itm_id":"T06"},
+  {"standard_key":"employment_count","dimension_contains_any":["도소매","숙박","음식점"],"tbl_id":"DT_1DA7E06S_NEW","org_id":"101","itm_id":"T30","dimension_codes":{"I":"42"}},
+  {"standard_key":"employment_count","dimension_contains_any":["건설업","제조업"],"tbl_id":"DT_1DA7E06S_NEW","org_id":"101","itm_id":"T30"},
+  {"standard_key":"employment_count","dimension_absent":true,"region_scope":"national","tbl_id":"DT_1DA7001S","org_id":"101","itm_id":"T30"},
+  {"standard_key":"employment_rate","region_scope":"local","tbl_id":"DT_1ES3A01S","org_id":"101","itm_id":"T7","prd_se":"반기"},
+  {"standard_key":"inactive_population_resting","tbl_id":"DT_1DA7147S","org_id":"101","itm_id":"T50"},
+  {"standard_key":"birth_count","tbl_id":"DT_1B8000G","org_id":"101","itm_id":"T1","dimension_codes":{"A":"10"},"unit":"명"},
+  {"standard_key":"total_fertility_rate","tbl_id":"DT_1B8000G","org_id":"101","itm_id":"T1","dimension_codes":{"A":"12"},"unit":"명"},
+  {"standard_key":"death_count","dimension_contains_any":["80대"],"tbl_id":"DT_1B80A13","org_id":"101","itm_id":"T2"},
+  {"standard_key":"death_count","dimension_absent":true,"tbl_id":"DT_1B8000G","org_id":"101","itm_id":"T1"},
+  {"standard_key":"restaurant_consumer_price","tbl_id":"DT_1J22112","org_id":"101","itm_id":"T"},
+  {"standard_key":"consumer_price","tbl_id":"DT_1J22003","org_id":"101","itm_id":"T"},
+  {"standard_key":"year_on_year_cpi_rate","tbl_id":"DT_1J22042","org_id":"101","itm_id":"T03"},
+  {"standard_key":"all_industry_production_index","tbl_id":"DT_1JH20201","org_id":"101","itm_id":"T1","dimension_codes":{"A":"0"}}
 ]

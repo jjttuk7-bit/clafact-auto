@@ -19,12 +19,12 @@ def _claim(indicator: str) -> ClaimSchema:
     )
 
 
-def test_concept_seed_v1_contains_exactly_38_unique_verified_concepts() -> None:
+def test_concept_seed_v1_contains_40_unique_verified_concepts() -> None:
     concepts = load_standard_concepts(SEED_PATH)
 
-    assert len(concepts) == 38
-    assert len({concept.concept_id for concept in concepts}) == 38
-    assert len({concept.standard_key for concept in concepts}) == 38
+    assert len(concepts) == 40
+    assert len({concept.concept_id for concept in concepts}) == 40
+    assert len({concept.standard_key for concept in concepts}) == 40
 
 
 def test_concept_seed_v1_maps_representative_claim_indicators() -> None:

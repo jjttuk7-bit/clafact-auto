@@ -1,0 +1,11 @@
+{
+  "acceptance_passed": true,
+  "as_of_hold_count": 19,
+  "auto_count": 17,
+  "derived_claims": 38,
+  "failures": [],
+  "forbidden_coordinate_failure_count": 0,
+  "input_registry_records": 16,
+  "operational_failure_count": 0,
+  "structural_time_hold_count": 2
+}

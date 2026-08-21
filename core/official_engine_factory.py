@@ -1,12 +1,12 @@
 """Build the shared live KOSIS official-evidence engine outside the UI."""
-
 from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass, field
-import re
 from pathlib import Path
+import re
 
+from core.catalog_binding import apply_catalog_binding
 from core.catalog_discovery import discover_catalog_candidates
 from core.catalog_metadata_refresh import refresh_item_metadata_for_claim
 from core.catalog_search import search_semantic_catalog
@@ -32,17 +32,19 @@ class OfficialEnginePaths:
 
 
 def build_official_evidence_service(
-    paths: OfficialEnginePaths,
-    *,
-    kosis_api_key: str | None,
+    paths: OfficialEnginePaths, *, kosis_api_key: str | None,
     live_time_budget_seconds: float = 45.0,
 ) -> OfficialEvidenceService:
     """Create the one live engine used by UI, batch, and API acceptance."""
-    repository = (KosisMetadataRepository.from_manifests(paths.metadata_manifest_paths) if paths.metadata_manifest_paths else KosisMetadataRepository([]))
+    repository = (
+        KosisMetadataRepository.from_manifests(paths.metadata_manifest_paths)
+        if paths.metadata_manifest_paths else KosisMetadataRepository([])
+    )
     fetcher = OfficialValueFetcher(
         [],
         api_lookup=(build_kosis_api_lookup(
-            kosis_api_key, retries=1, timeout_seconds=max(1.0, live_time_budget_seconds / 2)
+            kosis_api_key, retries=1,
+            timeout_seconds=max(1.0, live_time_budget_seconds / 2),
         ) if kosis_api_key else None),
         prefer_api=bool(kosis_api_key),
         as_of_metadata_paths=paths.as_of_metadata_paths,
@@ -52,20 +54,29 @@ def build_official_evidence_service(
 
     def resolve_catalog(claim: ClaimSchema, concept: StandardConceptSchema):
         local = search_semantic_catalog(claim, concept, load_kosis_catalog(paths.catalog_path))
-        live = KosisLiveCatalogSearch(kosis_api_key, max_attempts=2, timeout_seconds=10) if kosis_api_key else None
-        discovered = discover_catalog_candidates(claim, concept, local, live, time_budget_seconds=live_time_budget_seconds)
+        live = (
+            KosisLiveCatalogSearch(
+                kosis_api_key, max_attempts=1,
+                timeout_seconds=max(1.0, min(10.0, live_time_budget_seconds / 4)),
+            ) if kosis_api_key else None
+        )
+        discovered = discover_catalog_candidates(
+            claim, concept, local, live,
+            time_budget_seconds=live_time_budget_seconds,
+        )
         discovered = _add_official_concept_candidates(discovered, concept, repository)
         if live and not local and live.attempted_queries and live.failed_queries == live.attempted_queries:
             raise RuntimeError("KOSIS_CATALOG_UNAVAILABLE")
+
+        # Catalog search has completed. A verified recurring binding now limits
+        # which table receives the official ITM/PRD request. The binding runs
+        # again after hydration in OfficialEvidenceService before Hard Guard.
+        discovered = apply_catalog_binding(claim, concept, discovered)
         metadata_diagnostics: Counter[str] = Counter()
 
         def observed_metadata_fetcher(
-            api_key: str,
-            org_id: str,
-            table_id: str,
-            *,
-            meta_type: str = "ITM",
-            **kwargs: object,
+            api_key: str, org_id: str, table_id: str, *,
+            meta_type: str = "ITM", **kwargs: object,
         ):
             phase = meta_type.strip().lower() or "unknown"
             metadata_diagnostics[f"metadata_{phase}_attempted"] += 1
@@ -79,35 +90,33 @@ def build_official_evidence_service(
             return rows
 
         refreshed = refresh_item_metadata_for_claim(
-            discovered,
-            claim,
-            kosis_api_key,
+            discovered, claim, kosis_api_key,
             metadata_fetcher=observed_metadata_fetcher,
             max_candidates=None,
             time_budget_seconds=live_time_budget_seconds,
             retries=2,
             timeout_seconds=min(10, live_time_budget_seconds),
         )
-        return CatalogResolution(
-            candidates=refreshed,
-            diagnostics={
-                "local_candidate_count": len(local),
-                "attempted_queries": live.attempted_queries if live else 0,
-                "failed_queries": live.failed_queries if live else 0,
-                "empty_queries": live.empty_queries if live else 0,
-                "candidate_count": len(refreshed),
-                **dict(metadata_diagnostics),
-            },
-        )
+        return CatalogResolution(candidates=refreshed, diagnostics={
+            "local_candidate_count": len(local),
+            "attempted_queries": live.attempted_queries if live else 0,
+            "failed_queries": live.failed_queries if live else 0,
+            "empty_queries": live.empty_queries if live else 0,
+            "candidate_count": len(refreshed),
+            **dict(metadata_diagnostics),
+        })
 
     return OfficialEvidenceService(
-        concept_mapper=lambda claim: normalize_concept(claim, load_standard_concepts(paths.standard_path)),
+        concept_mapper=lambda claim: normalize_concept(
+            claim, load_standard_concepts(paths.standard_path)
+        ),
         catalog_resolver=resolve_catalog,
         official_fetcher=fetcher,
+        candidate_selector=apply_catalog_binding,
     )
 
+
 def _safe_metadata_failure_code(error: Exception) -> str:
-    """Return a stable, non-sensitive KOSIS metadata failure classification."""
     code = str(error).strip()
     if re.fullmatch(r"KOSIS_METADATA_(?:FETCH_FAILED|INVALID_RESPONSE|EMPTY_RESPONSE|API_ERROR(?:_\d+)?|SNAPSHOT_(?:HASH_MISMATCH|MANIFEST_INVALID|VERSION_MISMATCH|VERSION_REQUIRED))", code):
         return code
@@ -116,28 +125,25 @@ def _safe_metadata_failure_code(error: Exception) -> str:
     if isinstance(error, ValueError):
         return "KOSIS_METADATA_CLIENT_VALUE_ERROR"
     return "KOSIS_METADATA_UNCLASSIFIED_FAILURE"
+
+
 def _add_official_concept_candidates(
-    candidates: list[KosisCandidateSchema],
-    concept: StandardConceptSchema,
+    candidates: list[KosisCandidateSchema], concept: StandardConceptSchema,
     repository: KosisMetadataRepository,
 ) -> list[KosisCandidateSchema]:
-    """Prioritize only tables whose versioned KOSIS ITM metadata contains Concept code."""
     if ":" not in concept.concept_id:
         return candidates
     code = concept.concept_id.rsplit(":", 1)[-1].strip()
     official_identities = set(repository.table_identities_for_member_code(code))
     prioritized = [
         candidate.model_copy(update={"source_stat_id": "OFFICIAL_CONCEPT_METADATA_SEED"})
-        if (candidate.org_id, candidate.tbl_id) in official_identities
-        else candidate
+        if (candidate.org_id, candidate.tbl_id) in official_identities else candidate
         for candidate in candidates
     ]
     existing = {(candidate.org_id, candidate.tbl_id) for candidate in prioritized}
     seeded = [
         KosisCandidateSchema(
-            org_id=org_id,
-            tbl_id=table_id,
-            tbl_name=concept.canonical_name,
+            org_id=org_id, tbl_id=table_id, tbl_name=concept.canonical_name,
             source_stat_id="OFFICIAL_CONCEPT_METADATA_SEED",
             metadata_status="LIVE_SEARCH_UNRESOLVED",
         )

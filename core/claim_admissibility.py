@@ -6,7 +6,12 @@ from dataclasses import dataclass
 from typing import Literal
 
 
-AdmissibilityRoute = Literal["VERIFIABLE", "STRUCTURAL_HOLD", "CONTEXT_REQUIRED"]
+AdmissibilityRoute = Literal[
+    "VERIFIABLE",
+    "STRUCTURAL_HOLD",
+    "CONTEXT_REQUIRED",
+    "MULTI_CLAIM_SPLIT_REQUIRED",
+]
 
 
 @dataclass(frozen=True)
@@ -40,6 +45,10 @@ def classify_admissibility(reason: str | None, route_status: str) -> Admissibili
         return AdmissibilityDecision("VERIFIABLE", "KOSIS_STAGE_REACHED")
     if text.startswith("MISSING_REQUIRED_SLOTS"):
         return AdmissibilityDecision("STRUCTURAL_HOLD", "MISSING_REQUIRED_SLOT")
+    if text.startswith("MULTI_CLAIM_SPLIT_REQUIRED"):
+        return AdmissibilityDecision(
+            "MULTI_CLAIM_SPLIT_REQUIRED", "MULTI_CLAIM_SPLIT_REQUIRED"
+        )
     if any(marker in text for marker in _RELATIVE_TIME_MARKERS):
         return AdmissibilityDecision("CONTEXT_REQUIRED", "RELATIVE_TIME_UNRESOLVED")
     if any(marker in text for marker in _FORECAST_MARKERS):

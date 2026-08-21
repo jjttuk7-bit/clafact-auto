@@ -1,0 +1,18 @@
+{
+  "all_claims_terminal": true,
+  "all_multi_claims_reentered": true,
+  "derived_claims": 38,
+  "input_registry_records": 16,
+  "official_resolution_count": 36,
+  "operational_failure_count": 0,
+  "terminal_reason_counts": {
+    "AS_OF_UNAVAILABLE": 19,
+    "OUTSIDE_TOLERANCE": 5,
+    "STRUCTURAL_HOLD": 2,
+    "WITHIN_TOLERANCE": 12
+  },
+  "terminal_route_counts": {
+    "AUTO": 17,
+    "HOLD": 21
+  }
+}

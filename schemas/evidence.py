@@ -1,13 +1,11 @@
 """Evidence coordinate and deterministic calculation contracts."""
 
 from typing import Literal
-
 from pydantic import BaseModel, ConfigDict, Field
 
 
 class EvidenceCellSchema(BaseModel):
     model_config = ConfigDict(extra="forbid")
-
     org_id: str
     tbl_id: str
     itm_id: str
@@ -24,8 +22,10 @@ class EvidenceCellSchema(BaseModel):
 
 class CalculationPlan(BaseModel):
     model_config = ConfigDict(extra="forbid")
-
-    calculation_type: Literal["DIRECT_VALUE", "DIFFERENCE", "GROWTH_RATE", "RATIO", "SHARE", "MULTIPLE", "RANK", "THRESHOLD"]
+    calculation_type: Literal[
+        "DIRECT_VALUE", "DIFFERENCE", "SUM_DIFFERENCE", "GROWTH_RATE",
+        "RATIO", "SHARE", "MULTIPLE", "RANK", "THRESHOLD",
+    ]
     required_cells: list[EvidenceCellSchema] = Field(default_factory=list)
     operator: str | None = None
     tolerance: float | None = None

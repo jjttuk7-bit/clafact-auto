@@ -25,6 +25,12 @@ def normalize_concept(
     if not indicator:
         return _unresolved()
 
+    source_matches = _source_context_matches(claim, concept_list)
+    if len(source_matches) == 1:
+        return _matched(*source_matches[0])
+    if len(source_matches) > 1:
+        return _unresolved()
+
     for contextual_label in _contextual_labels(claim):
         contextual_matches = _label_matches(
             contextual_label, concept_list, normalize=True
@@ -56,6 +62,32 @@ def normalize_concept(
     return _matched(*best_matches[0])
 
 
+
+def _source_context_matches(
+    claim: ClaimSchema, concepts: list[SemanticStandardRecord]
+) -> list[tuple[SemanticStandardRecord, str]]:
+    """Use a unique, more-specific source indicator only for a generic parsed slot."""
+    indicator = _normalize_text(claim.indicator or "")
+    source = _normalize_text(claim.source_sentence)
+    if not indicator or not source:
+        return []
+    matches: list[tuple[SemanticStandardRecord, str]] = []
+    for concept in concepts:
+        for label in (concept.canonical_name, *concept.aliases):
+            normalized_label = _normalize_text(label)
+            if (
+                len(normalized_label) > len(indicator)
+                and indicator in normalized_label
+                and normalized_label in source
+            ):
+                matches.append((concept, label))
+    if not matches:
+        return []
+    longest = max(len(_normalize_text(label)) for _, label in matches)
+    return _unique_by_concept([
+        (concept, label) for concept, label in matches
+        if len(_normalize_text(label)) == longest
+    ])
 def _contextual_labels(claim: ClaimSchema) -> list[str]:
     indicator = (claim.indicator or "").strip()
     if not indicator:

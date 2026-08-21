@@ -31,4 +31,16 @@ def resolve_member_code(mapping: dict[str, dict[str, str]], dimension_id: str, m
 
 
 def _normalize(value: str) -> str:
-    return value.replace(" ", "").replace("-", "").replace("~", "")
+    normalized = value.replace(" ", "").replace("-", "").replace("~", "")
+    regional_aliases = {
+        "경기도": "경기", "경기": "경기",
+        "강원도": "강원", "강원특별자치도": "강원", "강원": "강원",
+        "충청북도": "충북", "충북": "충북",
+        "충청남도": "충남", "충남": "충남",
+        "전북특별자치도": "전북", "전라북도": "전북", "전북": "전북",
+        "전라남도": "전남", "전남": "전남",
+        "경상북도": "경북", "경북": "경북",
+        "경상남도": "경남", "경남": "경남",
+        "제주특별자치도": "제주", "제주도": "제주", "제주": "제주",
+    }
+    return regional_aliases.get(normalized, normalized)

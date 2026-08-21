@@ -1,0 +1,50 @@
+[
+  {
+    "concept_id": "C000008",
+    "canonical_name": "취업자 수",
+    "standard_key": "employment_count",
+    "aliases": [
+      "취업자",
+      "15세 이상 취업자",
+      "전체 취업자",
+      "건설업 취업자",
+      "제조업 취업자",
+      "산업별 취업자"
+    ],
+    "kosis_search_terms": [
+      "경제활동인구조사 취업자",
+      "산업별 취업자"
+    ]
+  },
+  {
+    "concept_id": "C000018",
+    "canonical_name": "사망자 수",
+    "standard_key": "death_count",
+    "aliases": ["사망자", "연령별 사망자"],
+    "kosis_search_terms": ["인구동향 사망자수", "연령별 사망자수"]
+  },
+  {
+    "concept_id": "C000011",
+    "canonical_name": "전산업생산지수",
+    "standard_key": "all_industry_production_index",
+    "aliases": ["산업 생산", "산업생산"],
+    "kosis_search_terms": ["전산업생산지수 원지수", "전산업생산지수"]
+  },
+  {
+    "concept_id": "C000041",
+    "canonical_name": "합계출산율",
+    "standard_key": "total_fertility_rate",
+    "aliases": ["합계 출산율", "분기 합계출산율"],
+    "kosis_search_terms": ["합계출산율", "분기 합계출산율"]
+  },
+  {
+    "concept_id": "C000042",
+    "canonical_name": "쉬었음 인구",
+    "standard_key": "inactive_population_resting",
+    "aliases": ["쉬었음", "쉬었음 인구", "청년 쉬었음 인구"],
+    "kosis_search_terms": [
+      "비경제활동인구 활동상태별 쉬었음",
+      "쉬었음 인구"
+    ]
+  }
+]

@@ -33,6 +33,11 @@ _TAGS = re.compile(r"<[^>]+>")
 _KOSTAT_PRESS_RELEASE_LIST = "https://www.kostat.go.kr/board.es"
 _KOSTAT_PRESS_RELEASE_PARAMS = {
     "act": "list", "mid": "a10301010000", "keyField": "T",}
+_KOSTAT_RELEASE_PROFILES = {
+    "경제활동인구조사": ("210", "고용동향"),
+    "인구동향조사": ("213", "인구동향"),
+    "소비자물가조사": ("213", "소비자물가동향"),
+}
 _VIEW_LINK = re.compile(
     r"href=[\"'](?P<href>[^\"']*board\.es\?[^\"']*act=view[^\"']*)[\"'][^>]*>(?P<title>.*?)</a>",
     re.IGNORECASE | re.DOTALL,
@@ -280,7 +285,7 @@ def _release_links(raw: bytes) -> list[tuple[str, str]]:
 
 def _press_release_board_id(stats_name: str) -> str:
     """Return the official press board for the survey's release family."""
-    return "210" if _normalized_text(stats_name) == _normalized_text("경제활동인구조사") else "213"
+    return _KOSTAT_RELEASE_PROFILES.get(_normalized_text(stats_name), ("213", ""))[0]
 
 
 def _press_release_queries(stats_name: str, period: str) -> list[str]:
@@ -299,6 +304,9 @@ def _press_release_queries(stats_name: str, period: str) -> list[str]:
 
 def _press_release_title(stats_name: str) -> str:
     """Translate KOSIS statistical labels to the corresponding release-title form."""
+    profile = _KOSTAT_RELEASE_PROFILES.get(_normalized_text(stats_name))
+    if profile is not None:
+        return profile[1]
     normalized = stats_name.strip()
     return f"{normalized[:-2]}동향" if normalized.endswith(("지수", "조사")) else normalized
 

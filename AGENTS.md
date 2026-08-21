@@ -1,5 +1,13 @@
 # AGENTS.md — CLAFACT-AUTO CODEX 구현 규칙
 
+## 최우선 필수 참조
+
+모든 구현·수정·테스트·리뷰 작업은 시작하기 전에 반드시 루트의 [CLAFACT_AUTO_EXECUTION_CONTRACT.md](CLAFACT_AUTO_EXECUTION_CONTRACT.md)를 먼저 읽고 준수한다.
+
+- 이 계약은 CLAFACT-AUTO의 공식 API 직접 조회 원칙과 완료 조건을 정의한다.
+- 하위 설계·계획·테스트 관행이 이 계약과 충돌하면 이 계약을 우선한다.
+- 신규 Claim의 공식 조회 경로를 실제로 실행하지 않는 변경은 핵심 파이프라인 완성으로 인정하지 않는다.
+
 ## 프로젝트 목적
 
 CLAFACT-AUTO는 뉴스 기사 속 수치 Claim을 KOSIS 공식 통계와 자동으로 검증하는 시스템이다.
