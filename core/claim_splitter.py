@@ -23,6 +23,16 @@ _CURRENT_VALUE_CHANGE_SPLIT = re.compile(
 )
 
 
+_GROWTH_WIDTH_SPLIT = re.compile(
+    r"(?P<subject>(?:작년|지난해|올해)\s+[^.]+?은)\s+(?P<value>\d+(?:[.]\d+)?%)\s+늘어\s+(?P<change>전년\([^)]*\)에\s+비해\s+증가\s+폭이\s+커졌다\.)"
+)
+_STREAK_SPLIT = re.compile(
+    r"^(?P<subject>.+?)\s+(?:역시\s+)?(?P<first>전년\s+대비\s+\d+(?:[.]\d+)?%)\s+(?:오르면서|상승하면서)\s+(?P<second>\d+개월\s+연속\s+\d+(?:[.]\d+)?%\s+상승을\s+기록했다\.)$"
+)
+_TOTAL_AFTER_CHANGE_SPLIT = re.compile(
+    r".*?(?P<subject>지난\s+\d{1,2}월\s+[^.]+?수는)\s+(?P<change>1년\s+전보다\s+\d+(?:[,.]\d+)*(?:만\d+)?명(?:\([^)]*%\))?\s+증가한)\s+(?P<total>\d+(?:만\d+)?명)이다\."
+)
+
 def detect_structural_multi_claim(sentence: str) -> bool:
     """Return whether a sentence contains at least two statistical value assertions."""
     normalized = _BASE_YEAR_ANNOTATION.sub("", sentence.strip())
@@ -57,9 +67,28 @@ def _split_current_value_and_change(sentence: str) -> list[str] | None:
     return [f"{subject} {value}이다.", f"{subject} {change}"]
 
 
+def _split_remaining_multi_patterns(sentence: str) -> list[str] | None:
+    growth = _GROWTH_WIDTH_SPLIT.search(sentence)
+    if growth is not None:
+        subject = growth.group("subject")
+        return [f"{subject} {growth.group('value')} 늘었다.", f"{subject} {growth.group('change')}"]
+    streak = _STREAK_SPLIT.match(sentence)
+    if streak is not None:
+        subject = streak.group("subject")
+        return [f"{subject}는 {streak.group('first')} 올랐다.", f"{subject}는 {streak.group('second')}"]
+    total = _TOTAL_AFTER_CHANGE_SPLIT.match(sentence)
+    if total is not None:
+        subject = total.group("subject")
+        change = total.group("change").replace("증가한", "증가했다")
+        return [f"{subject} {change}.", f"{subject} {total.group('total')}이다."]
+    return None
+
 def split_complex_claim(sentence: str) -> list[str]:
     """Split only numeric clauses; leave singular claims exactly intact."""
     normalized = sentence.strip()
+    remaining_parts = _split_remaining_multi_patterns(normalized)
+    if remaining_parts is not None:
+        return remaining_parts
     structured_parts = _split_current_value_and_change(normalized)
     if structured_parts is not None:
         return structured_parts
