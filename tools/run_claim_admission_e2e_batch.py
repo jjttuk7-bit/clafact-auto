@@ -13,12 +13,13 @@ from core.claim_admission_e2e_batch_runner import run_claim_admission_e2e_batch
 from core.claim_extractor_factory import create_claim_extractor
 from core.claim_parser import parse_claim
 from core.claim_registry_loader import load_claim_registry
-from core.context_claim_reparse_batch import _limited_context, reparse_records_with_limited_context
+from core.context_claim_reparse_batch import _limited_context
+from core.explicit_numeric_slot import extract_explicit_numeric_slot
 from core.official_engine_factory import OfficialEnginePaths, build_official_evidence_service
 from core.openai_admission_router import OpenAIAdmissionRouter
 from core.openai_function_claim_extractor import OpenAIClaimExtractorError
-from schemas.claim_admission import AdmissionDecision
 from schemas.claim import ClaimSchema
+from schemas.claim_admission import AdmissionDecision
 from schemas.claim_registry import ClaimRegistryRecord
 
 
@@ -31,10 +32,89 @@ def build_report(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "admission_routed_count": sum(row["route_status"] == "ADMISSION_ROUTED" for row in rows),
         "official_route_counts": dict(sorted(Counter(row["route_status"] for row in official).items())),
         "official_verdict_counts": dict(sorted(Counter(row["verdict"] for row in official).items())),
-        "official_hold_reason_counts": dict(sorted(Counter(
-            row["reason_code"] for row in official if row["route_status"] == "HOLD"
-        ).items())),
+        "official_hold_reason_counts": dict(
+            sorted(Counter(row["reason_code"] for row in official if row["route_status"] == "HOLD").items())
+        ),
     }
+
+
+def _fill_explicit_child_numeric_slots(child: ClaimSchema) -> ClaimSchema:
+    extracted = extract_explicit_numeric_slot(child.source_sentence)
+    if extracted is None:
+        return child
+    value, unit, calculation = extracted
+    updates: dict[str, object] = {}
+    if child.value is None:
+        updates["value"] = value
+    if child.unit is None:
+        updates["unit"] = unit
+    if child.calculation is None:
+        updates["calculation"] = calculation
+    return child.model_copy(update=updates)
+
+
+def _inherit_split_context(parent: ClaimSchema, child: ClaimSchema) -> ClaimSchema:
+    common = ("indicator", "time", "frequency", "region", "population", "dimension", "source_hint")
+    updates = {
+        name: getattr(parent, name)
+        for name in common
+        if getattr(child, name) is None and getattr(parent, name) is not None
+    }
+    merged = child.model_copy(update=updates)
+    if merged.parse_status != "AUTO_OK" and all(
+        (merged.indicator, merged.value is not None, merged.unit, merged.time, merged.calculation)
+    ):
+        merged = merged.model_copy(update={"parse_status": "AUTO_OK", "parse_reason": None})
+    return merged
+
+
+def build_context_reparser(extractor: Any, contexts: dict[str, dict[str, Any]]):
+    def context_reparser(record: ClaimRegistryRecord, claim: ClaimSchema) -> ClaimSchema:
+        try:
+            context = _limited_context(contexts.get(record.article_id), record.claim.source_sentence, 500)
+            parsed = parse_claim(
+                claim.source_sentence,
+                extractor,
+                article_published_at=record.article_published_at,
+                article_context=context,
+            )
+            return _inherit_split_context(record.claim, _fill_explicit_child_numeric_slots(parsed)).model_copy(
+                update={"claim_id": claim.claim_id, "source_sentence": claim.source_sentence}
+            )
+        except Exception:
+            return claim.model_copy(
+                update={"parse_status": "HOLD", "parse_reason": "CLAIM_CONTEXT_REPARSE_FAILED"}
+            )
+
+    return context_reparser
+
+
+def build_child_parser(extractor: Any, contexts: dict[str, dict[str, Any]]):
+    def child_parser(
+        record: ClaimRegistryRecord, parent: ClaimSchema, sentence: str, child_id: str
+    ) -> ClaimSchema:
+        try:
+            context = _limited_context(contexts.get(record.article_id), parent.source_sentence, 500)
+            parsed = parse_claim(
+                sentence,
+                extractor,
+                article_published_at=record.article_published_at,
+                article_context=context,
+            )
+            return _inherit_split_context(parent, _fill_explicit_child_numeric_slots(parsed)).model_copy(
+                update={"claim_id": child_id, "source_sentence": sentence}
+            )
+        except Exception:
+            return parent.model_copy(
+                update={
+                    "claim_id": child_id,
+                    "source_sentence": sentence,
+                    "parse_status": "HOLD",
+                    "parse_reason": "CLAIM_SPLIT_PARSE_FAILED",
+                }
+            )
+
+    return child_parser
 
 
 def main() -> None:
@@ -44,7 +124,12 @@ def main() -> None:
     parser.add_argument("--article-context", type=Path)
     parser.add_argument("--standard", type=Path, default=Path("data/semantic_standard/concept_seed_v1.json"))
     parser.add_argument("--catalog", type=Path, default=Path("data/kosis_catalog/catalog_350.json"))
-    parser.add_argument("--metadata-manifest", type=Path, action="append", default=[Path("data/kosis_snapshots/gold_standard_v1_metadata_manifest.json")])
+    parser.add_argument(
+        "--metadata-manifest",
+        type=Path,
+        action="append",
+        default=[Path("data/kosis_snapshots/gold_standard_v1_metadata_manifest.json")],
+    )
     parser.add_argument("--as-of-metadata", type=Path, action="append", default=[])
     parser.add_argument("--start", type=int, default=0)
     parser.add_argument("--limit", type=int)
@@ -55,7 +140,7 @@ def main() -> None:
     if not settings.kosis_api_key:
         parser.error("KOSIS_API_KEY is required")
     registry = load_claim_registry(args.registry_path)
-    records = registry.records[args.start:] if args.limit is None else registry.records[args.start:args.start + args.limit]
+    records = registry.records[args.start:] if args.limit is None else registry.records[args.start : args.start + args.limit]
     contexts = _load_contexts(args.article_context) if args.article_context else {}
     service = build_official_evidence_service(
         OfficialEnginePaths(args.standard, args.catalog, args.as_of_metadata, args.metadata_manifest),
@@ -81,32 +166,11 @@ def main() -> None:
                 reason_code="ADMISSION_CLASSIFIER_UNAVAILABLE",
             )
 
-    def context_reparser(record: ClaimRegistryRecord, claim: ClaimSchema) -> ClaimSchema:
-        derived = record.model_copy(update={"claim": claim})
-        reparsed, _ = reparse_records_with_limited_context(
-            [derived], extractor, contexts, neighborhood_chars=500
-        )
-        return reparsed[0].claim
-
-    def child_parser(
-        record: ClaimRegistryRecord, _parent: ClaimSchema, sentence: str, child_id: str
-    ) -> ClaimSchema:
-        try:
-            return parse_claim(
-                sentence, extractor, article_published_at=record.article_published_at
-            ).model_copy(update={"claim_id": child_id, "source_sentence": sentence})
-        except Exception:
-            return _parent.model_copy(update={
-                "claim_id": child_id,
-                "source_sentence": sentence,
-                "parse_status": "HOLD",
-                "parse_reason": "CLAIM_SPLIT_PARSE_FAILED",
-            })
-
     rows = run_claim_admission_e2e_batch(
-        records, service,
-        context_reparser=context_reparser if contexts else None,
-        child_parser=child_parser,
+        records,
+        service,
+        context_reparser=build_context_reparser(extractor, contexts) if contexts else None,
+        child_parser=build_child_parser(extractor, contexts),
         contextual_admission_router=contextual_admission_router,
     )
     args.output_dir.mkdir(parents=True, exist_ok=True)
@@ -129,7 +193,7 @@ def main() -> None:
 
 def _load_contexts(path: Path) -> dict[str, dict[str, Any]]:
     return {
-        row["article_id"]: row
+        row["article_id"]
         for line in path.read_text(encoding="utf-8").splitlines()
         if line.strip()
         for row in [json.loads(line)]
@@ -139,4 +203,3 @@ def _load_contexts(path: Path) -> dict[str, dict[str, Any]]:
 
 if __name__ == "__main__":
     main()
-

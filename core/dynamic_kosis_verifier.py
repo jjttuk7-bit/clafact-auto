@@ -170,33 +170,8 @@ def _resolve_direct_value_tie(
     official_fetcher: OfficialValueFetcher,
     article_date: date,
 ) -> tuple[KosisCandidateSchema, EvidenceCellSchema] | None:
-    """Resolve direct-value ties only when official values and dates are identical."""
-    if claim.calculation not in {None, "DIRECT_VALUE"} or len(matches) < 2:
-        return None
-    top_score = getattr(matches[0], "semantic_score", None)
-    tied_ids = [getattr(match, "candidate_tbl_id") for match in matches if getattr(match, "semantic_score", None) == top_score]
-    if len(tied_ids) < 2:
-        return None
-    by_table = {candidate.tbl_id: candidate for candidate in candidates}
-    signatures: set[tuple[float, str | None, date]] = set()
-    selected: tuple[KosisCandidateSchema, EvidenceCellSchema] | None = None
-    for table_id in tied_ids:
-        candidate = by_table.get(table_id)
-        cell = resolved_cells.get(table_id)
-        if candidate is None or cell is None or cell.status != "CONFIRMED":
-            return None
-        try:
-            official = official_fetcher.fetch(cell, article_date=article_date)
-        except Exception:
-            return None
-        publication = official.publication
-        if (official.status != "SUCCESS" or official.value is None or publication is None
-                or publication.status != "VERIFIED" or publication.published_at is None):
-            return None
-        signatures.add((official.value, cell.unit, publication.published_at))
-        selected = selected or (candidate, cell)
-    return selected if len(signatures) == 1 else None
-
+    """Do not perform extra official calls solely to break semantic ties."""
+    return None
 def _prefer_exact_concept_code(
     concept: StandardConceptSchema,
     candidates: list[KosisCandidateSchema],

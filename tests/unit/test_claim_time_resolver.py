@@ -93,3 +93,10 @@ def test_resolve_relative_time_holds_half_year_until_kosis_period_is_supported()
     assert result.frequency == "반기"
     assert result.parse_status == "HOLD"
     assert result.parse_reason == "KOSIS_HALF_YEAR_PERIOD_UNSUPPORTED"
+
+
+def test_resolve_relative_time_converts_bare_this_year_using_article_date() -> None:
+    claim = ClaimSchema(claim_id="AREA-1", source_sentence="올해 벼 재배 면적은 67만8000ha이다.", indicator="벼 재배 면적", value=678000, unit="ha", time="올해", parse_status="AUTO_OK")
+    result = resolve_relative_time(claim, date(2025, 10, 2))
+    assert result.time == "2025년"
+    assert result.frequency == "년"

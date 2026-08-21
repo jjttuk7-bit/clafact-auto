@@ -51,14 +51,14 @@ class ClaimAdmissionPipeline:
 
     def process(self, claim: ClaimSchema) -> list[ClaimAdmissionExecution]:
         """Process a source candidate with at most one context and split generation."""
-        return self._process(claim, context_attempted=False, split_attempted=False, events=[])
+        return self._process(claim, context_attempted=False, split_depth=0, events=[])
 
     def _process(
         self,
         claim: ClaimSchema,
         *,
         context_attempted: bool,
-        split_attempted: bool,
+        split_depth: int,
         events: list[AdmissionEvent],
     ) -> list[ClaimAdmissionExecution]:
         decision = _structural_split_guard(claim) or _historical_context_guard(claim) or self._admission_router(claim)
@@ -80,10 +80,10 @@ class ClaimAdmissionPipeline:
             return self._process(
                 reparsed,
                 context_attempted=True,
-                split_attempted=split_attempted,
+                split_depth=split_depth,
                 events=[*admitted_events, _event("CLAIM_CONTEXT_REPARSE", claim, decision)],
             )
-        if decision.label == "MULTI_CLAIM_SPLIT_REQUIRED" and not split_attempted and self._child_parser:
+        if decision.label == "MULTI_CLAIM_SPLIT_REQUIRED" and split_depth < 2 and self._child_parser:
             parts = split_complex_claim(claim.source_sentence)
             if len(parts) > 1:
                 executions: list[ClaimAdmissionExecution] = []
@@ -92,7 +92,7 @@ class ClaimAdmissionPipeline:
                     executions.extend(self._process(
                         child,
                         context_attempted=context_attempted,
-                        split_attempted=True,
+                        split_depth=split_depth + 1,
                         events=[*admitted_events, _event("CLAIM_SPLIT", claim, decision, detail=part)],
                     ))
                 return executions

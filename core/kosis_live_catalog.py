@@ -61,7 +61,7 @@ class KosisLiveCatalogSearch:
             try:
                 with self._opener(request, timeout=self._timeout_seconds) as response:
                     payload = _decode_kosis_payload(response.read())
-            except (OSError, UnicodeDecodeError, RuntimeError):
+            except Exception:
                 continue
             if isinstance(payload, dict) and any(
                 key in payload for key in ("err", "error", "errMsg")

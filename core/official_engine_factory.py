@@ -52,7 +52,8 @@ def build_official_evidence_service(
 
     def resolve_catalog(claim: ClaimSchema, concept: StandardConceptSchema):
         local = search_semantic_catalog(claim, concept, load_kosis_catalog(paths.catalog_path))
-        live = KosisLiveCatalogSearch(kosis_api_key, max_attempts=2, timeout_seconds=10) if kosis_api_key else None
+        request_timeout = max(1.0, min(10.0, live_time_budget_seconds))
+        live = KosisLiveCatalogSearch(kosis_api_key, max_attempts=1, timeout_seconds=request_timeout) if kosis_api_key else None
         discovered = discover_catalog_candidates(claim, concept, local, live, time_budget_seconds=live_time_budget_seconds)
         discovered = _add_official_concept_candidates(discovered, concept, repository)
         if live and not local and live.attempted_queries and live.failed_queries == live.attempted_queries:

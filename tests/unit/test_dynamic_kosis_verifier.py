@@ -294,7 +294,7 @@ def test_publication_failure_hold_preserves_attempt_provenance() -> None:
     assert len(verdict.official_value_provenance) == 1
     assert verdict.official_value_provenance[0].publication is not None
     assert verdict.official_value_provenance[0].publication.content_hash == "e" * 64
-def test_direct_value_tie_is_resolved_only_when_official_values_and_publication_dates_match() -> None:
+def test_direct_value_tie_is_held_without_extra_official_value_calls() -> None:
     claim = ClaimSchema(
         claim_id="employment-tie", source_sentence="2024년 12월 취업자 수는 2804만1000명이었다.",
         indicator="취업자 수", value=28_041_000, unit="명", time="2024년 12월",
@@ -328,9 +328,9 @@ def test_direct_value_tie_is_resolved_only_when_official_values_and_publication_
         claim, concept, candidates, article_date=date(2025, 1, 15), official_fetcher=Fetcher()
     )
 
-    assert verdict.route_status == "AUTO"
-    assert verdict.reason_code == "WITHIN_TOLERANCE"
-    assert verdict.verdict == "MATCH"
+    assert verdict.route_status == "HOLD"
+    assert verdict.reason_code == "AMBIGUOUS_MARGIN"
+    assert verdict.verdict == "UNDETERMINED"
 
 def test_direct_value_tie_with_different_official_values_remains_hold() -> None:
     claim = ClaimSchema(

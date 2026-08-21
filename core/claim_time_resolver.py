@@ -37,6 +37,10 @@ def resolve_relative_time(claim: ClaimSchema, article_date: date | None) -> Clai
                 }
             )
         return claim.model_copy(update=update)
+    if relative_time in {"올해", "금년"}:
+        if article_date is None:
+            return claim.model_copy(update={"parse_status": "HOLD", "parse_reason": "ARTICLE_DATE_REQUIRED_FOR_RELATIVE_TIME"})
+        return claim.model_copy(update={"time": f"{article_date.year}년", "frequency": "년"})
     if relative_time not in {"지난달", "전월", "이달", "당월", "작년", "전년"}:
         return claim
     if article_date is None:

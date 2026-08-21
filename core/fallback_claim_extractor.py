@@ -25,11 +25,14 @@ class FallbackClaimExtractor:
         self.last_provider = "unavailable"
 
     def extract(
-        self, source_sentence: str, *, article_published_at: date | None = None
+        self, source_sentence: str, *, article_published_at: date | None = None, article_context: str | None = None
     ) -> ClaimSchema:
         self.last_provider = "unavailable"
         try:
-            claim = self.primary.extract(source_sentence, article_published_at=article_published_at)
+            primary_kwargs = {"article_published_at": article_published_at}
+            if article_context is not None:
+                primary_kwargs["article_context"] = article_context
+            claim = self.primary.extract(source_sentence, **primary_kwargs)
         except (OpenAITransientError, OpenAIContractError):
             claim = self.fallback.extract(source_sentence, article_published_at=article_published_at)
             self.last_provider = "hcx"

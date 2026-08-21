@@ -90,12 +90,10 @@ def test_router_demotes_model_eligible_output_when_required_slot_is_missing() ->
     assert decision.reason_code == "MISSING_SLOT_CONTEXT"
 
 
-def test_request_tells_router_not_to_split_one_metric_from_its_comparison_baseline() -> None:
-    instructions = build_openai_admission_request(claim(), "gpt-test")["instructions"]
+def test_request_omits_context_field_when_context_is_not_supplied() -> None:
+    request = build_openai_admission_request(claim(), "gpt-test")
 
-    assert "independent verifiable assertions" in instructions
-    assert "comparison baseline" in instructions
-
+    assert "article_context" not in json.loads(request["input"])
 
 def test_request_can_include_only_bounded_admission_context() -> None:
     request = build_openai_admission_request(
@@ -103,3 +101,26 @@ def test_request_can_include_only_bounded_admission_context() -> None:
     )
 
     assert json.loads(request["input"])["article_context"].startswith("제목:")
+
+
+def test_router_demotes_model_multi_for_a_single_comparison_change_claim() -> None:
+    payload = {"output": [{"type": "function_call", "name": ADMISSION_FUNCTION_NAME, "arguments": json.dumps({"label": "MULTI_CLAIM_SPLIT_REQUIRED", "reason_code": "MODEL_MULTI"})}]}
+    class Response:
+        def __enter__(self): return self
+        def __exit__(self, *_args): return None
+        def read(self): return json.dumps(payload).encode()
+    comparison_claim = claim().model_copy(update={"source_sentence": "올해 벼 재배 면적은 전년(69만8000ha)보다 2만ha(2.9%) 감소했다."})
+    decision = OpenAIAdmissionRouter(api_key="test", transport=lambda *_args, **_kwargs: Response()).route(comparison_claim)
+    assert decision.label == "CONTEXT_REQUIRED"
+    assert decision.reason_code == "MODEL_MULTI_CONFLICTS_WITH_SINGLE_COMPARISON_CLAIM"
+
+def test_router_promotes_relative_time_context_request_when_slots_are_resolved() -> None:
+    payload = {"output": [{"type": "function_call", "name": ADMISSION_FUNCTION_NAME, "arguments": json.dumps({"label": "CONTEXT_REQUIRED", "reason_code": "RELATIVE_TIME_REQUIRES_ARTICLE_CONTEXT"})}]}
+    class Response:
+        def __enter__(self): return self
+        def __exit__(self, *_args): return None
+        def read(self): return json.dumps(payload).encode()
+    resolved = claim().model_copy(update={"source_sentence": "올해 벼 재배 면적은 67만8000ha이다.", "time": "2025년", "frequency": "년"})
+    decision = OpenAIAdmissionRouter(api_key="test", transport=lambda *_args, **_kwargs: Response()).route(resolved)
+    assert decision.label == "KOSIS_PIPELINE_ELIGIBLE"
+    assert decision.reason_code == "RESOLVED_RELATIVE_TIME_SINGLE_CLAIM"

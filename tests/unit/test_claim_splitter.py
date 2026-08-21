@@ -95,9 +95,13 @@ def test_splits_remaining_directly_reviewed_multi_claim_patterns(
 ) -> None:
     assert split_complex_claim(sentence) == expected
 
-def test_ignores_comparison_baseline_and_rate_in_a_single_change_claim() -> None:
+def test_detects_amount_and_rate_as_independent_change_claims() -> None:
     child = "올해 벼 재배 면적은 전년(69만8000㏊)보다 2만㏊(2.9%) 감소한 것으로 집계됐다."
     parent = "올해 벼 재배 면적은 67만8000㏊로 전년(69만8000㏊)보다 2만㏊(2.9%) 감소한 것으로 집계됐다."
 
-    assert not detect_structural_multi_claim(child)
+    assert detect_structural_multi_claim(child)
     assert detect_structural_multi_claim(parent)
+
+def test_splits_absolute_and_percent_change_into_independent_claims() -> None:
+    sentence = "올해 벼 재배 면적은 전년(69만8000ha)보다 2만ha(2.9%) 감소했다."
+    assert split_complex_claim(sentence) == ["올해 벼 재배 면적은 전년보다 2만ha 감소했다.", "올해 벼 재배 면적은 전년보다 2.9% 감소했다."]

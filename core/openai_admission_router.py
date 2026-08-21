@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from copy import deepcopy
 from typing import Any, Callable
 from urllib.request import Request, urlopen
@@ -25,6 +26,9 @@ from schemas.claim_admission import AdmissionDecision, AdmissionLabel
 
 
 ADMISSION_FUNCTION_NAME = "route_claim_admission"
+_SINGLE_COMPARISON_CHANGE = re.compile(
+    r"(?:전년|작년|지난해|전월|전분기|동월|동기|1년 전)\s*\([^)]*\)\s*(?:보다|비해).*?(?:증가|감소|늘|줄|상승|하락|올랐|내렸)"
+)
 _INSTRUCTIONS = (
     "Classify one Korean numerical news sentence before KOSIS verification. "
     "Return exactly one label: KOSIS_PIPELINE_ELIGIBLE only for one present factual "
@@ -33,7 +37,6 @@ _INSTRUCTIONS = (
     "independent claims; NON_KOSIS_OR_PRIVATE for foreign, company, private, or "
     "non-KOSIS statistics; FORECAST_OPINION_UNVERIFIABLE for forecast/evaluation; "
     "NOT_A_VERIFIABLE_CLAIM for policy, definition, or non-factual numeric prose. "
-    "Use MULTI_CLAIM_SPLIT_REQUIRED only for independent verifiable assertions; do not split a simple comparison baseline from its metric. "
     "Never fetch, infer, or create KOSIS values, dates, evidence, or verdicts."
 )
 
@@ -52,19 +55,20 @@ def build_openai_admission_request(
     claim: ClaimSchema, model: str, *, article_context: str | None = None
 ) -> dict[str, object]:
     """Build a narrow request containing source text and already-extracted slots only."""
+    input_payload: dict[str, object] = {
+        "source_sentence": claim.source_sentence,
+        "slots": claim.model_dump(exclude={"claim_id", "source_sentence"}, mode="json"),
+    }
+    if article_context is not None:
+        input_payload["article_context"] = article_context
     return {
         "model": model,
         "instructions": _INSTRUCTIONS,
-        "input": json.dumps({
-            "source_sentence": claim.source_sentence,
-            "slots": claim.model_dump(exclude={"claim_id", "source_sentence"}, mode="json"),
-            "article_context": article_context,
-        }, ensure_ascii=False),
+        "input": json.dumps(input_payload, ensure_ascii=False),
         "tools": [_tool_definition()],
         "tool_choice": {"type": "function", "name": ADMISSION_FUNCTION_NAME},
         "parallel_tool_calls": False,
     }
-
 
 def parse_openai_admission_response(payload: object) -> AdmissionDecision:
     if not isinstance(payload, dict) or not isinstance(payload.get("output"), list):
@@ -105,6 +109,10 @@ class OpenAIAdmissionRouter:
             raise _translate_error(error) from None
         try:
             decision = parse_openai_admission_response(json.loads(body))
+            if decision.label == "CONTEXT_REQUIRED" and decision.reason_code.startswith("RELATIVE_TIME") and _has_required_kosis_slots(claim):
+                return AdmissionDecision(label="KOSIS_PIPELINE_ELIGIBLE", reason_code="RESOLVED_RELATIVE_TIME_SINGLE_CLAIM")
+            if decision.label == "MULTI_CLAIM_SPLIT_REQUIRED" and _SINGLE_COMPARISON_CHANGE.search(claim.source_sentence):
+                return AdmissionDecision(label="CONTEXT_REQUIRED", reason_code="MODEL_MULTI_CONFLICTS_WITH_SINGLE_COMPARISON_CLAIM")
             if decision.label == "KOSIS_PIPELINE_ELIGIBLE" and not _has_required_kosis_slots(claim):
                 return AdmissionDecision(
                     label="CONTEXT_REQUIRED", reason_code="MISSING_SLOT_CONTEXT"

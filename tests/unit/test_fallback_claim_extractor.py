@@ -113,3 +113,21 @@ def test_article_date_context_is_forwarded_to_primary_extractor() -> None:
     extractor.extract("원문", article_published_at=date(2025, 4, 5))
 
     assert primary.article_published_at == date(2025, 4, 5)
+
+
+def test_article_context_is_forwarded_to_the_openai_primary_only() -> None:
+    class ContextAwarePrimary(FakeExtractor):
+        def __init__(self) -> None:
+            super().__init__(result=claim())
+            self.article_context: str | None = None
+
+        def extract(self, source_sentence: str, *, article_published_at: date | None = None, article_context: str | None = None) -> ClaimSchema:
+            self.article_context = article_context
+            return super().extract(source_sentence, article_published_at=article_published_at)
+
+    primary = ContextAwarePrimary()
+    extractor = FallbackClaimExtractor(primary=primary, fallback=FakeExtractor(result=claim()))
+
+    extractor.extract("원문", article_published_at=date(2025, 4, 5), article_context="제목과 주변 문맥")
+
+    assert primary.article_context == "제목과 주변 문맥"

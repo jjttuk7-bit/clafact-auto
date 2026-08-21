@@ -31,13 +31,14 @@ _GROWTH_WIDTH_SPLIT = re.compile(
 _STREAK_SPLIT = re.compile(
     r"^(?P<subject>.+?)\s+(?:역시\s+)?(?P<first>전년\s+대비\s+\d+(?:[.]\d+)?%)\s+(?:오르면서|상승하면서)\s+(?P<second>\d+개월\s+연속\s+\d+(?:[.]\d+)?%\s+상승을\s+기록했다\.)$"
 )
+_CHANGE_AMOUNT_RATE_SPLIT = re.compile(r"^(?P<subject>[^\d.]+?)\s+전년\([^)]*\).*?(?P<amount>\d+(?:만\d*)?(?:ha|㏊))\((?P<rate>\d+(?:[.]\d+)?%)\)\s+(?P<verb>(?:증가|감소)[^.]*?)\.?$")
 _TOTAL_AFTER_CHANGE_SPLIT = re.compile(
     r".*?(?P<subject>지난\s+\d{1,2}월\s+[^.]+?수는)\s+(?P<change>1년\s+전보다\s+\d+(?:[,.]\d+)*(?:만\d+)?명(?:\([^)]*%\))?\s+증가한)\s+(?P<total>\d+(?:만\d+)?명)이다\."
 )
 
 def detect_structural_multi_claim(sentence: str) -> bool:
     """Return whether a sentence contains at least two statistical value assertions."""
-    if any(pattern.search(sentence) for pattern in (_GROWTH_WIDTH_SPLIT, _STREAK_SPLIT, _TOTAL_AFTER_CHANGE_SPLIT)):
+    if any(pattern.search(sentence) for pattern in (_GROWTH_WIDTH_SPLIT, _STREAK_SPLIT, _CHANGE_AMOUNT_RATE_SPLIT, _TOTAL_AFTER_CHANGE_SPLIT)):
         return True
     normalized = _BASE_YEAR_ANNOTATION.sub("", sentence.strip())
     normalized = _HISTORICAL_REFERENCE.sub("", normalized)
@@ -75,6 +76,13 @@ def _split_current_value_and_change(sentence: str) -> list[str] | None:
 
 
 def _split_remaining_multi_patterns(sentence: str) -> list[str] | None:
+    amount_rate = _CHANGE_AMOUNT_RATE_SPLIT.match(sentence)
+    if amount_rate is not None:
+        subject = amount_rate.group("subject")
+        amount = amount_rate.group("amount")
+        rate = amount_rate.group("rate")
+        verb = amount_rate.group("verb")
+        return [f"{subject} 전년보다 {amount} {verb}.", f"{subject} 전년보다 {rate} {verb}."]
     growth = _GROWTH_WIDTH_SPLIT.search(sentence)
     if growth is not None:
         subject = growth.group("subject")
