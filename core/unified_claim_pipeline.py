@@ -25,6 +25,7 @@ class PipelineEntry:
     terminal_status: str
     reason_code: str | None
     official_resolution: Any | None
+    diagnostic_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -93,6 +94,7 @@ def verify_registry_record(
                 "HOLD",
                 f"{error.stage}_UNAVAILABLE",
                 None,
+                error.diagnostic_id,
             )
         ]
 

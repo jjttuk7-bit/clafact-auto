@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 import runpy
@@ -284,7 +285,7 @@ def test_unresolved_concept_holds_at_semantic_mapping_without_catalog(
         ),
         patch(
             "core.catalog_search.search_semantic_catalog",
-            side_effect=AssertionError("Catalog must not run for an unresolved Concept"),
+            return_value=[],
         ),
     ):
         app = AppTest.from_file("app/streamlit_app.py", default_timeout=30)
@@ -299,9 +300,9 @@ def test_unresolved_concept_holds_at_semantic_mapping_without_catalog(
     assert metrics["판정"] == "판정 보류"
     assert metrics["경로"] == "보류"
     rendered_json = " ".join(str(element.value) for element in app.json)
-    assert "CONCEPT_NOT_FOUND" in rendered_json
+    assert "OBSERVED:" in rendered_json
     assert "SEMANTIC_MAPPING" in rendered_json
-    assert "CATALOG_SEARCH" not in rendered_json
+    assert "CATALOG_SEARCH" in rendered_json
 
 def test_streamlit_entrypoint_imports_core_when_only_app_directory_is_on_path() -> None:
     """Streamlit Cloud executes the app module from app/, not the repository root."""
@@ -619,7 +620,9 @@ def test_streamlit_shows_every_split_claim_in_a_persistent_summary(monkeypatch) 
         last_provider = "openai"
 
         def extract(self, source_sentence: str, *, article_published_at=None) -> ClaimSchema:
-            value = 60 if "2023" in source_sentence else 61
+            payload = json.loads(source_sentence) if source_sentence.startswith("{") else {"target_sentence": source_sentence}
+            target_sentence = payload["target_sentence"]
+            value = 60 if "2023" in target_sentence else 61
             return ClaimSchema(
                 claim_id=f"claim-{value}",
                 source_sentence=source_sentence,

@@ -14,6 +14,8 @@ if str(PROJECT_ROOT) not in sys.path:
 import streamlit as st
 
 from core.batch_verifier import export_batch_xlsx, load_articles, verify_articles
+from core.canonical_batch_verifier import verify_articles_with_pipeline
+from core.canonical_pipeline import build_canonical_pipeline
 from core.article_claim_pipeline import parse_article_claims
 from core.claim_parser import parse_claim
 from core.claim_result_export import export_verdict_json_bytes, export_verdict_xlsx_bytes
@@ -199,34 +201,25 @@ def _parse_article_date(value: str) -> date | None:
 
 
 def _verify_batch_claim(sentence: str, article_date: date, settings: Settings) -> VerdictSchema:
-    """Parse a batch sentence, then use the same dynamic KOSIS engine as the UI."""
-    extractor = run_operational_stage(
-        "CLAIM_PARSE",
-        lambda: create_claim_extractor(settings),
+    runtime = build_canonical_pipeline(settings)
+    result = runtime.verify_article(
+        sentence,
+        article_published_at=article_date,
     )
-    claims = run_operational_stage(
-        "CLAIM_PARSE",
-        lambda: parse_article_claims(
-            sentence,
-            extractor,
-            article_published_at=article_date,
-        ),
+    if len(result.entries) != 1:
+        raise ValueError("CANONICAL_BATCH_RESULT_CARDINALITY")
+    entry = result.entries[0]
+    resolution = entry.official_resolution
+    if resolution is not None:
+        return resolution.verdict
+    return make_verdict(entry.claim.claim_id, entry.claim.value, [], None).model_copy(
+        update={
+            "route_status": entry.terminal_status,
+            "reason_code": entry.reason_code or entry.admission_route,
+            "explanation": "Canonical pipeline requires review.",
+        }
     )
-    if len(claims) != 1:
-        raise ValueError("BATCH_CLAIM_SPLIT_CARDINALITY")
-    claim = claims[0]
-    if claim.parse_status != "AUTO_OK":
-        recorder = VerificationTraceRecorder(claim.claim_id).claim_parsed()
-        return attach_trace(make_verdict(claim.claim_id, claim.value, [], None), recorder.build()).model_copy(
-            update={
-                "route_status": "HOLD",
-                "reason_code": claim.parse_reason or "CLAIM_PARSE_UNCERTAIN",
-                "explanation": "Claim parsing requires human review.",
-            }
-        )
-    return _official_evidence_service(settings).resolve(
-        claim, article_date=article_date
-    ).verdict
+
 st.set_page_config(page_title="CLAFACT-AUTO", layout="wide")
 st.title("CLAFACT-AUTO")
 st.caption("KOSIS 공식값만 사용하며, 좌표·기사시점·후보가 불확실하면 자동 판정하지 않습니다.")
@@ -265,38 +258,36 @@ run_article_verification = st.button("자동 검증 실행", type="primary")
 if run_article_verification and sentence.strip():
     try:
         article_date = _parse_article_date(article_date_text)
-        extractor = run_operational_stage(
-            "CLAIM_PARSE",
-            lambda: create_claim_extractor(settings),
+        runtime = run_operational_stage(
+            "PIPELINE_BUILD",
+            lambda: build_canonical_pipeline(settings),
         )
-        claims = run_operational_stage(
-            "CLAIM_PARSE",
-            lambda: parse_article_claims(
+        pipeline_result = run_operational_stage(
+            "PIPELINE",
+            lambda: runtime.verify_article(
                 sentence,
-                extractor,
                 article_published_at=article_date,
             ),
         )
+        claims = [entry.claim for entry in pipeline_result.entries]
         if not claims:
             raise ValueError("NO_NUMERICAL_CLAIM_CANDIDATE")
-        actual_provider = getattr(extractor, "last_provider", None)
+        actual_provider = getattr(runtime.extractor, "last_provider", None)
         actual_provider_label = {
             "openai": "OpenAI",
             "hcx": "HCX",
         }.get(actual_provider, selected_provider_display_label)
-        resolutions_by_claim_id = {}
-        if article_date and any(parsed_claim.parse_status == "AUTO_OK" for parsed_claim in claims):
-            service = _official_evidence_service(settings)
-            for parsed_claim in claims:
-                if parsed_claim.parse_status == "AUTO_OK":
-                    resolutions_by_claim_id[parsed_claim.claim_id] = service.resolve(
-                        parsed_claim, article_date=article_date
-                    )
+        resolutions_by_claim_id = {
+            entry.claim.claim_id: entry.official_resolution
+            for entry in pipeline_result.entries
+            if entry.official_resolution is not None
+        }
         st.session_state["article_verification_run"] = {
             "article_date": article_date,
             "claims": claims,
             "provider_label": actual_provider_label,
             "resolutions_by_claim_id": resolutions_by_claim_id,
+            "entries_by_claim_id": {entry.claim.claim_id: entry for entry in pipeline_result.entries},
         }
         st.session_state.pop("article_claim_select", None)
     except _InvalidArticleDateError:
@@ -314,6 +305,7 @@ if article_verification_run:
     claims = article_verification_run["claims"]
     actual_provider_label = article_verification_run["provider_label"]
     resolutions_by_claim_id = article_verification_run["resolutions_by_claim_id"]
+    entries_by_claim_id = article_verification_run["entries_by_claim_id"]
     st.caption(f"Claim Split: {len(claims)}개 독립 Claim")
     st.subheader("Claim 결과 요약")
     st.dataframe(
@@ -346,6 +338,7 @@ if article_verification_run:
         if len(claims) > 1 else 0
     )
     claim = claims[selected_claim_index]
+    entry = entries_by_claim_id[claim.claim_id]
     st.metric("실제 주장 추출기", actual_provider_label)
     ui_trace = VerificationTraceRecorder(claim.claim_id).claim_parsed()
     requires_parse_review = claim.parse_status != "AUTO_OK"
@@ -360,16 +353,27 @@ if article_verification_run:
                 "explanation": "Claim parsing requires human review.",
             }
         )
-    elif article_date:
+    elif article_date and claim.claim_id in resolutions_by_claim_id:
         resolution = resolutions_by_claim_id[claim.claim_id]
         concept = resolution.concept
         candidates = resolution.candidates
         verdict = resolution.verdict
         resolution_ready = True
     else:
-        concept = normalize_concept(claim, load_standard_concepts(STANDARD_PATH))
+        concept = None
         candidates = []
         verdict = make_verdict(claim.claim_id, claim.value, [], None)
+        if article_date:
+            verdict = verdict.model_copy(update={
+                "route_status": "HOLD",
+                "reason_code": entry.reason_code or entry.admission_route,
+                "explanation": "Canonical pipeline requires review.",
+            })
+            if entry.diagnostic_id:
+                stage = (entry.reason_code or "PIPELINE_UNAVAILABLE").removesuffix("_UNAVAILABLE")
+                st.error(f"보류: {stage} 단계 처리 오류 · 진단 ID {entry.diagnostic_id}")
+        else:
+            concept = normalize_concept(claim, load_standard_concepts(STANDARD_PATH))
     requires_semantic_review = concept is not None and concept.status != "MATCHED"
     st.subheader("기사 주장")
     claim_columns = st.columns(4)
@@ -378,7 +382,7 @@ if article_verification_run:
     claim_columns[2].metric("기준시점", claim.time or "미확정")
     claim_columns[3].metric("파싱 상태", translate_status(claim.parse_status))
     with st.expander("구조화된 주장 상세"):
-        st.json({"claim": claim.model_dump(), "concept": concept.model_dump() if concept else None})
+        st.json({"claim": claim.model_dump(), "concept": concept.model_dump() if concept else None, "pipeline": {"terminal_status": entry.terminal_status, "reason_code": entry.reason_code}})
     if not requires_parse_review:
         st.subheader("KOSIS 후보")
         st.dataframe(
@@ -496,7 +500,8 @@ if st.button("배치 검증 실행", type="primary", disabled=uploaded_file is N
     try:
         default_published_at = date.fromisoformat(batch_default_date_text) if batch_default_date_text else None
         articles = load_articles(uploaded_file.name, uploaded_file.getvalue(), default_published_at=default_published_at)
-        batch_result = verify_articles(articles, lambda item, published_at: _verify_batch_claim(item, published_at, settings))
+        runtime = build_canonical_pipeline(settings)
+        batch_result = verify_articles_with_pipeline(articles, runtime)
         batch_rows = [asdict(row) for row in batch_result.claim_rows]
         total = len(batch_rows)
         match_count = sum(row["verdict"] == "MATCH" for row in batch_rows)

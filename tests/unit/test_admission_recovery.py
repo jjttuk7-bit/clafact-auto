@@ -1,3 +1,4 @@
+import json
 from datetime import date
 
 from core.admission_recovery import recover_registry_record
@@ -82,5 +83,7 @@ def test_context_recovery_reparses_bounded_article_context_then_resolves_child()
     assert result.recovery_action == "CONTEXT_REPARSE"
     assert len(result.entries) == 1
     assert result.entries[0].admission_route == "KOSIS_PIPELINE_ELIGIBLE"
-    assert extractor.inputs == ["고용동향 발표. 2024년 12월 기준 지난달 고용률은 60%였다. 전국 기준이다."]
+    prompt = json.loads(extractor.inputs[0])
+    assert prompt["target_sentence"] == "지난달 고용률은 60%였다."
+    assert prompt["article_context"] == "고용동향 발표. 2024년 12월 기준 지난달 고용률은 60%였다. 전국 기준이다."
     assert len(service.claims) == 1

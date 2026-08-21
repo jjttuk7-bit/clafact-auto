@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from core.context_prompt import build_context_prompt as _context_prompt
 from dataclasses import dataclass
 from datetime import date
 from typing import Any, Literal, Protocol
@@ -80,7 +81,7 @@ def _recovery_sources(claim: ClaimSchema, article_context: str | None) -> tuple[
         return "MULTI_CLAIM_SPLIT", clauses
     decision = classify_admissibility(claim.parse_reason, "AUTO" if claim.parse_status == "AUTO_OK" else "HOLD")
     if decision.route == "CONTEXT_REQUIRED" and article_context and article_context.strip():
-        return "CONTEXT_REPARSE", [article_context.strip()]
+        return "CONTEXT_REPARSE", [_context_prompt(claim, article_context)]
     if claim.parse_status == "AUTO_OK":
         return "DIRECT", [claim.source_sentence]
     return "NO_RECOVERY", []
@@ -95,6 +96,11 @@ def _recover_source(
     official_service: OfficialEvidenceResolver,
 ) -> RecoveryEntry:
     parsed = parse_claim(source, extractor, article_published_at=parent.article_published_at)
+    if action == "CONTEXT_REPARSE":
+        parsed = parsed.model_copy(update={
+            "claim_id": parent.claim.claim_id,
+            "source_sentence": parent.claim.source_sentence,
+        })
     return _recover_claim(parent, parsed, action=action, official_service=official_service)
 
 

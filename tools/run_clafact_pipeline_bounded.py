@@ -1,9 +1,8 @@
-"""Run the CLAFACT Registry pipeline in bounded, isolated external workers."""
+"""Run canonical Registry verification in bounded workers with parent checkpoints."""
 
 from __future__ import annotations
 
 import argparse
-from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from hashlib import sha256
 import json
@@ -19,6 +18,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from core.bounded_process import run_bounded
+from core.pipeline_run_reporting import build_run_report
 
 
 WORKER_CLI = PROJECT_ROOT / "tools" / "run_clafact_pipeline.py"
@@ -29,9 +29,10 @@ def main() -> None:
     parser.add_argument("registry_path", type=Path)
     parser.add_argument("output_dir", type=Path)
     parser.add_argument("--context-jsonl", type=Path)
-    parser.add_argument("--worker-timeout-seconds", type=float, default=60.0)
-    parser.add_argument("--live-budget-seconds", type=float, default=10.0)
+    parser.add_argument("--worker-timeout-seconds", type=float, default=120.0)
+    parser.add_argument("--live-budget-seconds", type=float, default=30.0)
     parser.add_argument("--max-workers", type=int, default=4)
+    parser.add_argument("--no-resume", action="store_true")
     args = parser.parse_args()
     if args.max_workers < 1:
         parser.error("--max-workers must be at least one")
@@ -41,32 +42,65 @@ def main() -> None:
         for line in args.registry_path.read_text(encoding="utf-8").splitlines()
         if line.strip()
     ]
+    args.output_dir.mkdir(parents=True, exist_ok=True)
+    rows_by_index: dict[int, list[dict[str, Any]]] = {}
+    if not args.no_resume:
+        for index in range(len(source_rows)):
+            checkpoint = load_checkpoint(args.output_dir, index)
+            if checkpoint is not None:
+                rows_by_index[index] = checkpoint
+
+    pending_indices = [index for index in range(len(source_rows)) if index not in rows_by_index]
     with tempfile.TemporaryDirectory(prefix="clafact-bounded-") as temporary:
         temporary_root = Path(temporary)
-        rows_by_index: dict[int, list[dict[str, Any]]] = {}
         with ThreadPoolExecutor(max_workers=args.max_workers) as executor:
             pending = {
                 executor.submit(
                     _run_one,
                     index,
-                    source_row,
+                    source_rows[index],
                     temporary_root,
                     args.context_jsonl,
                     args.worker_timeout_seconds,
                     args.live_budget_seconds,
                 ): index
-                for index, source_row in enumerate(source_rows)
+                for index in pending_indices
             }
             for future in as_completed(pending):
                 index = pending[future]
-                rows_by_index[index] = future.result()
+                rows = future.result()
+                rows_by_index[index] = rows
+                write_checkpoint(args.output_dir, index, rows)
 
     rows = [row for index in range(len(source_rows)) for row in rows_by_index[index]]
-    args.output_dir.mkdir(parents=True, exist_ok=True)
     _write_jsonl(args.output_dir / "claim_verification_results.jsonl", rows)
-    report = _report(rows, len(source_rows))
+    report = build_run_report(rows, input_count=len(source_rows), registry_errors=[])
+    report.update({
+        "checkpoint_parent_count": len(rows_by_index),
+        "resumed_parent_count": len(source_rows) - len(pending_indices),
+    })
     _write_json(args.output_dir / "coverage_report.json", report)
     print(json.dumps({"output_dir": str(args.output_dir), **report}, ensure_ascii=False))
+
+
+def write_checkpoint(output_dir: Path, index: int, rows: list[dict[str, Any]]) -> None:
+    checkpoint_dir = output_dir / "checkpoints"
+    checkpoint_dir.mkdir(parents=True, exist_ok=True)
+    destination = checkpoint_dir / f"{index:05d}.jsonl"
+    temporary = destination.with_suffix(".jsonl.tmp")
+    _write_jsonl(temporary, rows)
+    temporary.replace(destination)
+
+
+def load_checkpoint(output_dir: Path, index: int) -> list[dict[str, Any]] | None:
+    path = output_dir / "checkpoints" / f"{index:05d}.jsonl"
+    if not path.is_file():
+        return None
+    try:
+        rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    except (OSError, json.JSONDecodeError):
+        return None
+    return rows or None
 
 
 def _run_one(
@@ -105,54 +139,34 @@ def _run_one(
     result_path = output_path / "claim_verification_results.jsonl"
     if not result_path.exists():
         return [_failure_row(source_row, "WORKER_RESULT_MISSING", result.stderr)]
-    return [
-        json.loads(line)
-        for line in result_path.read_text(encoding="utf-8").splitlines()
-        if line.strip()
-    ]
+    rows = [json.loads(line) for line in result_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    return rows or [_failure_row(source_row, "WORKER_RESULT_EMPTY", result.stderr)]
 
 
 def _failure_row(source_row: dict[str, Any], reason: str, diagnostic_text: str) -> dict[str, Any]:
     claim = source_row.get("claim") if isinstance(source_row.get("claim"), dict) else {}
+    diagnostic_id = sha256(diagnostic_text.encode("utf-8")).hexdigest()[:12]
     return {
         "article_id": source_row.get("article_id"),
         "sentence_id": source_row.get("sentence_id"),
         "parent_claim_id": claim.get("claim_id"),
         "claim_id": claim.get("claim_id"),
         "source_sentence": claim.get("source_sentence"),
+        "claim": claim,
         "recovery_action": "NO_RECOVERY",
-        "admission_route": "STRUCTURAL_HOLD",
+        "admission_route": "KOSIS_PIPELINE_ELIGIBLE",
         "terminal_status": "HOLD",
         "reason_code": reason,
-        "diagnostic_hash": sha256(diagnostic_text.encode("utf-8")).hexdigest(),
+        "diagnostic_id": diagnostic_id,
         "official_resolution": None,
     }
 
 
-def _report(rows: list[dict[str, Any]], input_count: int) -> dict[str, Any]:
-    terminal = [_terminal(row) for row in rows]
-    return {
-        "input_registry_records": input_count,
-        "derived_claims": len(rows),
-        "recovery_action_counts": dict(sorted(Counter(row["recovery_action"] for row in rows).items())),
-        "admission_route_counts": dict(sorted(Counter(row["admission_route"] for row in rows).items())),
-        "terminal_route_counts": dict(sorted(Counter(status for status, _ in terminal).items())),
-        "terminal_reason_counts": dict(sorted(Counter(reason for _, reason in terminal if reason).items())),
-        "official_resolution_count": sum(row.get("official_resolution") is not None for row in rows),
-        "all_claims_terminal": all(status in {"AUTO", "HOLD"} for status, _ in terminal),
-    }
-
-
-def _terminal(row: dict[str, Any]) -> tuple[str, str | None]:
-    resolution = row.get("official_resolution")
-    if isinstance(resolution, dict) and isinstance(resolution.get("verdict"), dict):
-        verdict = resolution["verdict"]
-        return str(verdict.get("route_status") or "HOLD"), verdict.get("reason_code")
-    return str(row.get("terminal_status") or "HOLD"), row.get("reason_code") or row.get("admission_route")
-
-
 def _write_json(path: Path, payload: object) -> None:
-    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
 
 
 def _write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:

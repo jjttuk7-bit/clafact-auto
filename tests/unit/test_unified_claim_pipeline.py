@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from datetime import date
 
@@ -10,6 +11,8 @@ from schemas.claim_registry import ClaimRegistryRecord
 
 class _Extractor:
     def extract(self, source_sentence: str, *, article_published_at: date | None = None) -> ClaimSchema:
+        if source_sentence.startswith("{"):
+            source_sentence = json.loads(source_sentence)["article_context"]
         if source_sentence.startswith("고용동향 발표."):
             return ClaimSchema(
                 claim_id="temporary",

@@ -7,11 +7,12 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+from core import claim_extractor_factory
 from core.admission_recovery import OfficialEvidenceResolver
-from core.claim_extractor_factory import create_claim_extractor
 from core.claim_parser import StructuredClaimExtractor
 from core.official_engine_factory import OfficialEnginePaths
 from core.official_engine_factory_v3 import build_official_evidence_service_v3
+from core.operational_error import run_operational_stage
 from core.unified_claim_pipeline import (
     ArticlePipelineResult,
     PipelineEntry,
@@ -82,8 +83,10 @@ def build_canonical_pipeline(
 ) -> CanonicalPipeline:
     """Construct the only production runtime, backed by official engine v3."""
     api_key = getattr(settings, "kosis_api_key", None)
-    if not isinstance(api_key, str) or not api_key.strip():
-        raise RuntimeError("KOSIS_API_KEY_REQUIRED")
+    extractor = run_operational_stage(
+        "CLAIM_PARSE",
+        lambda: create_claim_extractor(settings),
+    )
     paths = OfficialEnginePaths(
         STANDARD_PATH,
         CATALOG_PATH,
@@ -98,6 +101,10 @@ def build_canonical_pipeline(
         live_time_budget_seconds=live_time_budget_seconds,
     )
     return CanonicalPipeline(
-        extractor=create_claim_extractor(settings),
+        extractor=extractor,
         official_service=service,
     )
+
+
+def create_claim_extractor(settings: Any) -> StructuredClaimExtractor:
+    return claim_extractor_factory.create_claim_extractor(settings)
