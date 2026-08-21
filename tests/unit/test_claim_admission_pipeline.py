@@ -129,3 +129,22 @@ def test_historical_reference_without_a_current_value_requires_context_before_ko
     assert official_calls == []
     assert execution.result.decision.label == "CONTEXT_REQUIRED"
     assert execution.result.decision.reason_code == "HISTORICAL_REFERENCE_CONTEXT"
+
+def test_structural_multi_claim_splits_and_readmits_both_children() -> None:
+    official_calls: list[str] = []
+    pipeline = ClaimAdmissionPipeline(
+        official_resolver=lambda candidate: official_calls.append(candidate.claim_id) or {"ok": True},
+        child_parser=lambda parent, text, child_id: parent.model_copy(
+            update={"claim_id": child_id, "source_sentence": text}
+        ),
+    )
+
+    executions = pipeline.process(claim(
+        "지난달 제조업 취업자는 439만7000명으로 전년 동월 대비 12만4000명 줄었다."
+    ))
+
+    assert official_calls == ["C-1__split_1", "C-1__split_2"]
+    assert [entry.claim.source_sentence for entry in executions] == [
+        "지난달 제조업 취업자는 439만7000명이다.",
+        "지난달 제조업 취업자는 전년 동월 대비 12만4000명 줄었다.",
+    ]

@@ -17,6 +17,10 @@ _CHANGE_OR_COMPARISON = re.compile(
 _VALUE_UNIT = re.compile(r"(?:%p|%|명|원|건|배|억|만|천|ha|대|㏊)$")
 _TIME_OR_RANGE_SUFFIX = re.compile(r"\s*(?:~|년|월|일|분기|개월|일간|주|차례|번째|부터|까지)")
 _AGE_GROUP_SUFFIX = re.compile(r"\s*(?:취업자|인구|남성|여성|청년|고령|이상|미만)")
+_CURRENT_VALUE_CHANGE_SPLIT = re.compile(
+    r"^(?P<subject>.+?)\s+(?P<value>\d+(?:[,.]\d+)*(?:(?:만|억|천)\d+(?:[,.]\d+)*)*(?:%p|%|명|원|건|배|억|만|천|ha|대|㏊)?)"
+    r"(?:으로|로)\s+(?P<change>(?:전년|작년|지난해|전월|전분기|동월|동기|1년 전).+)$"
+)
 
 
 def detect_structural_multi_claim(sentence: str) -> bool:
@@ -43,9 +47,22 @@ def _statistical_values(sentence: str) -> list[str]:
     return values
 
 
+def _split_current_value_and_change(sentence: str) -> list[str] | None:
+    match = _CURRENT_VALUE_CHANGE_SPLIT.match(sentence)
+    if match is None:
+        return None
+    subject = match.group("subject").strip()
+    value = match.group("value")
+    change = match.group("change").strip()
+    return [f"{subject} {value}이다.", f"{subject} {change}"]
+
+
 def split_complex_claim(sentence: str) -> list[str]:
     """Split only numeric clauses; leave singular claims exactly intact."""
     normalized = sentence.strip()
+    structured_parts = _split_current_value_and_change(normalized)
+    if structured_parts is not None:
+        return structured_parts
     if len(_NUMBER.findall(normalized)) < 2:
         return [normalized]
 

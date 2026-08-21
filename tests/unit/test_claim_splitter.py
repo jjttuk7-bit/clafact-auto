@@ -50,3 +50,11 @@ def test_ignores_dates_periods_scope_counts_and_reference_values_in_eligible_gol
 
     assert len(rows) == 23
     assert not any(detect_structural_multi_claim(row["source_sentence"]) for row in rows)
+
+def test_splits_current_value_and_year_over_year_change_into_complete_claims() -> None:
+    sentence = "지난달 제조업 취업자는 439만7000명으로 전년 동월 대비 12만4000명 줄었다."
+
+    assert split_complex_claim(sentence) == [
+        "지난달 제조업 취업자는 439만7000명이다.",
+        "지난달 제조업 취업자는 전년 동월 대비 12만4000명 줄었다.",
+    ]
