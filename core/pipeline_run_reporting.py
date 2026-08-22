@@ -36,12 +36,20 @@ def build_run_report(
     input_count: int,
     registry_errors: list[Any],
 ) -> dict[str, Any]:
-    parent_ids = {
-        str(row.get("parent_claim_id"))
+    record_identities = {
+        (
+            str(row.get("article_id") or ""),
+            str(row.get("sentence_id") or ""),
+            str(row.get("parent_claim_id") or ""),
+        )
         for row in rows
-        if row.get("parent_claim_id")
+        if row.get("article_id") and row.get("sentence_id") and row.get("parent_claim_id")
     }
-    coverage_complete = len(parent_ids) == input_count if parent_ids else len(rows) >= input_count > 0
+    coverage_complete = (
+        len(record_identities) == input_count
+        if record_identities
+        else len(rows) >= input_count > 0
+    )
     terminal = [_terminal(row) for row in rows]
     stage_counts: dict[str, Counter[str]] = defaultdict(Counter)
     for row in rows:

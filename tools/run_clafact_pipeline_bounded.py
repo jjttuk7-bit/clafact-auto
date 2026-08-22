@@ -8,6 +8,7 @@ from hashlib import sha256
 import json
 import os
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 from typing import Any
@@ -23,7 +24,24 @@ from core.pipeline_run_reporting import build_run_report
 
 WORKER_CLI = PROJECT_ROOT / "tools" / "run_clafact_pipeline.py"
 CHECKPOINT_VERSION = 2
-RUNNER_VERSION = "canonical-v4-live-metadata"
+RUNNER_VERSION = "canonical-v5-auditable-live-metadata"
+RUNTIME_SIGNATURE_PATHS = (
+    WORKER_CLI,
+    Path(__file__),
+    PROJECT_ROOT / "core" / "canonical_pipeline.py",
+    PROJECT_ROOT / "core" / "official_evidence_service.py",
+    PROJECT_ROOT / "core" / "official_engine_factory.py",
+    PROJECT_ROOT / "core" / "official_engine_factory_v3.py",
+    PROJECT_ROOT / "core" / "kosis_metadata_repository.py",
+    PROJECT_ROOT / "core" / "unified_claim_pipeline.py",
+)
+SEMANTIC_CATALOG_PATHS = (
+    PROJECT_ROOT / "data" / "semantic_standard" / "concept_seed_v1.json",
+    PROJECT_ROOT / "data" / "semantic_standard" / "concept_overlay_v3.json",
+    PROJECT_ROOT / "data" / "kosis_catalog" / "catalog_350.json",
+    PROJECT_ROOT / "data" / "kosis_catalog" / "catalog_overlay_v2.json",
+)
+
 
 
 def main() -> None:
@@ -46,13 +64,7 @@ def main() -> None:
         if line.strip()
     ]
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    run_signature = {
-        "runner_version": RUNNER_VERSION,
-        "stored_slots_only": args.stored_slots_only,
-        "live_budget_seconds": args.live_budget_seconds,
-        "worker_timeout_seconds": args.worker_timeout_seconds,
-        "context_sha256": _file_sha256(args.context_jsonl),
-    }
+    run_signature = _build_run_signature(args)
     rows_by_index: dict[int, list[dict[str, Any]]] = {}
     if not args.no_resume:
         for index in range(len(source_rows)):
@@ -100,6 +112,7 @@ def main() -> None:
     report.update({
         "checkpoint_parent_count": len(rows_by_index),
         "resumed_parent_count": len(source_rows) - len(pending_indices),
+        "run_signature": run_signature,
     })
     _write_json(args.output_dir / "coverage_report.json", report)
     print(json.dumps({"output_dir": str(args.output_dir), **report}, ensure_ascii=False))
@@ -161,6 +174,40 @@ def _checkpoint_fingerprint(
 
 def _file_sha256(path: Path | None) -> str | None:
     return sha256(path.read_bytes()).hexdigest() if path is not None else None
+
+
+def _build_run_signature(args: argparse.Namespace) -> dict[str, Any]:
+    return {
+        "runner_version": RUNNER_VERSION,
+        "stored_slots_only": args.stored_slots_only,
+        "live_budget_seconds": args.live_budget_seconds,
+        "worker_timeout_seconds": args.worker_timeout_seconds,
+        "context_sha256": _file_sha256(args.context_jsonl),
+        "git_head": _git_head(),
+        "runtime_source_sha256": _paths_sha256(RUNTIME_SIGNATURE_PATHS),
+        "semantic_catalog_sha256": _paths_sha256(SEMANTIC_CATALOG_PATHS),
+    }
+
+
+def _paths_sha256(paths: tuple[Path, ...]) -> str:
+    digest = sha256()
+    for path in paths:
+        relative = path.relative_to(PROJECT_ROOT).as_posix()
+        digest.update(relative.encode("utf-8") + b"\0")
+        digest.update(path.read_bytes())
+    return digest.hexdigest()
+
+
+def _git_head() -> str:
+    result = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=PROJECT_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=5,
+    )
+    return result.stdout.strip() if result.returncode == 0 else "UNAVAILABLE"
 
 
 

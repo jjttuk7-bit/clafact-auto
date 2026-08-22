@@ -82,3 +82,26 @@ def test_official_evidence_service_preserves_safe_catalog_diagnostics() -> None:
     assert result.catalog_diagnostics == {
         "attempted_queries": 3, "failed_queries": 1, "empty_queries": 2, "candidate_count": 0,
     }
+
+def test_official_evidence_service_routes_total_metadata_failure_to_named_hold() -> None:
+    from core.official_evidence_service import CatalogResolution, OfficialEvidenceService
+
+    claim = ClaimSchema(claim_id="c", source_sentence="", indicator="통계", parse_status="AUTO_OK")
+    concept = StandardConceptSchema(concept_id="C", canonical_name="통계", standard_key="stat", status="MATCHED")
+    diagnostics = {
+        "metadata_itm_attempted": 2,
+        "metadata_itm_succeeded": 0,
+        "metadata_itm_failed": 2,
+        "metadata_unavailable": 1,
+    }
+    service = OfficialEvidenceService(
+        concept_mapper=lambda _: concept,
+        catalog_resolver=lambda *_: CatalogResolution(candidates=[], diagnostics=diagnostics),
+        official_fetcher=object(),
+    )
+
+    result = service.resolve(claim, article_date=date(2025, 1, 1))
+
+    assert result.verdict.route_status == "HOLD"
+    assert result.verdict.reason_code == "KOSIS_METADATA_UNAVAILABLE"
+    assert result.catalog_diagnostics == diagnostics

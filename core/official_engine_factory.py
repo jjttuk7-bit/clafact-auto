@@ -101,6 +101,7 @@ def build_official_evidence_service(
             retries=2,
             timeout_seconds=min(10, live_time_budget_seconds),
         )
+        metadata_diagnostics["metadata_unavailable"] = _metadata_unavailable(metadata_diagnostics)
         return CatalogResolution(candidates=refreshed, diagnostics={
             "local_candidate_count": len(local),
             "attempted_queries": live.attempted_queries if live else 0,
@@ -155,3 +156,15 @@ def _add_official_concept_candidates(
         if (org_id, table_id) not in existing
     ]
     return [*seeded, *prioritized]
+
+
+def _metadata_unavailable(diagnostics: Counter[str] | dict[str, int]) -> int:
+    for phase in ("itm", "prd"):
+        attempted = diagnostics.get(f"metadata_{phase}_attempted", 0)
+        if (
+            attempted
+            and not diagnostics.get(f"metadata_{phase}_succeeded", 0)
+            and diagnostics.get(f"metadata_{phase}_failed", 0) >= attempted
+        ):
+            return 1
+    return 0

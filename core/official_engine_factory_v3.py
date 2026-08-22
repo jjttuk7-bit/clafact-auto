@@ -7,7 +7,11 @@ from pathlib import Path
 from core.catalog_binding import apply_catalog_binding
 from core.evidence_resolver_v2 import install as install_coordinate_resolver
 from core.kosis_publication_profiles_v2 import install_publication_profiles_v2
-from core.official_engine_factory import OfficialEnginePaths, build_official_evidence_service
+from core.official_engine_factory import (
+    OfficialEnginePaths,
+    _metadata_unavailable,
+    build_official_evidence_service,
+)
 from core.official_evidence_service import CatalogResolution, OfficialEvidenceService
 from core.semantic_normalizer_v3 import normalize_concept_v3
 from core.semantic_standard_v2 import load_semantic_standard_v2
@@ -91,11 +95,13 @@ def merge_catalog_resolutions(base: CatalogResolution, overlay: CatalogResolutio
         )
         for key in counter_keys
     }
+    metadata_unavailable = _metadata_unavailable(counters)
     return CatalogResolution(candidates=candidates, diagnostics={
         **base.diagnostics, **flags, **counters,
         "base_candidate_count": len(base.candidates),
         "overlay_candidate_count": len(overlay.candidates),
         "candidate_count": len(candidates),
+        "metadata_unavailable": metadata_unavailable,
     })
 
 

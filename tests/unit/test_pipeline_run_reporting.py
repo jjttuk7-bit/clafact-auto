@@ -83,3 +83,21 @@ def test_empty_run_is_not_terminally_complete() -> None:
 
     assert report["all_claims_terminal"] is False
     assert report["input_coverage_complete"] is False
+
+
+def test_coverage_counts_registry_identity_when_claim_ids_repeat() -> None:
+    rows = [
+        {
+            "article_id": article_id,
+            "sentence_id": "1",
+            "parent_claim_id": "same-claim-id",
+            "terminal_status": "HOLD",
+            "reason_code": "TEST_HOLD",
+            "official_resolution": None,
+        }
+        for article_id in ("article-1", "article-2")
+    ]
+
+    report = build_run_report(rows, input_count=2, registry_errors=[])
+
+    assert report["input_coverage_complete"] is True
