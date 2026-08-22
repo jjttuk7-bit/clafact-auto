@@ -30,21 +30,28 @@ class KosisLiveCatalogSearch:
         endpoint: str = KOSIS_SEARCH_URL,
         max_attempts: int = 2,
         timeout_seconds: int = 10,
+        result_cache: dict[str, tuple[KosisCandidateSchema, ...]] | None = None,
     ) -> None:
         self._api_key = api_key
         self._opener = opener or _default_kosis_catalog_opener
         self._endpoint = endpoint
         self._max_attempts = max(1, max_attempts)
         self._timeout_seconds = max(1, timeout_seconds)
+        self._result_cache = result_cache if result_cache is not None else {}
         self.attempted_queries = 0
         self.failed_queries = 0
         self.empty_queries = 0
+        self.cache_hits = 0
 
     def search(self, query: str, *, result_count: int = 20) -> list[KosisCandidateSchema]:
         """Return official table identities; selection metadata remains intentionally unresolved."""
         normalized_query = query.strip()
         if not self._api_key or not normalized_query or result_count <= 0:
             return []
+        cache_key = f"{normalized_query.casefold()}|{min(result_count, 100)}"
+        if cache_key in self._result_cache:
+            self.cache_hits += 1
+            return [candidate.model_copy(deep=True) for candidate in self._result_cache[cache_key]]
         self.attempted_queries += 1
         params = urlencode(
             {
@@ -78,11 +85,13 @@ class KosisLiveCatalogSearch:
                 if (candidate := _candidate_from_row(row)) is not None
             ]
             if candidates:
+                self._result_cache[cache_key] = tuple(candidates)
                 return candidates
         if not transport_succeeded:
             self.failed_queries += 1
         else:
             self.empty_queries += 1
+            self._result_cache[cache_key] = ()
         return []
 
 

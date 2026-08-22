@@ -30,6 +30,8 @@ class OfficialValueProvenanceSchema(BaseModel):
 
     evidence_key: str
     source: Literal["SNAPSHOT", "API", "NONE"]
+    source_url: str = ""
+    retrieved_at: str = ""
     content_hash: str
     publication: OfficialPublicationProvenanceSchema | None = None
 

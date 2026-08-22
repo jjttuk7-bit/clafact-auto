@@ -30,6 +30,8 @@ class VerificationTraceRecorder:
 
     def calculation_completed(self) -> 'VerificationTraceRecorder':
         self._trace = self._trace.pass_stage('CALCULATION'); return self
+    def calculation_held(self, reason_code: str) -> 'VerificationTraceRecorder':
+        self._trace = self._trace.hold('CALCULATION', reason_code); return self
 
     def verdict_completed(self) -> 'VerificationTraceRecorder':
         self._trace = self._trace.pass_stage('VERDICT'); return self

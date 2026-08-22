@@ -13,6 +13,7 @@ from core.official_engine_factory import (
     build_official_evidence_service,
 )
 from core.official_evidence_service import CatalogResolution, OfficialEvidenceService
+from core.kosis_metadata_repository import KosisMetadataRepository
 from core.semantic_normalizer_v3 import normalize_concept_v3
 from core.semantic_standard_v2 import load_semantic_standard_v2
 
@@ -31,10 +32,20 @@ def build_official_evidence_service_v3(
     """Build the one official engine and isolate either catalog path's transient failure."""
     install_coordinate_resolver()
     install_publication_profiles_v2()
+    live_catalog_cache = {}
+    repository = (
+        KosisMetadataRepository.from_manifests(
+            paths.metadata_manifest_paths, prefer_live=require_live_metadata
+        )
+        if paths.metadata_manifest_paths
+        else KosisMetadataRepository([], prefer_live=require_live_metadata)
+    )
     base = build_official_evidence_service(
         paths, kosis_api_key=kosis_api_key,
         live_time_budget_seconds=live_time_budget_seconds,
         require_live_metadata=require_live_metadata,
+        live_catalog_cache=live_catalog_cache,
+        metadata_repository=repository,
     )
     overlay = build_official_evidence_service(
         OfficialEnginePaths(
@@ -44,6 +55,8 @@ def build_official_evidence_service_v3(
         kosis_api_key=kosis_api_key,
         live_time_budget_seconds=live_time_budget_seconds,
         require_live_metadata=require_live_metadata,
+        live_catalog_cache=live_catalog_cache,
+        metadata_repository=repository,
     )
     concepts = load_semantic_standard_v2(paths.standard_path, semantic_overlay_path)
 
@@ -83,7 +96,7 @@ def merge_catalog_resolutions(base: CatalogResolution, overlay: CatalogResolutio
         for key, value in source.items() if key.endswith(("_unavailable", "_skipped"))
     }
     counter_keys = {
-        "attempted_queries", "failed_queries", "empty_queries",
+        "attempted_queries", "failed_queries", "empty_queries", "catalog_cache_hits",
         "metadata_itm_attempted", "metadata_itm_succeeded", "metadata_itm_failed",
         "metadata_prd_attempted", "metadata_prd_succeeded", "metadata_prd_failed",
     }

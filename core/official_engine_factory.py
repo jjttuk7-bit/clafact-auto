@@ -35,9 +35,11 @@ def build_official_evidence_service(
     paths: OfficialEnginePaths, *, kosis_api_key: str | None,
     live_time_budget_seconds: float = 45.0,
     require_live_metadata: bool = False,
+    live_catalog_cache: dict[str, tuple[KosisCandidateSchema, ...]] | None = None,
+    metadata_repository: KosisMetadataRepository | None = None,
 ) -> OfficialEvidenceService:
     """Create the one live engine used by UI, batch, and API acceptance."""
-    repository = (
+    repository = metadata_repository or (
         KosisMetadataRepository.from_manifests(
             paths.metadata_manifest_paths, prefer_live=require_live_metadata
         )
@@ -58,12 +60,13 @@ def build_official_evidence_service(
 
     def resolve_catalog(claim: ClaimSchema, concept: StandardConceptSchema):
         local = search_semantic_catalog(claim, concept, load_kosis_catalog(paths.catalog_path))
-        live = (
-            KosisLiveCatalogSearch(
-                kosis_api_key, max_attempts=1,
-                timeout_seconds=max(1.0, min(10.0, live_time_budget_seconds / 4)),
-            ) if kosis_api_key else None
-        )
+        live_options: dict[str, object] = {
+            "max_attempts": 1,
+            "timeout_seconds": max(1.0, min(10.0, live_time_budget_seconds / 4)),
+        }
+        if live_catalog_cache is not None:
+            live_options["result_cache"] = live_catalog_cache
+        live = KosisLiveCatalogSearch(kosis_api_key, **live_options) if kosis_api_key else None
         discovered = discover_catalog_candidates(
             claim, concept, local, live,
             time_budget_seconds=live_time_budget_seconds,
@@ -107,6 +110,7 @@ def build_official_evidence_service(
             "attempted_queries": live.attempted_queries if live else 0,
             "failed_queries": live.failed_queries if live else 0,
             "empty_queries": live.empty_queries if live else 0,
+            "catalog_cache_hits": getattr(live, "cache_hits", 0) if live else 0,
             "candidate_count": len(refreshed),
             **dict(metadata_diagnostics),
         })

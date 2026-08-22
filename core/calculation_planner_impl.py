@@ -97,6 +97,15 @@ def _previous_comparison_period(period: str, comparison: dict[str, str]) -> str 
     if _is_year_over_year(comparison):
         return _previous_year_same_period(period)
     values = {str(value).replace(" ", "").replace("_", "").upper() for value in comparison.values()}
+    if values.intersection({"MONTHOVERMONTH", "전월대비", "전월비", "전월"}):
+        monthly = re.fullmatch(r"(\d{4})-?(\d{2})", period)
+        if monthly is None:
+            return None
+        year, month = int(monthly.group(1)), int(monthly.group(2))
+        previous_year, previous_month = (year - 1, 12) if month == 1 else (year, month - 1)
+        separator = "-" if "-" in period else ""
+        return f"{previous_year:04d}{separator}{previous_month:02d}"
+
     if not values.intersection({"QUARTEROVERQUARTER", "QUARTER_OVER_QUARTER", "전분기대비", "전분기비", "전분기"}):
         return None
     quarterly = re.fullmatch(r"(\d{4})-Q([1-4])", period, re.IGNORECASE)

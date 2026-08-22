@@ -5,10 +5,11 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Callable, Iterable
-from dataclasses import dataclass
-from datetime import date
+from dataclasses import dataclass, replace
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
+from urllib.parse import urlencode
 
 from core.snapshot_asof import filter_rows_as_of
 from core.kosis_publication import PublicationEvidence
@@ -24,6 +25,8 @@ class KosisValue:
     snapshot_hash: str
     source: Literal["SNAPSHOT", "API", "NONE"] = "SNAPSHOT"
     publication: PublicationEvidence | None = None
+    source_url: str = ""
+    retrieved_at: str = ""
 
 
 def fetch_kosis_value(cell: EvidenceCellSchema, snapshot_path: Path) -> KosisValue:
@@ -122,7 +125,10 @@ class OfficialValueFetcher:
         try:
             rows = self._api_lookup(cell)
         except Exception:
-            return KosisValue(None, "FETCH_FAILED", "", "NONE")
+            return KosisValue(
+                None, "FETCH_FAILED", "", "NONE",
+                source_url=_api_source_url(cell), retrieved_at=_now(),
+            )
         digest = hashlib.sha256(
             json.dumps(rows, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
         ).hexdigest()
@@ -137,6 +143,8 @@ class OfficialValueFetcher:
         digest: str,
     ) -> KosisValue:
         publication: PublicationEvidence | None = None
+        source_url = _api_source_url(cell)
+        retrieved_at = _now()
         if article_date:
             dated_rows, publication = self._with_release_metadata(cell, rows)
         else:
@@ -147,11 +155,15 @@ class OfficialValueFetcher:
                 if publication is not None and publication.status == "FETCH_FAILED"
                 else "AS_OF_UNAVAILABLE"
             )
-            return KosisValue(None, status, digest, "API", publication)
-        return self._extract_rows(
+            return KosisValue(
+                None, status, digest, "API", publication,
+                source_url=source_url, retrieved_at=retrieved_at,
+            )
+        result = self._extract_rows(
             cell, dated_rows, article_date, source="API", digest=digest,
             publication=publication,
         )
+        return replace(result, source_url=source_url, retrieved_at=retrieved_at)
 
     def _with_release_metadata(
         self, cell: EvidenceCellSchema, rows: list[dict[str, Any]]
@@ -284,4 +296,30 @@ def _matches_cell(row: dict[str, Any], cell: EvidenceCellSchema, *, allow_missin
     )
     return (table in (None, cell.tbl_id) and item in (None, cell.itm_id) and period == expected_period and codes_match)
 
+
+
+def _api_source_url(cell: EvidenceCellSchema) -> str:
+    frequency = {
+        "월": "M", "monthly": "M", "month": "M",
+        "년": "Y", "year": "Y", "yearly": "Y", "annual": "Y",
+        "분기": "Q", "반기": "H",
+    }.get(cell.prd_se.casefold(), cell.prd_se)
+    period = cell.prd_de.replace("-", "")
+    params = {
+        "method": "getList",
+        "orgId": cell.org_id,
+        "tblId": cell.tbl_id,
+        "itmId": cell.itm_id,
+        "prdSe": frequency,
+        "startPrdDe": period,
+        "endPrdDe": period,
+    }
+    params.update(
+        {f"objL{index}": code for index, code in enumerate(cell.dimension_codes.values(), start=1)}
+    )
+    return "https://kosis.kr/openapi/Param/statisticsParameterData.do?" + urlencode(params)
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 

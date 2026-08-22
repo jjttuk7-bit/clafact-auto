@@ -218,6 +218,13 @@ def _normalize(value: str | None) -> str:
         .replace("대구광역시", "대구").replace("인천광역시", "인천")
         .replace("광주광역시", "광주").replace("대전광역시", "대전")
         .replace("울산광역시", "울산").replace("여성", "여자")
+        .replace("강원특별자치도", "강원").replace("강원도", "강원")
+        .replace("충청북도", "충북").replace("충청남도", "충남")
+        .replace("전북특별자치도", "전북").replace("전라북도", "전북")
+        .replace("전라남도", "전남").replace("경상북도", "경북")
+        .replace("경상남도", "경남").replace("제주특별자치도", "제주")
+        .replace("제주도", "제주")
+        .replace("세종특별자치시", "세종")
         .replace("남성", "남자").replace("대한민국", "전국").replace("한국", "전국"))
 
 def _key(org: str, table: str, item: str, obj: str | None, member: str | None, prd_se: str, prd_de: str, dimensions: dict[str, str], *, include_dimensions: bool) -> str:

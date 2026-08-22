@@ -121,6 +121,8 @@ def verify_claim_against_kosis(
                 for item in evidence_cells
             ]
         )
+        if len(fetched_values) != len(evidence_cells):
+            raise ValueError("KOSIS_VALUE_RESPONSE_COUNT_MISMATCH")
     except Exception:
         recorder.official_value_held("FETCH_FAILED")
         return _hold(
@@ -138,7 +140,16 @@ def verify_claim_against_kosis(
         official_values.append(official_value.value)
 
     recorder.official_value_fetched()
-    calculated = calculate(plan, [*official_values, *plan.literal_values])
+    try:
+        calculated = calculate(plan, [*official_values, *plan.literal_values])
+    except (ArithmeticError, ValueError):
+        recorder.calculation_held("CALCULATION_FAILED")
+        return _hold(
+            claim, recorder, "CALCULATION_FAILED",
+            "Official values cannot produce the required deterministic calculation.",
+            evidence_cells=evidence_cells,
+            official_value_provenance=provenance,
+        )
     recorder.calculation_completed()
     if calculation_type == "DIFFERENCE" and _is_percentage_point_unit(claim.unit):
         claim_unit_value = _direction_checked_difference(calculated, claim)
@@ -293,6 +304,8 @@ def _value_provenance(
         evidence_key=evidence_cell.canonical_key,
         source=official_value.source,
         content_hash=official_value.snapshot_hash,
+        source_url=official_value.source_url,
+        retrieved_at=official_value.retrieved_at,
         publication=(
             OfficialPublicationProvenanceSchema(
                 status=publication.status,
