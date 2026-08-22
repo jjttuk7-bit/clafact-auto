@@ -505,8 +505,8 @@ def test_single_claim_reports_downstream_exception_stage(
         patch(failure_target, side_effect=TypeError("must not be rendered")),
         patch("core.operational_error._diagnostic_id", return_value="diag12345678"),
         patch("core.official_engine_factory._metadata_unavailable", return_value=0),
-    ):
         patch("core.official_engine_factory_v3._metadata_unavailable", return_value=0),
+    ):
         app = AppTest.from_file("app/streamlit_app.py", default_timeout=15)
         app.run()
         app.text_area[0].input("2024년 1분기 수출액은 지난해보다 31% 증가했다.")
