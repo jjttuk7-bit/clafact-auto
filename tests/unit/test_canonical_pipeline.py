@@ -3,6 +3,8 @@ from __future__ import annotations
 from datetime import date
 
 import core.canonical_pipeline as canonical
+import pytest
+
 from schemas.claim import ClaimSchema
 from schemas.claim_registry import ClaimRegistryRecord
 
@@ -73,4 +75,33 @@ def test_factory_constructs_only_the_v3_official_engine(monkeypatch) -> None:
     assert captured["kosis_api_key"] == "test-key"
     assert captured["live_time_budget_seconds"] == 12.0
     assert captured["semantic_overlay_path"].name == "concept_overlay_v3.json"
+    assert captured["require_live_metadata"] is True
     assert captured["catalog_overlay_path"].name == "catalog_overlay_v2.json"
+
+
+def test_factory_requires_kosis_api_key() -> None:
+    settings = type("Settings", (), {"kosis_api_key": None})()
+
+    with pytest.raises(RuntimeError, match="KOSIS_API_KEY_REQUIRED"):
+        canonical.build_canonical_pipeline(settings)
+
+
+def test_stored_slots_factory_does_not_construct_structured_extractor(monkeypatch) -> None:
+    service = _Service()
+    calls = 0
+
+    def forbidden(_settings):
+        nonlocal calls
+        calls += 1
+        raise AssertionError("extractor factory must stay lazy")
+
+    monkeypatch.setattr(canonical, "create_claim_extractor", forbidden)
+    monkeypatch.setattr(canonical, "build_official_evidence_service_v3", lambda *args, **kwargs: service)
+    settings = type("Settings", (), {"kosis_api_key": "test-key"})()
+
+    runtime = canonical.build_canonical_pipeline(
+        settings,
+        structured_extraction_enabled=False,
+    )
+    assert calls == 0
+    assert runtime.official_service is service

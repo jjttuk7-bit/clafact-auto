@@ -2,7 +2,7 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 from hashlib import sha256
 import json
-from time import monotonic, sleep
+from threading import Barrier
 
 import pytest
 
@@ -66,6 +66,25 @@ def test_repository_reads_official_snapshot_before_live_transport(tmp_path: Path
     assert calls == []
 
 
+def test_repository_live_required_bypasses_available_snapshot(tmp_path: Path) -> None:
+    path = tmp_path / "official.json"
+    _snapshot(path)
+    calls: list[str] = []
+
+    def live(_api_key, _org_id, table_id, *, meta_type, **_kwargs):
+        calls.append(meta_type)
+        if meta_type == "ITM":
+            return [{"TBL_ID": table_id, "ITM_ID": "LIVE"}]
+        return [{"PRD_SE": "년"}]
+
+    repository = KosisMetadataRepository(
+        [path], live_fetcher=live, prefer_live=True
+    )
+
+    assert repository("secret", "360", "DT_EXPORT")[0]["ITM_ID"] == "LIVE"
+    assert calls == ["ITM"]
+
+
 def test_repository_finds_snapshot_table_identity_for_concept_member_code(tmp_path: Path) -> None:
     path = tmp_path / "official.json"
     _snapshot(path)
@@ -109,19 +128,19 @@ def test_repository_keeps_metadata_types_in_separate_cache_entries() -> None:
 
 
 def test_repository_does_not_serialize_different_live_coordinates() -> None:
+    entered = Barrier(2)
+
     def live(_api_key, _org_id, table_id, **_kwargs):
-        sleep(0.2)
+        entered.wait(timeout=1.0)
         return [{"TBL_ID": table_id, "ITM_ID": "T"}]
 
     repository = KosisMetadataRepository([], live_fetcher=live)
-    started = monotonic()
     with ThreadPoolExecutor(max_workers=2) as executor:
         results = list(executor.map(
             lambda table_id: repository("secret", "101", table_id),
             ("DT_A", "DT_B"),
         ))
 
-    assert monotonic() - started < 0.35
     assert [result[0]["TBL_ID"] for result in results] == ["DT_A", "DT_B"]
 
 

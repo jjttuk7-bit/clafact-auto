@@ -36,7 +36,12 @@ def verify_articles_with_pipeline(
                 article_id=article.article_id,
             )
         except OperationalStageError as error:
-            rows.append(_hold_row(article, article.body, f"{error.stage}_ERROR:{error.diagnostic_id}"))
+            rows.append(_hold_row(
+                article,
+                article.body,
+                f"{error.stage}_UNAVAILABLE",
+                diagnostic_id=error.diagnostic_id,
+            ))
             continue
         except Exception:
             rows.append(_hold_row(article, article.body))

@@ -10,6 +10,7 @@ from core.admission_recovery import AdmissionRoute, OfficialEvidenceResolver, Re
 from core.admission_recovery_v2 import recover_registry_record_v2
 from core.claim_admissibility import classify_admissibility
 from core.claim_parser import StructuredClaimExtractor, parse_claim
+from core.operational_error import run_operational_stage
 from core.targeted_claim_splitter import build_targeted_claim_inputs
 from schemas.claim import ClaimSchema
 from schemas.claim_registry import ClaimRegistryRecord
@@ -48,7 +49,10 @@ def recover_registry_record_v3(record: ClaimRegistryRecord, *, extractor: Struct
 
 
 def _parse_target(expression: str, extractor_input: str, extractor: StructuredClaimExtractor, record: ClaimRegistryRecord) -> ClaimSchema:
-    extracted = extractor.extract(extractor_input, article_published_at=record.article_published_at)
+    extracted = run_operational_stage(
+        "CLAIM_PARSE",
+        lambda: extractor.extract(extractor_input, article_published_at=record.article_published_at),
+    )
     if not isinstance(extracted, ClaimSchema):
         raise TypeError("Structured extractor must return ClaimSchema")
     return parse_claim(expression, _StaticExtractor(extracted), article_published_at=record.article_published_at)

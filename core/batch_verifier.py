@@ -48,6 +48,7 @@ class BatchClaimResult:
     kosis_table_id: str | None
     evidence_key: str | None
     source_url: str | None = None
+    diagnostic_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -119,7 +120,8 @@ def verify_articles(articles: Iterable[BatchArticle], verifier: Verifier) -> Bat
                     _hold_row(
                         article,
                         sentence,
-                        f"{error.stage}_ERROR:{error.diagnostic_id}",
+                        f"{error.stage}_UNAVAILABLE",
+                        diagnostic_id=error.diagnostic_id,
                     )
                 )
             except Exception:
@@ -134,7 +136,7 @@ def export_batch_xlsx(result: BatchVerificationResult) -> bytes:
     claims.title = "Claim Results"
     summaries = workbook.create_sheet("Article Summary")
     review = workbook.create_sheet("Review Queue")
-    claim_headers = ["article_id", "published_at", "source_sentence", "claim_id", "verdict", "route_status", "reason_code", "claim_value", "calculated_value", "evidence_value", "kosis_table_id", "evidence_key", "source_url"]
+    claim_headers = ["article_id", "published_at", "source_sentence", "claim_id", "verdict", "route_status", "reason_code", "claim_value", "calculated_value", "evidence_value", "kosis_table_id", "evidence_key", "source_url", "diagnostic_id"]
     _write_sheet(claims, claim_headers, [[getattr(row, field) for field in claim_headers] for row in result.claim_rows])
     summary_headers = ["article_id", "published_at", "claim_count", "match_count", "mismatch_count", "review_count", "article_status", "source_url"]
     _write_sheet(summaries, summary_headers, [[getattr(row, field) for field in summary_headers] for row in result.article_rows])
@@ -236,8 +238,9 @@ def _hold_row(
     article: BatchArticle,
     sentence: str,
     reason_code: str = "BATCH_VERIFIER_ERROR",
+    diagnostic_id: str | None = None,
 ) -> BatchClaimResult:
-    return BatchClaimResult(article.article_id, article.published_at, sentence, "batch_error", "UNDETERMINED", "HOLD", reason_code, None, None, None, None, None, article.source_url)
+    return BatchClaimResult(article.article_id, article.published_at, sentence, "batch_error", "UNDETERMINED", "HOLD", reason_code, None, None, None, None, None, article.source_url, diagnostic_id)
 
 
 def _summaries(articles: list[BatchArticle], rows: list[BatchClaimResult]) -> list[BatchArticleSummary]:

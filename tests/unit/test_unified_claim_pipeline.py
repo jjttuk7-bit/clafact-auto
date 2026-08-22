@@ -4,7 +4,10 @@ import json
 from dataclasses import dataclass
 from datetime import date
 
+import pytest
+
 import core.unified_claim_pipeline as pipeline
+from core.operational_error import OperationalStageError
 from schemas.claim import ClaimSchema
 from schemas.claim_registry import ClaimRegistryRecord
 
@@ -179,3 +182,20 @@ def test_registry_stored_slots_mode_never_calls_structured_extractor() -> None:
     assert entries[0].recovery_action == "DIRECT"
     assert entries[0].terminal_status == "AUTO"
     assert service.claims == [claim]
+
+
+def test_article_extractor_failure_is_wrapped_as_claim_parse_operational_error() -> None:
+    class FailingExtractor:
+        def extract(self, source_sentence: str, **kwargs) -> ClaimSchema:
+            raise RuntimeError("provider unavailable")
+
+    with pytest.raises(OperationalStageError) as caught:
+        pipeline.verify_article(
+            "2024년 고용률은 60%였다.",
+            article_published_at=date(2025, 1, 10),
+            extractor=FailingExtractor(),
+            official_service=_OfficialService(),
+        )
+
+    assert caught.value.stage == "CLAIM_PARSE"
+    assert caught.value.diagnostic_id

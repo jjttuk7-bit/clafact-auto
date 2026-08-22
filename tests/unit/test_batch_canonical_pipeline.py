@@ -2,6 +2,7 @@ from datetime import date
 
 from core.batch_verifier import BatchArticle
 from core.canonical_batch_verifier import verify_articles_with_pipeline
+from core.operational_error import OperationalStageError
 from core.unified_claim_pipeline import ArticlePipelineResult, PipelineEntry
 from schemas.claim import ClaimSchema
 from schemas.verdict import VerdictSchema
@@ -66,3 +67,18 @@ def test_canonical_batch_flattens_all_pipeline_entries() -> None:
     assert [row.claim_value for row in result.claim_rows] == [60, 61]
     assert result.article_rows[0].claim_count == 2
     assert result.article_rows[0].article_status == "ALL_MATCH"
+
+
+def test_canonical_batch_preserves_stable_reason_and_separate_diagnostic() -> None:
+    class FailingRuntime:
+        def verify_article(self, article_text, *, article_published_at, article_id=None):
+            raise OperationalStageError("CLAIM_PARSE", "diag12345678")
+
+    article = BatchArticle(
+        "A1", date(2025, 4, 9), "2024년 고용률은 61%였다."
+    )
+
+    result = verify_articles_with_pipeline([article], FailingRuntime())
+
+    assert result.claim_rows[0].reason_code == "CLAIM_PARSE_UNAVAILABLE"
+    assert result.claim_rows[0].diagnostic_id == "diag12345678"

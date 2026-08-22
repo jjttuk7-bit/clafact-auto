@@ -38,6 +38,7 @@ def main() -> None:
     runtime = build_canonical_pipeline(
         settings,
         live_time_budget_seconds=args.live_budget_seconds,
+        structured_extraction_enabled=not args.stored_slots_only,
     )
     rows: list[dict[str, Any]] = []
     for record in registry.records:

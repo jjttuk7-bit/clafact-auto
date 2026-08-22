@@ -36,12 +36,14 @@ class KosisMetadataRepository:
         snapshot_paths: Iterable[Path],
         *,
         live_fetcher: MetadataFetcher = get_meta,
+        prefer_live: bool = False,
     ) -> None:
         self._snapshot_paths = tuple(Path(path) for path in snapshot_paths)
         self._snapshot_sources = tuple(
             MetadataSnapshotSource(path) for path in self._snapshot_paths
         )
         self._live_fetcher = live_fetcher
+        self._prefer_live = prefer_live
         self._snapshots: tuple[DiscoverySnapshot, ...] | None = None
         self._cache: dict[tuple[str, str, str], list[MetadataRow]] = {}
         self._lock = RLock()
@@ -53,8 +55,9 @@ class KosisMetadataRepository:
         manifest_paths: Iterable[Path],
         *,
         live_fetcher: MetadataFetcher = get_meta,
+        prefer_live: bool = False,
     ) -> "KosisMetadataRepository":
-        repository = cls([], live_fetcher=live_fetcher)
+        repository = cls([], live_fetcher=live_fetcher, prefer_live=prefer_live)
         sources: list[MetadataSnapshotSource] = []
         for manifest_path in manifest_paths:
             path = Path(manifest_path)
@@ -100,7 +103,7 @@ class KosisMetadataRepository:
                 cached = self._cache.get(coordinate)
                 if cached is not None:
                     return [dict(row) for row in cached]
-                frozen = self._from_snapshots(*coordinate)
+                frozen = None if self._prefer_live else self._from_snapshots(*coordinate)
                 if frozen is not None:
                     self._cache[coordinate] = frozen
                     return [dict(row) for row in frozen]

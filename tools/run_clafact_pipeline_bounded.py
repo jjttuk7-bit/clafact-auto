@@ -22,6 +22,8 @@ from core.pipeline_run_reporting import build_run_report
 
 
 WORKER_CLI = PROJECT_ROOT / "tools" / "run_clafact_pipeline.py"
+CHECKPOINT_VERSION = 2
+RUNNER_VERSION = "canonical-v4-live-metadata"
 
 
 def main() -> None:
@@ -44,10 +46,22 @@ def main() -> None:
         if line.strip()
     ]
     args.output_dir.mkdir(parents=True, exist_ok=True)
+    run_signature = {
+        "runner_version": RUNNER_VERSION,
+        "stored_slots_only": args.stored_slots_only,
+        "live_budget_seconds": args.live_budget_seconds,
+        "worker_timeout_seconds": args.worker_timeout_seconds,
+        "context_sha256": _file_sha256(args.context_jsonl),
+    }
     rows_by_index: dict[int, list[dict[str, Any]]] = {}
     if not args.no_resume:
         for index in range(len(source_rows)):
-            checkpoint = load_checkpoint(args.output_dir, index)
+            checkpoint = load_checkpoint(
+                args.output_dir,
+                index,
+                source_row=source_rows[index],
+                run_signature=run_signature,
+            )
             if checkpoint is not None:
                 rows_by_index[index] = checkpoint
 
@@ -72,7 +86,13 @@ def main() -> None:
                 index = pending[future]
                 rows = future.result()
                 rows_by_index[index] = rows
-                write_checkpoint(args.output_dir, index, rows)
+                write_checkpoint(
+                    args.output_dir,
+                    index,
+                    rows,
+                    source_row=source_rows[index],
+                    run_signature=run_signature,
+                )
 
     rows = [row for index in range(len(source_rows)) for row in rows_by_index[index]]
     _write_jsonl(args.output_dir / "claim_verification_results.jsonl", rows)
@@ -85,24 +105,63 @@ def main() -> None:
     print(json.dumps({"output_dir": str(args.output_dir), **report}, ensure_ascii=False))
 
 
-def write_checkpoint(output_dir: Path, index: int, rows: list[dict[str, Any]]) -> None:
+def write_checkpoint(
+    output_dir: Path,
+    index: int,
+    rows: list[dict[str, Any]],
+    *,
+    source_row: dict[str, Any],
+    run_signature: dict[str, Any],
+) -> None:
     checkpoint_dir = output_dir / "checkpoints"
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
     destination = checkpoint_dir / f"{index:05d}.jsonl"
     temporary = destination.with_suffix(".jsonl.tmp")
-    _write_jsonl(temporary, rows)
+    _write_json(temporary, {
+        "checkpoint_version": CHECKPOINT_VERSION,
+        "fingerprint": _checkpoint_fingerprint(source_row, run_signature),
+        "rows": rows,
+    })
     temporary.replace(destination)
 
 
-def load_checkpoint(output_dir: Path, index: int) -> list[dict[str, Any]] | None:
+def load_checkpoint(
+    output_dir: Path,
+    index: int,
+    *,
+    source_row: dict[str, Any],
+    run_signature: dict[str, Any],
+) -> list[dict[str, Any]] | None:
     path = output_dir / "checkpoints" / f"{index:05d}.jsonl"
     if not path.is_file():
         return None
     try:
-        rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        payload = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return None
-    return rows or None
+    if not isinstance(payload, dict) or payload.get("checkpoint_version") != CHECKPOINT_VERSION:
+        return None
+    if payload.get("fingerprint") != _checkpoint_fingerprint(source_row, run_signature):
+        return None
+    rows = payload.get("rows")
+    return rows if isinstance(rows, list) and rows else None
+
+
+def _checkpoint_fingerprint(
+    source_row: dict[str, Any], run_signature: dict[str, Any]
+) -> str:
+    canonical = json.dumps(
+        {"source_row": source_row, "run_signature": run_signature},
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def _file_sha256(path: Path | None) -> str | None:
+    return sha256(path.read_bytes()).hexdigest() if path is not None else None
+
 
 
 def _run_one(

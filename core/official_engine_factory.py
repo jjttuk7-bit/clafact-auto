@@ -34,11 +34,15 @@ class OfficialEnginePaths:
 def build_official_evidence_service(
     paths: OfficialEnginePaths, *, kosis_api_key: str | None,
     live_time_budget_seconds: float = 45.0,
+    require_live_metadata: bool = False,
 ) -> OfficialEvidenceService:
     """Create the one live engine used by UI, batch, and API acceptance."""
     repository = (
-        KosisMetadataRepository.from_manifests(paths.metadata_manifest_paths)
-        if paths.metadata_manifest_paths else KosisMetadataRepository([])
+        KosisMetadataRepository.from_manifests(
+            paths.metadata_manifest_paths, prefer_live=require_live_metadata
+        )
+        if paths.metadata_manifest_paths
+        else KosisMetadataRepository([], prefer_live=require_live_metadata)
     )
     fetcher = OfficialValueFetcher(
         [],

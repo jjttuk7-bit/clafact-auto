@@ -10,6 +10,15 @@ def test_report_counts_terminal_routes_reasons_and_execution_stages() -> None:
             "reason_code": "WITHIN_TOLERANCE",
             "diagnostic_id": None,
             "official_resolution": {
+                "catalog_diagnostics": {
+                    "attempted_queries": 2,
+                    "failed_queries": 1,
+                    "empty_queries": 0,
+                    "metadata_itm_attempted": 1,
+                    "metadata_itm_succeeded": 1,
+                    "metadata_prd_attempted": 1,
+                    "metadata_prd_failed": 1,
+                },
                 "verdict": {
                     "route_status": "AUTO",
                     "reason_code": "WITHIN_TOLERANCE",
@@ -19,6 +28,9 @@ def test_report_counts_terminal_routes_reasons_and_execution_stages() -> None:
                             {"stage": "OFFICIAL_VALUE_FETCH", "status": "PASS"},
                         ]
                     },
+                    "official_value_provenance": [
+                        {"source": "API", "publication": {"status": "VERIFIED"}}
+                    ],
                 }
             },
         },
@@ -47,3 +59,27 @@ def test_report_counts_terminal_routes_reasons_and_execution_stages() -> None:
     assert report["operational_failure_count"] == 1
     assert report["all_claims_terminal"] is True
 
+    assert report["official_api_counts"] == {
+        "catalog_query_attempted": 2,
+        "catalog_query_failed": 1,
+        "catalog_query_empty": 0,
+        "catalog_query_succeeded_nonempty": 1,
+        "metadata_itm_attempted": 1,
+        "metadata_itm_succeeded": 1,
+        "metadata_itm_failed": 0,
+        "metadata_prd_attempted": 1,
+        "metadata_prd_succeeded": 0,
+        "metadata_prd_failed": 1,
+        "official_value_fetch_pass": 1,
+        "official_value_fetch_hold": 0,
+        "api_provenance_claims": 1,
+        "api_provenance_cells": 1,
+        "verified_publication_claims": 1,
+    }
+
+
+def test_empty_run_is_not_terminally_complete() -> None:
+    report = build_run_report([], input_count=1, registry_errors=[])
+
+    assert report["all_claims_terminal"] is False
+    assert report["input_coverage_complete"] is False

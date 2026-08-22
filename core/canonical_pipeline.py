@@ -82,12 +82,16 @@ def build_canonical_pipeline(
     settings: Any,
     *,
     live_time_budget_seconds: float = 45.0,
+    structured_extraction_enabled: bool = True,
 ) -> CanonicalPipeline:
     """Construct the only production runtime, backed by official engine v3."""
     api_key = getattr(settings, "kosis_api_key", None)
-    extractor = run_operational_stage(
-        "CLAIM_PARSE",
-        lambda: create_claim_extractor(settings),
+    if not isinstance(api_key, str) or not api_key.strip():
+        raise RuntimeError("KOSIS_API_KEY_REQUIRED")
+    extractor = (
+        run_operational_stage("CLAIM_PARSE", lambda: create_claim_extractor(settings))
+        if structured_extraction_enabled
+        else _DisabledStructuredExtractor()
     )
     paths = OfficialEnginePaths(
         STANDARD_PATH,
@@ -101,11 +105,17 @@ def build_canonical_pipeline(
         catalog_overlay_path=CATALOG_OVERLAY_PATH,
         kosis_api_key=api_key,
         live_time_budget_seconds=live_time_budget_seconds,
+        require_live_metadata=True,
     )
     return CanonicalPipeline(
         extractor=extractor,
         official_service=service,
     )
+
+
+class _DisabledStructuredExtractor:
+    def extract(self, source_sentence: str, **kwargs: Any) -> Any:
+        raise RuntimeError("STRUCTURED_EXTRACTION_DISABLED")
 
 
 def create_claim_extractor(settings: Any) -> StructuredClaimExtractor:

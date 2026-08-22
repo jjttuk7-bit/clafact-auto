@@ -12,7 +12,7 @@ from core.admission_recovery_v3 import recover_registry_record_v3
 from core.claim_admissibility import classify_admissibility
 from core.article_claim_pipeline import parse_article_claims
 from core.claim_parser import StructuredClaimExtractor
-from core.operational_error import OperationalStageError
+from core.operational_error import OperationalStageError, run_operational_stage
 from schemas.claim import ClaimSchema
 from schemas.claim_registry import ClaimRegistryRecord
 
@@ -45,10 +45,13 @@ def verify_article(
 ) -> ArticlePipelineResult:
     """Run every numerical Claim through the canonical record-level pipeline."""
     stable_article_id = article_id or _article_id(article_text)
-    claims = parse_article_claims(
-        article_text,
-        extractor,
-        article_published_at=article_published_at,
+    claims = run_operational_stage(
+        "CLAIM_PARSE",
+        lambda: parse_article_claims(
+            article_text,
+            extractor,
+            article_published_at=article_published_at,
+        ),
     )
     entries: list[PipelineEntry] = []
     for index, claim in enumerate(claims, start=1):

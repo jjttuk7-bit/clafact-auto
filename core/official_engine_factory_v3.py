@@ -22,6 +22,7 @@ def build_official_evidence_service_v3(
     catalog_overlay_path: Path,
     kosis_api_key: str | None,
     live_time_budget_seconds: float = 45.0,
+    require_live_metadata: bool = False,
 ) -> OfficialEvidenceService:
     """Build the one official engine and isolate either catalog path's transient failure."""
     install_coordinate_resolver()
@@ -29,6 +30,7 @@ def build_official_evidence_service_v3(
     base = build_official_evidence_service(
         paths, kosis_api_key=kosis_api_key,
         live_time_budget_seconds=live_time_budget_seconds,
+        require_live_metadata=require_live_metadata,
     )
     overlay = build_official_evidence_service(
         OfficialEnginePaths(
@@ -37,6 +39,7 @@ def build_official_evidence_service_v3(
         ),
         kosis_api_key=kosis_api_key,
         live_time_budget_seconds=live_time_budget_seconds,
+        require_live_metadata=require_live_metadata,
     )
     concepts = load_semantic_standard_v2(paths.standard_path, semantic_overlay_path)
 
@@ -75,8 +78,21 @@ def merge_catalog_resolutions(base: CatalogResolution, overlay: CatalogResolutio
         key: value for source in (base.diagnostics, overlay.diagnostics)
         for key, value in source.items() if key.endswith(("_unavailable", "_skipped"))
     }
+    counter_keys = {
+        "attempted_queries", "failed_queries", "empty_queries",
+        "metadata_itm_attempted", "metadata_itm_succeeded", "metadata_itm_failed",
+        "metadata_prd_attempted", "metadata_prd_succeeded", "metadata_prd_failed",
+    }
+    counters = {
+        key: sum(
+            int(source.get(key, 0))
+            for source in (base.diagnostics, overlay.diagnostics)
+            if isinstance(source.get(key, 0), (int, float))
+        )
+        for key in counter_keys
+    }
     return CatalogResolution(candidates=candidates, diagnostics={
-        **base.diagnostics, **flags,
+        **base.diagnostics, **flags, **counters,
         "base_candidate_count": len(base.candidates),
         "overlay_candidate_count": len(overlay.candidates),
         "candidate_count": len(candidates),

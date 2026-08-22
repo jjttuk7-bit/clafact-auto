@@ -99,7 +99,8 @@ def test_verify_articles_preserves_operational_stage_and_diagnostic_reference() 
     )
 
     assert result.claim_rows[0].route_status == "HOLD"
-    assert result.claim_rows[0].reason_code == "KOSIS_CATALOG_ERROR:diag12345678"
+    assert result.claim_rows[0].reason_code == "KOSIS_CATALOG_UNAVAILABLE"
+    assert result.claim_rows[0].diagnostic_id == "diag12345678"
 
 
 def test_export_batch_xlsx_has_claim_summary_and_review_sheets() -> None:

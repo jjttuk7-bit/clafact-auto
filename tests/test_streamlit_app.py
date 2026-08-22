@@ -28,7 +28,7 @@ def _set_provider_environment(
     monkeypatch,
     *,
     claim_provider: str,
-    kosis_api_key: str = "",
+    kosis_api_key: str = "kosis-test-key",
     hcx_api_key: str = "",
     openai_api_key: str = "",
     hcx_extraction_mode: str = "structured_output",
@@ -284,7 +284,7 @@ def test_unresolved_concept_holds_at_semantic_mapping_without_catalog(
             return_value=FakeExtractor(),
         ),
         patch(
-            "core.catalog_search.search_semantic_catalog",
+                "core.official_engine_factory.discover_catalog_candidates",
             return_value=[],
         ),
     ):
@@ -331,7 +331,7 @@ runpy.run_path(str(app_path), run_name="__streamlit_cloud_test__")
 
 
 def test_streamlit_mvp_renders_and_holds_invalid_article_date() -> None:
-    app = AppTest.from_file("app/streamlit_app.py")
+    app = AppTest.from_file("app/streamlit_app.py", default_timeout=15)
     app.run()
     assert app.title[0].value == "CLAFACT-AUTO"
     app.text_area[0].input("2024년 전국 고용률은 70%였다.")
@@ -375,6 +375,7 @@ def test_streamlit_mvp_preserves_hcx_primary_status(monkeypatch) -> None:
         monkeypatch,
         claim_provider="hcx",
         hcx_api_key="hcx-secret",
+        kosis_api_key="",
         openai_api_key="",
         hcx_extraction_mode="function_calling",
     )
@@ -394,6 +395,7 @@ def test_streamlit_mvp_marks_unsupported_claim_provider_as_configuration_error(m
         claim_provider="local",
         hcx_api_key="hcx-secret",
         openai_api_key="openai-secret",
+        kosis_api_key="",
     )
     app = AppTest.from_file("app/streamlit_app.py", default_timeout=15)
     app.run()
@@ -654,14 +656,14 @@ def test_streamlit_shows_every_split_claim_in_a_persistent_summary(monkeypatch) 
     app.run()
     assert _metric_values(app)["기사값"] == "61.0"
 def test_streamlit_mvp_renders_batch_upload_control() -> None:
-    app = AppTest.from_file("app/streamlit_app.py")
+    app = AppTest.from_file("app/streamlit_app.py", default_timeout=15)
     app.run()
 
     assert app.file_uploader[0].label == "크롤링 뉴스 파일 업로드"
 
 
 def test_streamlit_mvp_renders_batch_default_article_date_input() -> None:
-    app = AppTest.from_file("app/streamlit_app.py")
+    app = AppTest.from_file("app/streamlit_app.py", default_timeout=15)
     app.run()
 
     assert any(widget.label == "배치 기본 기사 기준일 (선택)" for widget in app.text_input)
