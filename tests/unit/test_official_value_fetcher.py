@@ -346,3 +346,20 @@ def test_fetch_many_falls_back_to_single_official_calls_when_range_request_fails
 
     assert lookup.single_calls == ["2025-10", "2024-10"]
     assert [result.value for result in results] == [10.0, 10.0]
+
+
+def test_official_fetcher_matches_quarter_api_period_code() -> None:
+    selected = EvidenceCellSchema(
+        org_id="101", tbl_id="DT", itm_id="T", prd_se="분기", prd_de="2025-Q1",
+        dimension_codes={"B": "0"}, canonical_key="quarter", status="CONFIRMED",
+    )
+    rows = [
+        {"TBL_ID": "DT", "ITM_ID": "T", "PRD_DE": "202501", "C1": "0", "DT": "28215.3"}
+    ]
+
+    result = OfficialValueFetcher(
+        [], api_lookup=lambda _cell: rows, prefer_api=True
+    ).fetch(selected)
+
+    assert result.status == "SUCCESS"
+    assert result.value == 28215.3

@@ -61,7 +61,8 @@ class _KostatPressReleaseSearch:
             return None
         matches: list[PublicationEvidence] = []
         seen_urls: set[str] = set()
-        for search_term in _press_release_queries(stats_name, period):
+        release_period = _official_release_period(stats_name, period)
+        for search_term in _press_release_queries(stats_name, release_period):
             params = {
                 **_KOSTAT_PRESS_RELEASE_PARAMS,
                 "bid": _press_release_board_id(stats_name),
@@ -75,7 +76,7 @@ class _KostatPressReleaseSearch:
             except (OSError, RuntimeError, TypeError, ValueError):
                 return PublicationEvidence(status="FETCH_FAILED", pub_period=pub_period, pub_date_text=pub_date_text, publication_method_url=search_url, source_url=search_url, retrieved_at=_now())
             for url, title in _release_links(search_raw):
-                if url in seen_urls or not _period_appears(title, period):
+                if url in seen_urls or not _period_appears(title, release_period):
                     continue
                 seen_urls.add(url)
                 try:
@@ -286,6 +287,15 @@ def _release_links(raw: bytes) -> list[tuple[str, str]]:
 def _press_release_board_id(stats_name: str) -> str:
     """Return the official press board for the survey's release family."""
     return _KOSTAT_RELEASE_PROFILES.get(_normalized_text(stats_name), ("213", ""))[0]
+
+
+def _official_release_period(stats_name: str, period: str) -> str:
+    """Map a quarterly employment aggregate to its final monthly release."""
+    if _normalized_text(stats_name) == _normalized_text("경제활동인구조사"):
+        normalized = period.replace("-", "").upper()
+        if match := re.fullmatch(r"(\d{4})Q([1-4])", normalized):
+            return f"{match.group(1)}{int(match.group(2)) * 3:02d}"
+    return period
 
 
 def _press_release_queries(stats_name: str, period: str) -> list[str]:

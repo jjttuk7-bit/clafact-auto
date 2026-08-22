@@ -351,3 +351,33 @@ def test_annual_employment_release_search_uses_december_annual_title() -> None:
     assert publication._press_release_queries("경제활동인구조사", "2024") == [
         "2024년 12월 및 연간 고용동향"
     ]
+
+def test_quarterly_employment_release_uses_last_month_official_release() -> None:
+    explanation = (
+        '[{"statsNm":"경제활동인구조사","pubDate":"조사대상월 익월 15일경",'
+        '"publictMth":"KOSIS 및 보도자료"}]'
+    ).encode("utf-8")
+    search_page = (
+        '<a href="/board.es?act=view&bid=210&list_no=435969">2025년 3월 고용동향</a>'
+    ).encode("utf-8")
+    release_page = (
+        '<h1>2025년 3월 고용동향</h1>'
+        '<p>연관조사 경제활동인구조사</p><p>게시일 2025-04-09</p>'
+    ).encode("utf-8")
+    seen: list[str] = []
+
+    def opener(request, *, timeout):
+        seen.append(request.full_url)
+        if "statisticsExplData" in request.full_url:
+            return Response(explanation)
+        if "act=list" in request.full_url:
+            return Response(search_page)
+        return Response(release_page)
+
+    result = KosisPublicationLookup("secret", opener=opener, retries=1).fetch(
+        "101", "DT_1DA7001S", period="2025-Q1"
+    )
+
+    assert result.status == "VERIFIED"
+    assert result.published_at == date(2025, 4, 9)
+    assert any("keyWord=2025%EB%85%84+3%EC%9B%94+%EA%B3%A0%EC%9A%A9%EB%8F%99%ED%96%A5" in url for url in seen)

@@ -12,6 +12,7 @@ from typing import Any, Literal
 from urllib.parse import urlencode
 
 from core.snapshot_asof import filter_rows_as_of
+from core.kosis_api_adapter import api_period
 from core.kosis_publication import PublicationEvidence
 from schemas.evidence import EvidenceCellSchema
 
@@ -284,7 +285,7 @@ def _matches_cell(row: dict[str, Any], cell: EvidenceCellSchema, *, allow_missin
     table = row.get("tbl_id", row.get("TBL_ID"))
     item = row.get("item_id", row.get("ITM_ID"))
     period = str(row.get("period", row.get("PRD_DE", ""))).replace("-", "")
-    expected_period = cell.prd_de.replace("-", "")
+    expected_period = api_period(cell.prd_de)
     codes = row.get("dimension_codes")
     if not isinstance(codes, dict):
         codes = {key: row.get(key) for key in cell.dimension_codes}
@@ -304,7 +305,7 @@ def _api_source_url(cell: EvidenceCellSchema) -> str:
         "년": "Y", "year": "Y", "yearly": "Y", "annual": "Y",
         "분기": "Q", "반기": "H",
     }.get(cell.prd_se.casefold(), cell.prd_se)
-    period = cell.prd_de.replace("-", "")
+    period = api_period(cell.prd_de)
     params = {
         "method": "getList",
         "orgId": cell.org_id,
