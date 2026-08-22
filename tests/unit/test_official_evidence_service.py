@@ -105,3 +105,10 @@ def test_official_evidence_service_routes_total_metadata_failure_to_named_hold()
     assert result.verdict.route_status == "HOLD"
     assert result.verdict.reason_code == "KOSIS_METADATA_UNAVAILABLE"
     assert result.catalog_diagnostics == diagnostics
+    trace = result.verdict.execution_trace
+    assert trace is not None
+    assert (
+        trace.events[-1].stage,
+        trace.events[-1].status,
+        trace.events[-1].reason_code,
+    ) == ("KOSIS_METADATA", "HOLD", "KOSIS_METADATA_UNAVAILABLE")

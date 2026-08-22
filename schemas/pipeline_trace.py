@@ -13,6 +13,7 @@ PipelineStageName = Literal[
     "CLAIM_CANDIDATE_SELECTION",
     "CLAIM_SPLIT",
     "CLAIM_PARSE",
+    "KOSIS_METADATA",
     "SEMANTIC_MAPPING",
     "CATALOG_SEARCH",
     "HARD_GUARD",

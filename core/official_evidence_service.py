@@ -10,6 +10,7 @@ from core import dynamic_kosis_verifier
 from core.dynamic_kosis_verifier import OfficialValueFetcher
 from core.operational_error import run_operational_stage
 from core.verdict_engine import make_verdict
+from schemas.pipeline_trace import PipelineTraceSchema
 from schemas.candidate import KosisCandidateSchema
 from schemas.claim import ClaimSchema
 from schemas.concept import StandardConceptSchema
@@ -75,7 +76,19 @@ class OfficialEvidenceService:
             catalog_diagnostics = {}
         # Live official metadata is mandatory before coordinate resolution.
         if catalog_diagnostics.get("metadata_unavailable"):
-            verdict = make_verdict(claim.claim_id, claim.value, [], None).model_copy(
+            trace = (
+                PipelineTraceSchema(
+                    claim_id=claim.claim_id,
+                    preprocess_version="1.0",
+                    claim_schema_version="1.0",
+                )
+                .pass_stage("SEMANTIC_MAPPING")
+                .pass_stage("CATALOG_SEARCH")
+                .hold("KOSIS_METADATA", "KOSIS_METADATA_UNAVAILABLE")
+            )
+            verdict = make_verdict(
+                claim.claim_id, claim.value, [], None, trace=trace
+            ).model_copy(
                 update={
                     "reason_code": "KOSIS_METADATA_UNAVAILABLE",
                     "explanation": "Official KOSIS metadata could not be retrieved.",
@@ -88,7 +101,6 @@ class OfficialEvidenceService:
                 catalog_diagnostics=catalog_diagnostics,
             )
         # Explicit bindings are applied only after live Catalog and official
-
         # metadata hydration. They therefore narrow verified candidates; they
         # never replace either official lookup.
         candidates = self._candidate_selector(claim, concept, candidates)
