@@ -29,6 +29,7 @@ def recover_registry_record_v3(record: ClaimRegistryRecord, *, extractor: Struct
     entries: list[RecoveryEntry] = []
     for target in targets:
         parsed = _parse_target(target.expression, target.extractor_input, extractor, record)
+        parsed_before_context = parsed
         context_used = False
         if _admission_route(parsed) == "CONTEXT_REQUIRED" and article_context:
             payload = json.loads(target.extractor_input)
@@ -36,12 +37,14 @@ def recover_registry_record_v3(record: ClaimRegistryRecord, *, extractor: Struct
             payload["instruction"] = "부족한 지역·시점·대상만 본문으로 보강하고 target_numeric_expression 하나만 12슬롯 구조화"
             parsed = _parse_target(target.expression, json.dumps(payload, ensure_ascii=False), extractor, record)
             context_used = True
+        context_enriched_slots = _changed_slots(parsed_before_context, parsed) if context_used else []
         parsed = parsed.model_copy(update={"claim_id": _child_id(record.claim.source_sentence, target.expression), "source_sentence": record.claim.source_sentence})
         route = _admission_route(parsed)
         derived = record.model_copy(update={"claim": parsed, "source_ref": "admission_recovery_v3", "slot_enrichment": {
             "stage": "TARGETED_MULTI_CLAIM_SPLIT", "parent_claim_id": record.claim.claim_id,
             "target_numeric_expression": target.expression, "admission_route": route,
             "source_ref": record.source_ref, "article_context_used": context_used,
+            "context_enriched_slots": context_enriched_slots,
         }})
         resolution = official_service.resolve(parsed, article_date=record.article_published_at) if route == "KOSIS_PIPELINE_ELIGIBLE" and record.article_published_at is not None else None
         entries.append(RecoveryEntry(record.claim.claim_id, derived, route, resolution))
@@ -68,3 +71,19 @@ def _admission_route(claim: ClaimSchema) -> AdmissionRoute:
 def _child_id(source_sentence: str, expression: str) -> str:
     digest = sha256((source_sentence + "\n" + expression).encode("utf-8")).hexdigest()[:16]
     return f"claim_{digest}"
+
+
+def _changed_slots(before: ClaimSchema, after: ClaimSchema) -> list[str]:
+    """Return only 12-slot values that article context actually populated or changed."""
+
+    slot_names = (
+        "indicator", "value", "unit", "time", "frequency", "region",
+        "population", "dimension", "comparison", "calculation", "condition",
+        "source_hint",
+    )
+    return [
+        name
+        for name in slot_names
+        if getattr(before, name) != getattr(after, name)
+        and getattr(after, name) not in (None, "")
+    ]

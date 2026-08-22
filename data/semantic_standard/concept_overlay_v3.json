@@ -3,7 +3,7 @@
     "concept_id": "C000008",
     "canonical_name": "취업자 수",
     "standard_key": "employment_count",
-    "aliases": ["취업자", "15세 이상 취업자", "전체 취업자", "건설업 취업자", "제조업 취업자", "산업별 취업자"],
+    "aliases": ["취업자", "15세 이상 취업자", "전체 취업자", "건설업 취업자", "제조업 취업자", "산업별 취업자", "취업자 수 증가 폭", "취업자 증가 폭", "국내 취업자 수"],
     "kosis_search_terms": ["경제활동인구조사 취업자", "산업별 취업자"]
   },
   {
@@ -12,6 +12,13 @@
     "standard_key": "death_count",
     "aliases": ["사망자", "연령별 사망자"],
     "kosis_search_terms": ["인구동향 사망자수", "연령별 사망자수"]
+  },
+  {
+    "concept_id": "C000019",
+    "canonical_name": "출생아 수",
+    "standard_key": "birth_count",
+    "aliases": ["출생아 수 증가율", "출생아 증가율", "출생아 수 증가 폭"],
+    "kosis_search_terms": ["인구동향 출생아수", "월별 출생아수"]
   },
   {
     "concept_id": "C000011",
@@ -33,6 +40,13 @@
     "standard_key": "inactive_population_resting",
     "aliases": ["쉬었음", "쉬었음 인구", "청년 쉬었음 인구", "‘쉬었음’ 인구"],
     "kosis_search_terms": ["비경제활동인구 활동상태별 쉬었음", "쉬었음 인구"]
+  },
+  {
+    "concept_id": "C000028",
+    "canonical_name": "생활물가지수",
+    "standard_key": "living_price_index",
+    "aliases": ["생활물가"],
+    "kosis_search_terms": ["생활물가지수", "생활물가"]
   },
   {
     "concept_id": "C000043",

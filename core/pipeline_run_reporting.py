@@ -27,6 +27,9 @@ def serialize_pipeline_entry(
         "reason_code": entry.reason_code,
         "diagnostic_id": entry.diagnostic_id,
         "official_resolution": _serialize(entry.official_resolution),
+        "lineage_record": _serialize(entry.lineage_record),
+        "stage_results": _serialize(entry.stage_results),
+        "slot_audit": _serialize(entry.slot_audit),
     }
 
 
