@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import csv
 from collections import defaultdict
+import json
+from pathlib import Path
 from typing import Any, Iterable
 
 from core.admission_recovery_v3 import recover_registry_record_v3
@@ -148,3 +151,79 @@ def _sentence_order(record: ClaimRegistryRecord) -> tuple[int, str]:
         return int(sentence_id), sentence_id
     except ValueError:
         return 1_000_000, sentence_id
+
+
+_SLOT_LABELS = (
+    ("indicator", "지표"),
+    ("value", "수치"),
+    ("unit", "단위"),
+    ("time", "시점"),
+    ("frequency", "주기"),
+    ("region", "지역"),
+    ("population", "대상"),
+    ("dimension", "차원"),
+    ("comparison", "비교"),
+    ("calculation", "계산"),
+    ("condition", "조건"),
+    ("source_hint", "작성기관힌트"),
+)
+
+
+def write_context_child_csv(
+    results: list[dict[str, Any]],
+    path: Path,
+) -> None:
+    """Write one auditable row per recovered child and all twelve slots."""
+
+    headers = [
+        "부모Claim번호",
+        "자식Claim번호",
+        "재입장경로",
+        "12개항목완성",
+        "남은문제",
+    ]
+    for _, label in _SLOT_LABELS:
+        headers.extend((label, f"{label}상태"))
+    rows: list[dict[str, object]] = []
+    for result in results:
+        parent_id = str(result.get("claim_id") or "")
+        for child in result.get("children") or []:
+            if not isinstance(child, dict):
+                continue
+            claim = child.get("claim") if isinstance(child.get("claim"), dict) else {}
+            audit = (
+                child.get("slot_audit")
+                if isinstance(child.get("slot_audit"), dict)
+                else {}
+            )
+            statuses = {
+                str(entry.get("slot") or ""): str(entry.get("status") or "")
+                for entry in audit.get("entries") or []
+                if isinstance(entry, dict)
+            }
+            row: dict[str, object] = {
+                "부모Claim번호": parent_id,
+                "자식Claim번호": str(child.get("claim_id") or ""),
+                "재입장경로": str(child.get("admission_route") or ""),
+                "12개항목완성": "예" if child.get("twelve_slot_complete") else "아니오",
+                "남은문제": " | ".join(
+                    str(reason) for reason in audit.get("reason_codes") or []
+                ),
+            }
+            for slot, label in _SLOT_LABELS:
+                row[label] = _csv_value(claim.get(slot))
+                row[f"{label}상태"] = statuses.get(slot, "")
+            rows.append(row)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    with temporary.open("w", encoding="utf-8-sig", newline="") as output:
+        writer = csv.DictWriter(output, fieldnames=headers)
+        writer.writeheader()
+        writer.writerows(rows)
+    temporary.replace(path)
+
+
+def _csv_value(value: object) -> object:
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return "" if value is None else value
+    return json.dumps(value, ensure_ascii=False, sort_keys=True)

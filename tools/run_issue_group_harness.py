@@ -17,7 +17,11 @@ if str(PROJECT_ROOT) not in sys.path:
 from config.settings import Settings
 from core.canonical_pipeline import create_claim_extractor
 from core.claim_registry_loader import load_claim_registry
-from core.issue_group_executor import ContextGroupExecutor, normalize_context_result
+from core.issue_group_executor import (
+    ContextGroupExecutor,
+    normalize_context_result,
+    write_context_child_csv,
+)
 from core.issue_group_harness import (
     IssueGroup,
     build_issue_registry,
@@ -88,6 +92,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             code_version=args.code_version,
             data_version=args.data_version or _file_hash(args.baseline_path),
         )
+        if group is IssueGroup.CONTEXT:
+            write_context_child_csv(
+                saved_results,
+                args.output_dir / "runs" / f"{args.run_id}_children.csv",
+            )
         print(
             json.dumps(
                 {
@@ -135,6 +144,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         _write_jsonl(
             args.output_dir / "runs" / f"{args.run_id}.jsonl",
             results,
+        )
+        write_context_child_csv(
+            results,
+            args.output_dir / "runs" / f"{args.run_id}_children.csv",
         )
         print(
             json.dumps(
