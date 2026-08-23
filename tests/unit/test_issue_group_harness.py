@@ -1,8 +1,13 @@
 from __future__ import annotations
 
+import csv
+
 import pytest
 
 from core.issue_group_harness import IssueGroup, classify_claim
+from core.issue_group_harness import build_issue_registry, write_issue_ledgers
+
+
 
 
 @pytest.mark.parametrize(
@@ -68,6 +73,47 @@ def test_classify_claim_uses_earliest_failed_stage_and_keeps_later_failures() ->
     assert classified.secondary_issues == ("OFFICIAL_VALUE_FETCH:FETCH_FAILED",)
 
 
+def test_build_issue_registry_rejects_missing_or_duplicate_claim_identity() -> None:
+    missing = _row(reason="CONTEXT_REQUIRED")
+    missing["claim_id"] = ""
+    with pytest.raises(ValueError, match="MISSING_CLAIM_IDENTITY"):
+        build_issue_registry([missing])
+
+    row = _row(reason="CONTEXT_REQUIRED")
+    with pytest.raises(ValueError, match="DUPLICATE_CLAIM_IDENTITY"):
+        build_issue_registry([row, dict(row)])
+
+
+def test_write_issue_ledgers_reconciles_master_and_group_rows(tmp_path) -> None:
+    rows = [
+        _row_with_id("C-001", "CONTEXT_REQUIRED"),
+        _row_with_id("C-002", "NO_HARD_GUARD_CANDIDATE"),
+        _row_with_id("C-003", "WITHIN_TOLERANCE", status="AUTO"),
+    ]
+    records = build_issue_registry(rows)
+
+    summary = write_issue_ledgers(records, tmp_path)
+
+    master = tmp_path / "claim_issue_master.csv"
+    assert master.read_bytes().startswith(b"\xef\xbb\xbf")
+    with master.open(encoding="utf-8-sig", newline="") as source:
+        master_rows = list(csv.DictReader(source))
+    assert len(master_rows) == 3
+    assert {row["Claim번호"] for row in master_rows} == {"C-001", "C-002", "C-003"}
+    assert all(row["대표문제"] for row in master_rows)
+
+    group_rows = 0
+    for path in (tmp_path / "groups").glob("*.csv"):
+        with path.open(encoding="utf-8-sig", newline="") as source:
+            group_rows += len(list(csv.DictReader(source)))
+    assert group_rows == len(master_rows)
+    assert sum(item["전체수"] for item in summary.values()) == len(master_rows)
+
+    with (tmp_path / "group_summary.csv").open(encoding="utf-8-sig", newline="") as source:
+        summary_rows = list(csv.DictReader(source))
+    assert sum(int(row["전체수"]) for row in summary_rows) == len(master_rows)
+
+
 def _row(*, reason: str, status: str = "HOLD") -> dict[str, object]:
     return {
         "article_id": "A-001",
@@ -82,3 +128,16 @@ def _row(*, reason: str, status: str = "HOLD") -> dict[str, object]:
         "stage_results": [],
         "official_resolution": None,
     }
+
+
+def _row_with_id(
+    claim_id: str,
+    reason: str,
+    *,
+    status: str = "HOLD",
+) -> dict[str, object]:
+    row = _row(reason=reason, status=status)
+    row["claim_id"] = claim_id
+    row["parent_claim_id"] = claim_id
+    row["claim"] = {"claim_id": claim_id, "indicator": "취업자"}
+    return row

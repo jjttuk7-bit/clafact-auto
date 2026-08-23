@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import csv
+from collections import Counter
 from dataclasses import dataclass
 from enum import StrEnum
+from pathlib import Path
 from typing import Any
 
 
@@ -163,3 +166,153 @@ def _observed_failures(row: dict[str, Any]) -> list[tuple[str, str]]:
 
 def _text(value: object) -> str | None:
     return str(value) if value is not None and str(value) else None
+
+
+_LEDGER_HEADERS = (
+    "기사번호",
+    "문장번호",
+    "부모Claim번호",
+    "Claim번호",
+    "원문",
+    "현재상태",
+    "현재중단단계",
+    "현재사유",
+    "대표문제",
+    "보조문제",
+    "다음실행단계",
+    "개선전상태",
+    "개선전사유",
+    "개선후상태",
+    "개선후사유",
+    "공식통계표",
+    "공식값출처",
+    "실행횟수",
+    "코드버전",
+    "데이터버전",
+    "기록시각",
+)
+
+_NEXT_STAGE = {
+    IssueGroup.CONTEXT: "CLAIM_SPLIT~CLAIM_PARSE",
+    IssueGroup.OFFICIAL_PATH: "SEMANTIC_MAPPING~KOSIS_METADATA",
+    IssueGroup.HARD_GUARD: "HARD_GUARD",
+    IssueGroup.COORDINATE: "EVIDENCE_CELL",
+    IssueGroup.SEMANTIC: "SEMANTIC_MAPPING~SEMANTIC_MATCH",
+    IssueGroup.CALCULATION: "CALCULATION",
+    IssueGroup.VALUE_PUBLICATION: "OFFICIAL_VALUE_FETCH~VERDICT",
+    IssueGroup.REGRESSION: "전체경로 회귀검사",
+    IssueGroup.UNCLASSIFIED: "실행금지: 먼저 분류",
+}
+
+
+def build_issue_registry(rows: list[dict[str, Any]]) -> list[ClaimIssueRecord]:
+    """Classify rows while rejecting identities that cannot be audited."""
+
+    records: list[ClaimIssueRecord] = []
+    identities: set[tuple[str, str, str, str]] = set()
+    for row in rows:
+        record = classify_claim(row)
+        identity = (
+            record.article_id,
+            record.sentence_id,
+            record.parent_claim_id,
+            record.claim_id,
+        )
+        if not all(identity):
+            raise ValueError("MISSING_CLAIM_IDENTITY")
+        if identity in identities:
+            raise ValueError(f"DUPLICATE_CLAIM_IDENTITY:{'|'.join(identity)}")
+        identities.add(identity)
+        records.append(record)
+    return sorted(
+        records,
+        key=lambda item: (
+            item.primary_group.value,
+            item.article_id,
+            item.sentence_id,
+            item.parent_claim_id,
+            item.claim_id,
+        ),
+    )
+
+
+def write_issue_ledgers(
+    records: list[ClaimIssueRecord],
+    output_dir: Path,
+) -> dict[IssueGroup, dict[str, int]]:
+    """Write one reconciled master ledger and one ledger per primary group."""
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    group_dir = output_dir / "groups"
+    group_dir.mkdir(parents=True, exist_ok=True)
+    rows = [_ledger_row(record) for record in records]
+    _write_csv_atomic(output_dir / "claim_issue_master.csv", _LEDGER_HEADERS, rows)
+
+    counts = Counter(record.primary_group for record in records)
+    summary: dict[IssueGroup, dict[str, int]] = {}
+    for group in IssueGroup:
+        group_rows = [
+            row for record, row in zip(records, rows, strict=True)
+            if record.primary_group is group
+        ]
+        if group_rows:
+            _write_csv_atomic(group_dir / f"{group.value}.csv", _LEDGER_HEADERS, group_rows)
+        summary[group] = {
+            "전체수": counts[group],
+            "시도수": 0,
+            "개선수": 0,
+            "남은수": counts[group],
+        }
+
+    summary_headers = ("문제코드", "전체수", "시도수", "개선수", "남은수", "완료여부")
+    summary_rows = [
+        {
+            "문제코드": group.value,
+            **values,
+            "완료여부": "아니오" if values["남은수"] else "예",
+        }
+        for group, values in summary.items()
+    ]
+    _write_csv_atomic(output_dir / "group_summary.csv", summary_headers, summary_rows)
+    if sum(values["전체수"] for values in summary.values()) != len(records):
+        raise ValueError("GROUP_TOTAL_MISMATCH")
+    return summary
+
+
+def _ledger_row(record: ClaimIssueRecord) -> dict[str, object]:
+    return {
+        "기사번호": record.article_id,
+        "문장번호": record.sentence_id,
+        "부모Claim번호": record.parent_claim_id,
+        "Claim번호": record.claim_id,
+        "원문": record.source_sentence,
+        "현재상태": record.current_status,
+        "현재중단단계": record.current_stop_stage or "",
+        "현재사유": record.current_reason or "",
+        "대표문제": record.primary_group.value,
+        "보조문제": " | ".join(record.secondary_issues),
+        "다음실행단계": _NEXT_STAGE[record.primary_group],
+        "개선전상태": record.current_status,
+        "개선전사유": record.current_reason or "",
+        "개선후상태": "",
+        "개선후사유": "",
+        "공식통계표": "",
+        "공식값출처": "",
+        "실행횟수": 0,
+        "코드버전": "",
+        "데이터버전": "",
+        "기록시각": "",
+    }
+
+
+def _write_csv_atomic(
+    path: Path,
+    headers: tuple[str, ...],
+    rows: list[dict[str, object]],
+) -> None:
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    with temporary.open("w", encoding="utf-8-sig", newline="") as output:
+        writer = csv.DictWriter(output, fieldnames=headers)
+        writer.writeheader()
+        writer.writerows(rows)
+    temporary.replace(path)
