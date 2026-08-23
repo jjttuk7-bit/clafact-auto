@@ -66,3 +66,43 @@ def test_does_not_treat_year_qualified_month_as_bare_month() -> None:
 
     assert resolve_relative_time(explicit_year, date(2025, 7, 2)).time is None
     assert resolve_relative_time(relative_year, date(2025, 7, 2)).time is None
+
+
+def test_repairs_annual_slot_when_source_explicitly_names_reporting_month_and_indicator() -> None:
+    stored = ClaimSchema(
+        claim_id="birth-month",
+        source_sentence="25일 통계청은 4월 출생아 수가 전년 같은 달보다 8.7% 증가했다고 밝혔다.",
+        indicator="출생아 수",
+        value=8.7,
+        unit="%",
+        time="2024",
+        frequency="Y",
+        comparison={"type": "YEAR_OVER_YEAR"},
+        calculation="GROWTH_RATE",
+        condition={"direction": "INCREASE"},
+        parse_status="AUTO_OK",
+    )
+
+    result = resolve_relative_time(stored, date(2025, 6, 26))
+
+    assert (result.time, result.frequency) == ("2025년 4월", "월")
+
+
+def test_does_not_repair_annual_slot_from_cumulative_month_range() -> None:
+    stored = ClaimSchema(
+        claim_id="birth-cumulative",
+        source_sentence="작년 1~11월 누적 출생아 수는 22만94명으로 3% 늘었다.",
+        indicator="출생아 수",
+        value=3.0,
+        unit="%",
+        time="2024",
+        frequency="Y",
+        comparison={"type": "YEAR_OVER_YEAR"},
+        calculation="GROWTH_RATE",
+        condition={"direction": "INCREASE"},
+        parse_status="AUTO_OK",
+    )
+
+    result = resolve_relative_time(stored, date(2025, 1, 23))
+
+    assert (result.time, result.frequency) == ("2024", "Y")

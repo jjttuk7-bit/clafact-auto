@@ -6,6 +6,9 @@ import re
 
 def resolve_relative_time(c, article_date: date | None):
     v = (c.time or "").strip()
+    reporting_month = _resolve_source_reporting_month(c, article_date)
+    if reporting_month is not c:
+        return reporting_month
     if not v:
         return _resolve_source_previous_month(c, article_date)
     v = re.sub(r"\s*\(\s*1\s*[~～-]\s*3\s*월\s*\)\s*$", "", v)
@@ -67,6 +70,44 @@ _BARE_MONTH = re.compile(
 _MONTH_QUALIFIER = re.compile(
     r"(?:(?:19|20)\d{2}년|작년|지난해|전년|올해|금년|지난)\s*$"
 )
+
+
+def _resolve_source_reporting_month(c, article_date: date | None):
+    """Replace a stored annual slot only when the source binds one month to the indicator."""
+    if article_date is None or not c.indicator:
+        return c
+    frequency = re.sub(r"\s+", "", (c.frequency or "")).casefold()
+    if frequency not in {"y", "year", "yearly", "annual", "연", "연간", "년"}:
+        return c
+    if not re.fullmatch(r"(?:19|20)\d{2}년?", (c.time or "").strip()):
+        return c
+
+    indicator = r"\s*".join(re.escape(part) for part in c.indicator.split())
+    pattern = re.compile(
+        rf"(?<![\d~～∼\-–])"
+        rf"(?:(?P<year>(?:19|20)\d{{2}})년|"
+        rf"(?P<relative>올해|금년|지난해|작년|전년|지난)\s*)?"
+        rf"(?P<month>1[0-2]|[1-9])월(?!\s*\d{{1,2}}일)"
+        rf"[^.!?。！？]{{0,24}}?{indicator}"
+    )
+    resolved: set[tuple[int, int]] = set()
+    for match in pattern.finditer(c.source_sentence):
+        month = int(match["month"])
+        explicit_year = match["year"]
+        relative = match["relative"]
+        if explicit_year:
+            year = int(explicit_year)
+        elif relative in {"지난해", "작년", "전년"}:
+            year = article_date.year - 1
+        elif relative in {"올해", "금년"}:
+            year = article_date.year
+        else:
+            year = article_date.year if month <= article_date.month else article_date.year - 1
+        resolved.add((year, month))
+    if len(resolved) != 1:
+        return c
+    year, month = resolved.pop()
+    return c.model_copy(update={"time": f"{year}년 {month}월", "frequency": "월"})
 
 
 def _resolve_source_previous_month(c, article_date: date | None):

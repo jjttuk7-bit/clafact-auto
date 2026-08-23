@@ -1,25 +1,25 @@
 {
-  "child_parent_mapping_count": 20,
+  "child_parent_mapping_count": 23,
   "completed_claim_count": 24,
   "master_count": 1542,
-  "output_sha256": "1147b7bff802554edb11416f9415b34417cc8ac2ca7f86892c0d565bfb29c616",
+  "output_sha256": "efefa4f04c42aea9e0bf6575d0441d81effaccfc3ba2047ed24cf77365890502",
   "remaining_by_current_group": {
     "CALCULATION": 47,
     "CONTEXT": 680,
-    "COORDINATE": 202,
+    "COORDINATE": 199,
     "HARD_GUARD": 222,
     "OFFICIAL_PATH": 206,
     "SEMANTIC": 101,
-    "VALUE_PUBLICATION": 60
+    "VALUE_PUBLICATION": 63
   },
   "remaining_by_primary_group": {
     "CALCULATION": 47,
     "CONTEXT": 680,
-    "COORDINATE": 202,
+    "COORDINATE": 199,
     "HARD_GUARD": 222,
     "OFFICIAL_PATH": 206,
     "SEMANTIC": 101,
-    "VALUE_PUBLICATION": 60
+    "VALUE_PUBLICATION": 63
   },
   "remaining_claim_count": 1518,
   "results_roots": [
@@ -27,6 +27,6 @@
   ],
   "unique_claim_count": 1542,
   "unmapped_result_count": 0,
-  "update_record_count": 1827,
+  "update_record_count": 1830,
   "updated_claim_count": 1542
 }
