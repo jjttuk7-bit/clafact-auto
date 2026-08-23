@@ -3,6 +3,7 @@
 import re
 
 from core.comparison_normalizer import normalize_comparison
+from core.record_periods import enumerate_record_periods
 from schemas.candidate import KosisCandidateSchema
 from schemas.claim import ClaimSchema
 from schemas.evidence import CalculationPlan, EvidenceCellSchema
@@ -21,6 +22,16 @@ def build_calculation_plan(
     calculation = calculation or "DIRECT_VALUE"
     if calculation == "DIRECT_VALUE":
         return CalculationPlan(calculation_type="DIRECT_VALUE", required_cells=[current])
+    if calculation in {"RECORD_HIGH", "RECORD_LOW"}:
+        periods = enumerate_record_periods(
+            candidate.start_period if candidate else None,
+            current.prd_de,
+            current.prd_se,
+        )
+        if periods is None:
+            return None
+        cells = [_period_cell(current, period) for period in periods]
+        return CalculationPlan(calculation_type=calculation, required_cells=cells)
     if calculation in {"SHARE", "RATIO", "MULTIPLE"}:
         counterpart = _counterpart_cell(current, candidate, comparison)
         return CalculationPlan(calculation_type=calculation, required_cells=[current, counterpart]) if counterpart else None
@@ -130,6 +141,14 @@ def _previous_year_same_period(period: str) -> str | None:
 
 def _with_period(key: str, current: str, prior: str) -> str:
     return key.replace(current, prior) if current in key else f"{key}|PRD_DE={prior}"
+
+
+def _period_cell(current: EvidenceCellSchema, period: str) -> EvidenceCellSchema:
+    return current.model_copy(update={
+        "prd_de": period,
+        "canonical_key": _with_period(current.canonical_key, current.prd_de, period),
+    })
+
 
 def _rank_cells(
     current: EvidenceCellSchema,

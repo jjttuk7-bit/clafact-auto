@@ -25,6 +25,7 @@ class CalculationPlan(BaseModel):
     calculation_type: Literal[
         "DIRECT_VALUE", "DIFFERENCE", "SUM_DIFFERENCE", "GROWTH_RATE",
         "RATIO", "SHARE", "MULTIPLE", "RANK", "THRESHOLD",
+        "RECORD_HIGH", "RECORD_LOW",
     ]
     required_cells: list[EvidenceCellSchema] = Field(default_factory=list)
     operator: str | None = None
