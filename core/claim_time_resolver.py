@@ -16,6 +16,15 @@ def resolve_relative_time(c, article_date: date | None):
         month = int(last_month["month"])
         year = article_date.year if month <= article_date.month else article_date.year - 1
         return c.model_copy(update={"time": f"{year}년 {month}월", "frequency": "월"})
+    bare_month = re.fullmatch(r"(?P<month>\d{1,2})월", v)
+    if bare_month:
+        if article_date is None:
+            return _hold(c)
+        month = int(bare_month["month"])
+        if not 1 <= month <= 12:
+            return c
+        year = article_date.year if month <= article_date.month else article_date.year - 1
+        return c.model_copy(update={"time": f"{year}년 {month}월", "frequency": "월"})
     month_match = re.fullmatch(r"(?P<year>올해|금년|지난해|작년|전년)\s*(?P<month>\d{1,2})월", v)
     if month_match:
         if article_date is None:

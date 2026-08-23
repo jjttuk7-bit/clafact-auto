@@ -3,7 +3,7 @@
 import re
 
 from core.comparison_normalizer import normalize_comparison
-from core.record_periods import enumerate_record_periods
+from core.record_periods import enumerate_record_periods, enumerate_same_month_periods
 from schemas.candidate import KosisCandidateSchema
 from schemas.claim import ClaimSchema
 from schemas.evidence import CalculationPlan, EvidenceCellSchema
@@ -23,10 +23,11 @@ def build_calculation_plan(
     if calculation == "DIRECT_VALUE":
         return CalculationPlan(calculation_type="DIRECT_VALUE", required_cells=[current])
     if calculation in {"RECORD_HIGH", "RECORD_LOW"}:
-        periods = enumerate_record_periods(
-            candidate.start_period if candidate else None,
-            current.prd_de,
-            current.prd_se,
+        start_period = candidate.start_period if candidate else None
+        periods = (
+            enumerate_same_month_periods(start_period, current.prd_de)
+            if _same_month_record_basis(claim, current)
+            else enumerate_record_periods(start_period, current.prd_de, current.prd_se)
         )
         if periods is None:
             return None
@@ -55,6 +56,14 @@ def build_calculation_plan(
         prior = current.model_copy(update={"prd_de": previous_period, "canonical_key": _with_period(current.canonical_key, current.prd_de, previous_period)})
         return CalculationPlan(calculation_type=calculation, required_cells=[current, prior])
     return None
+
+
+def _same_month_record_basis(claim: ClaimSchema, current: EvidenceCellSchema) -> bool:
+    if current.prd_se.replace(" ", "").casefold() not in {"월", "m", "month", "monthly"}:
+        return False
+    basis = re.search(r"(?P<month>\d{1,2})\s*월\s*기준", claim.source_sentence)
+    current_month = re.search(r"(?:\d{4})[.-]?(?P<month>\d{2})$", current.prd_de)
+    return basis is not None and current_month is not None and int(basis["month"]) == int(current_month["month"])
 
 
 def _counterpart_cell(

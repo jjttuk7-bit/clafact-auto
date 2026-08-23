@@ -30,6 +30,29 @@ def enumerate_record_periods(
     return None
 
 
+def enumerate_same_month_periods(
+    start_period: str | None,
+    current_period: str,
+    *,
+    max_periods: int = 1200,
+) -> list[str] | None:
+    """Return the Claim month once per year for a month-basis record assertion."""
+    if not start_period or max_periods < 1:
+        return None
+    start = re.fullmatch(r"(?P<year>\d{4})[.-]?(?P<month>0[1-9]|1[0-2])", start_period)
+    current = re.fullmatch(r"(?P<year>\d{4})(?P<separator>[.-]?)(?P<month>0[1-9]|1[0-2])", current_period)
+    if start is None or current is None:
+        return None
+    target_month = int(current["month"])
+    first = int(start["year"]) + int(target_month < int(start["month"]))
+    last = int(current["year"])
+    if first > last or last - first + 1 > max_periods:
+        return None
+    separator = current["separator"]
+    month = f"{target_month:02d}"
+    return [f"{year:04d}{separator}{month}" for year in range(first, last + 1)]
+
+
 def _annual(start: str, current: str, limit: int) -> list[str] | None:
     if not re.fullmatch(r"\d{4}", start) or not re.fullmatch(r"\d{4}", current):
         return None

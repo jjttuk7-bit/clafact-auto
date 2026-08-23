@@ -57,3 +57,14 @@ def test_auto_claim_still_requires_matching_record_language() -> None:
     claim = _record_claim().model_copy(update={"parse_status": "AUTO_OK", "parse_reason": None, "source_sentence": "\uc218\ucd9c\uc561\uc740 1419\uc5b5\ub2ec\ub7ec\uc600\ub2e4."})
 
     assert split_record_comparison_claim(claim) == [claim]
+
+
+def test_normalizes_legacy_all_time_high_to_canonical_record_high() -> None:
+    claim = _record_claim().model_copy(update={
+        "parse_status": "AUTO_OK", "parse_reason": None,
+        "comparison": {"type": "ALL_TIME_HIGH", "reference_period": "\uc5ed\ub300"},
+    })
+
+    children = split_record_comparison_claim(claim)
+    assert [child.calculation for child in children] == ["DIRECT_VALUE", "RECORD_HIGH"]
+    assert children[1].comparison["type"] == "RECORD_HIGH"

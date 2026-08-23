@@ -5,7 +5,12 @@ from hashlib import sha256
 from schemas.claim import ClaimSchema
 
 
-_RECORD_TYPES = {"RECORD_HIGH", "RECORD_LOW"}
+_RECORD_TYPE_ALIASES = {
+    "RECORD_HIGH": "RECORD_HIGH",
+    "ALL_TIME_HIGH": "RECORD_HIGH",
+    "RECORD_LOW": "RECORD_LOW",
+    "ALL_TIME_LOW": "RECORD_LOW",
+}
 _RECORD_REPARSE_REASONS = {"RECORD_COMPARISON_REQUIRES_SEPARATE_CLAIM"}
 _RECORD_SIGNALS = {
     "RECORD_HIGH": (
@@ -21,8 +26,9 @@ _RECORD_SIGNALS = {
 
 def split_record_comparison_claim(claim: ClaimSchema) -> list[ClaimSchema]:
     """Split a numeric level from its record assertion without resampling."""
-    comparison_type = str((claim.comparison or {}).get("type", "")).strip().upper()
-    if comparison_type not in _RECORD_TYPES:
+    raw_type = str((claim.comparison or {}).get("type", "")).strip().upper()
+    comparison_type = _RECORD_TYPE_ALIASES.get(raw_type)
+    if comparison_type is None:
         return [claim]
     if claim.parse_status != "AUTO_OK" and claim.parse_reason not in _RECORD_REPARSE_REASONS:
         return [claim]
