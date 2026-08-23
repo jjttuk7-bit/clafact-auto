@@ -316,3 +316,100 @@ def _write_csv_atomic(
         writer.writeheader()
         writer.writerows(rows)
     temporary.replace(path)
+
+
+@dataclass(frozen=True, slots=True)
+class GroupPolicy:
+    group: IssueGroup
+    allowed_stages: tuple[str, ...]
+
+
+_GROUP_POLICIES = {
+    IssueGroup.CONTEXT: GroupPolicy(
+        IssueGroup.CONTEXT,
+        ("CLAIM_SPLIT", "CLAIM_PARSE"),
+    ),
+    IssueGroup.OFFICIAL_PATH: GroupPolicy(
+        IssueGroup.OFFICIAL_PATH,
+        ("SEMANTIC_MAPPING", "CATALOG_SEARCH", "KOSIS_METADATA"),
+    ),
+    IssueGroup.HARD_GUARD: GroupPolicy(
+        IssueGroup.HARD_GUARD,
+        ("HARD_GUARD",),
+    ),
+    IssueGroup.COORDINATE: GroupPolicy(
+        IssueGroup.COORDINATE,
+        ("EVIDENCE_CELL",),
+    ),
+    IssueGroup.SEMANTIC: GroupPolicy(
+        IssueGroup.SEMANTIC,
+        ("SEMANTIC_MAPPING", "SEMANTIC_MATCH"),
+    ),
+    IssueGroup.CALCULATION: GroupPolicy(
+        IssueGroup.CALCULATION,
+        ("CALCULATION",),
+    ),
+    IssueGroup.VALUE_PUBLICATION: GroupPolicy(
+        IssueGroup.VALUE_PUBLICATION,
+        ("OFFICIAL_VALUE_FETCH", "VERDICT"),
+    ),
+    IssueGroup.REGRESSION: GroupPolicy(
+        IssueGroup.REGRESSION,
+        tuple(_STAGE_ORDER),
+    ),
+}
+
+
+def select_group_slice(
+    records: list[ClaimIssueRecord],
+    group: IssueGroup | None,
+    *,
+    limit: int = 20,
+    offset: int = 0,
+) -> list[ClaimIssueRecord]:
+    """Select a stable bounded slice from one explicit issue group."""
+
+    if group is None:
+        raise ValueError("GROUP_REQUIRED")
+    if group is IssueGroup.UNCLASSIFIED:
+        raise ValueError("UNCLASSIFIED_GROUP_CANNOT_RUN")
+    if not 1 <= limit <= 50:
+        raise ValueError("LIMIT_MUST_BE_BETWEEN_1_AND_50")
+    if offset < 0:
+        raise ValueError("OFFSET_MUST_BE_NON_NEGATIVE")
+    matching = sorted(
+        (record for record in records if record.primary_group is group),
+        key=lambda item: (
+            item.article_id,
+            item.sentence_id,
+            item.parent_claim_id,
+            item.claim_id,
+        ),
+    )
+    return matching[offset : offset + limit]
+
+
+def run_group_slice(
+    records: list[ClaimIssueRecord],
+    group: IssueGroup | None,
+    executor: Any,
+    *,
+    limit: int = 20,
+    offset: int = 0,
+) -> list[dict[str, Any]]:
+    """Run one bounded group and reject traces outside its stage policy."""
+
+    selected = select_group_slice(records, group, limit=limit, offset=offset)
+    assert group is not None
+    policy = _GROUP_POLICIES[group]
+    results: list[dict[str, Any]] = []
+    allowed = set(policy.allowed_stages)
+    for record in selected:
+        result = executor(record, policy.allowed_stages)
+        if not isinstance(result, dict):
+            raise TypeError("GROUP_EXECUTOR_MUST_RETURN_DICT")
+        for stage in result.get("executed_stages") or []:
+            if stage not in allowed:
+                raise ValueError(f"STAGE_OUT_OF_GROUP_POLICY:{stage}")
+        results.append(result)
+    return results

@@ -141,3 +141,52 @@ def _row_with_id(
     row["parent_claim_id"] = claim_id
     row["claim"] = {"claim_id": claim_id, "indicator": "취업자"}
     return row
+from core.issue_group_harness import run_group_slice, select_group_slice
+
+
+def test_select_group_slice_requires_one_group_and_limit_between_one_and_fifty() -> None:
+    records = build_issue_registry(
+        [
+            _row_with_id("C-002", "CONTEXT_REQUIRED"),
+            _row_with_id("C-001", "CONTEXT_REQUIRED"),
+        ]
+    )
+
+    with pytest.raises(ValueError, match="GROUP_REQUIRED"):
+        select_group_slice(records, None, limit=20)
+    with pytest.raises(ValueError, match="UNCLASSIFIED_GROUP_CANNOT_RUN"):
+        select_group_slice(records, IssueGroup.UNCLASSIFIED, limit=20)
+    with pytest.raises(ValueError, match="LIMIT_MUST_BE_BETWEEN_1_AND_50"):
+        select_group_slice(records, IssueGroup.CONTEXT, limit=0)
+    with pytest.raises(ValueError, match="LIMIT_MUST_BE_BETWEEN_1_AND_50"):
+        select_group_slice(records, IssueGroup.CONTEXT, limit=51)
+
+    selected = select_group_slice(records, IssueGroup.CONTEXT, limit=1)
+    assert [record.claim_id for record in selected] == ["C-001"]
+
+
+def test_run_group_slice_exposes_only_the_selected_groups_allowed_stages() -> None:
+    records = build_issue_registry([_row_with_id("C-001", "CONTEXT_REQUIRED")])
+    observed: list[tuple[str, ...]] = []
+
+    def executor(record, allowed_stages):
+        observed.append(allowed_stages)
+        return {"claim_id": record.claim_id, "executed_stages": list(allowed_stages)}
+
+    results = run_group_slice(records, IssueGroup.CONTEXT, executor, limit=1)
+
+    assert observed == [("CLAIM_SPLIT", "CLAIM_PARSE")]
+    assert results[0]["executed_stages"] == ["CLAIM_SPLIT", "CLAIM_PARSE"]
+
+
+def test_run_group_slice_rejects_a_downstream_stage_reported_by_executor() -> None:
+    records = build_issue_registry([_row_with_id("C-001", "CONTEXT_REQUIRED")])
+
+    def executor(record, allowed_stages):
+        return {
+            "claim_id": record.claim_id,
+            "executed_stages": [*allowed_stages, "CATALOG_SEARCH"],
+        }
+
+    with pytest.raises(ValueError, match="STAGE_OUT_OF_GROUP_POLICY:CATALOG_SEARCH"):
+        run_group_slice(records, IssueGroup.CONTEXT, executor, limit=1)
