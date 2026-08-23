@@ -204,13 +204,20 @@ class OfficialValueFetcher:
                 for _ in cells
             ]
 
+        raw_rows = getattr(rows, "raw_rows", rows)
         digest = hashlib.sha256(
             json.dumps(
-                rows, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+                raw_rows, ensure_ascii=False, sort_keys=True, separators=(",", ":")
             ).encode("utf-8")
         ).hexdigest()
         publication = self._fetch_publication(cells[-1])
-        if publication is None or publication.status != "VERIFIED" or publication.published_at is None:
+        if (
+            publication is None
+            or publication.status != "VERIFIED"
+            or publication.published_at is None
+            or publication.reference_period is None
+            or api_period(publication.reference_period) != api_period(cells[-1].prd_de)
+        ):
             status: ValueStatus = (
                 "PUBLICATION_FETCH_FAILED"
                 if publication is not None and publication.status == "FETCH_FAILED"
@@ -249,6 +256,53 @@ class OfficialValueFetcher:
             coverage_start_period=cells[0].prd_de,
             coverage_end_period=cells[-1].prd_de,
         )
+        def range_failure(status: ValueStatus) -> list[KosisValue]:
+            return [
+                KosisValue(
+                    None,
+                    status,
+                    digest,
+                    "API",
+                    range_publication,
+                    source_url=source_url,
+                    retrieved_at=retrieved_at,
+                )
+                for _ in cells
+            ]
+
+        # KOSIS returns every period inside a range request. Non-comparison
+        # periods are not calculation operands, but every returned row is still
+        # coordinate-, duplicate-, and article-date-guarded before use.
+        returned_periods: set[str] = set()
+        range_start = min(api_period(cell.prd_de) for cell in cells)
+        range_end = max(api_period(cell.prd_de) for cell in cells)
+        for row in rows:
+            if not isinstance(row, dict):
+                return range_failure("INVALID_RESPONSE")
+            returned_period = str(row.get("period", row.get("PRD_DE", ""))).replace("-", "")
+            if (
+                not returned_period
+                or returned_period < range_start
+                or returned_period > range_end
+                or returned_period in returned_periods
+            ):
+                return range_failure("INVALID_RESPONSE")
+            probe = first.model_copy(update={"prd_de": returned_period})
+            if not _matches_cell(row, probe, allow_missing_codes=True):
+                return range_failure("INVALID_RESPONSE")
+            returned_periods.add(returned_period)
+            changed_text = str(row.get("LST_CHN_DE", "")).strip()
+            try:
+                changed_at = date.fromisoformat(changed_text)
+            except ValueError:
+                changed_at = None
+            if (
+                changed_at is None
+                or changed_at.isoformat() != changed_text
+                or changed_at > article_date
+            ):
+                return range_failure("AS_OF_UNAVAILABLE")
+
         resolved: list[KosisValue] = []
         for cell in cells:
             matching = [

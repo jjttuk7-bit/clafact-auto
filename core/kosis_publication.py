@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, datetime, timezone
 from html import unescape
 from time import sleep
@@ -141,15 +141,18 @@ class KosisPublicationLookup:
                 stats_name = _text(merged.get("statsNm"))
                 conflict = merged.get("_publication_conflict") is True
                 published_at = None if conflict else _parse_exact_date(pub_date_text)
-                if published_at is None and period and not conflict:
+                if period and not conflict:
                     release = self._fetch_official_release(method, period, pub_period, pub_date_text)
                     if release is not None:
-                        return release
+                        return replace(release, reference_period=period)
                     release = _KostatPressReleaseSearch(self._opener, self._timeout_seconds).find(
                         stats_name, period, pub_period, pub_date_text
                     )
                     if release is not None:
-                        return release
+                        return replace(release, reference_period=period)
+                    published_at = None
+                elif period:
+                    published_at = None
                 return PublicationEvidence(
                     status="VERIFIED" if published_at else "UNRESOLVED",
                     published_at=published_at,

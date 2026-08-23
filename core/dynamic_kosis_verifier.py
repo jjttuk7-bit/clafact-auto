@@ -115,7 +115,9 @@ def verify_claim_against_kosis(
     batch_fetch = getattr(official_fetcher, "fetch_many", None)
     record_fetch = getattr(official_fetcher, "fetch_record_history", None)
     try:
-        if calculation_type in {"RECORD_HIGH", "RECORD_LOW"} and callable(record_fetch):
+        if calculation_type in {"RECORD_HIGH", "RECORD_LOW"}:
+            if not callable(record_fetch):
+                raise ValueError("KOSIS_RECORD_HISTORY_FETCH_REQUIRED")
             fetched_values = record_fetch(
                 evidence_cells, article_date=article_date
             )

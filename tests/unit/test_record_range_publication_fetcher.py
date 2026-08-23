@@ -56,6 +56,7 @@ def _rows() -> list[dict[str, str]]:
 def _release(*, status: str = "VERIFIED", published_at: date | None = date(2025, 7, 16)) -> PublicationEvidence:
     return PublicationEvidence(
         status=status,
+        reference_period="2025-06",
         published_at=published_at,
         source_url="https://www.kostat.go.kr/board.es?act=view&list_no=437607",
         retrieved_at="2026-08-23T00:00:00Z",

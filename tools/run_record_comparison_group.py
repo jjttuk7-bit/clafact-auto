@@ -33,6 +33,7 @@ CSV_FIELDS = (
     "source_urls", "response_hashes", "official_api_verified",
     "publication_evidence_scope", "publication_reference_period",
     "publication_coverage", "value_last_changed_dates",
+    "publication_source_urls", "publication_hashes", "publication_retrieved_at",
     "official_trace_json", "stage_results_json",
 )
 
@@ -158,6 +159,15 @@ def _csv_row(row: dict[str, Any]) -> dict[str, str]:
         for item in provenance
         if item.get("value_last_changed_at")
     ]
+    publication_source_urls = _unique(
+        str(item.get("source_url") or "") for item in publications
+    )
+    publication_hashes = _unique(
+        str(item.get("content_hash") or "") for item in publications
+    )
+    publication_retrieved_at = _unique(
+        str(item.get("retrieved_at") or "") for item in publications
+    )
     api_verified = (
         bool(evidence)
         and len(provenance) == len(evidence)
@@ -195,6 +205,9 @@ def _csv_row(row: dict[str, Any]) -> dict[str, str]:
         "publication_coverage": "|".join(publication_coverages),
         "value_last_changed_dates": "|".join(value_last_changed_dates),
         "official_trace_json": json.dumps(verdict.get("execution_trace") or {}, ensure_ascii=False, sort_keys=True),
+        "publication_source_urls": "|".join(publication_source_urls),
+        "publication_hashes": "|".join(publication_hashes),
+        "publication_retrieved_at": "|".join(publication_retrieved_at),
         "stage_results_json": json.dumps(row.get("stage_results") or [], ensure_ascii=False, sort_keys=True),
     }
 

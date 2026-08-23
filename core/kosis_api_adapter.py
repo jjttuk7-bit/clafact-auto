@@ -1,8 +1,14 @@
 """Adapter from complete EvidenceCell coordinates to KOSIS Parameter API."""
 import re
+from typing import Any
 from core.kosis_value_transport import get_parameter_data
 
 _FREQUENCY={'월':'M','monthly':'M','month':'M','년':'Y','year':'Y','yearly':'Y','annual':'Y','분기':'Q','반기':'H'}
+
+class KosisRangeRows(list[dict[str, Any]]):
+ def __init__(self, rows, *, raw_rows):
+  super().__init__(rows)
+  self.raw_rows = raw_rows
 
 class KosisApiLookup:
  def __init__(self,api_key,*,retries=2,timeout_seconds=10):
@@ -14,7 +20,9 @@ class KosisApiLookup:
   if not coordinate[-1]:raise ValueError('KOSIS_COORDINATE_CODES_REQUIRED')
   if any((c.org_id,c.tbl_id,c.itm_id,c.prd_se,tuple(_ordered_codes(c)))!=coordinate for c in cells[1:]):raise ValueError('KOSIS_RANGE_COORDINATE_MISMATCH')
   periods=sorted(api_period(c.prd_de) for c in cells);kind=_FREQUENCY.get(first.prd_se.casefold(),first.prd_se)
-  return get_parameter_data(self._api_key,first.org_id,first.tbl_id,first.itm_id,kind,periods[0],periods[-1],list(coordinate[-1]),retries=self._retries,timeout_seconds=self._timeout_seconds)
+  raw_rows=get_parameter_data(self._api_key,first.org_id,first.tbl_id,first.itm_id,kind,periods[0],periods[-1],list(coordinate[-1]),retries=self._retries,timeout_seconds=self._timeout_seconds)
+  selected=[row for row in raw_rows if str(row.get('PRD_DE',row.get('period',''))).replace('-','') in set(periods)]
+  return KosisRangeRows(selected,raw_rows=raw_rows)
 
 def build_kosis_api_lookup(api_key,*,retries=2,timeout_seconds=10):return KosisApiLookup(api_key,retries=retries,timeout_seconds=timeout_seconds)
 def api_period(value):

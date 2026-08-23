@@ -43,7 +43,7 @@ class _Fetcher:
         self.values = values
         self.periods: list[str] = []
 
-    def fetch_many(self, cells, *, article_date):
+    def fetch_record_history(self, cells, *, article_date):
         assert article_date == date(2025, 1, 2)
         self.periods = [cell.prd_de for cell in cells]
         return [self.values[cell.prd_de] for cell in cells]
