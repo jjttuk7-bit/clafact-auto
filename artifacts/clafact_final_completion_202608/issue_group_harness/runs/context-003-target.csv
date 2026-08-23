@@ -1,0 +1,2 @@
+﻿실행번호,Claim번호,대표문제,개선전상태,개선전단계,개선전사유,개선후상태,개선후단계,개선후사유,개선판정,공식근거확인,공식통계표,공식값출처,코드버전,데이터버전,기록시각
+context-003-target,A00006_13,CONTEXT,HUMAN_REVIEW,CLAIM_PARSE,CONTEXT_REQUIRED,PASS,CLAIM_PARSE,KOSIS_PIPELINE_ELIGIBLE,IMPROVED,아니오,,,ad5394d,53f0d803c22f3aaf1e805eac5b39619df3a4957e514db196bf616c25283fbdc1,2026-08-23T01:56:35.898072+00:00

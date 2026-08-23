@@ -1,0 +1,3 @@
+﻿부모Claim번호,자식Claim번호,재입장경로,12개항목완성,남은문제,지표,지표상태,수치,수치상태,단위,단위상태,시점,시점상태,주기,주기상태,지역,지역상태,대상,대상상태,차원,차원상태,비교,비교상태,계산,계산상태,조건,조건상태,작성기관힌트,작성기관힌트상태
+A00006_13,claim_0568126f6fdb1a71,KOSIS_PIPELINE_ELIGIBLE,예,,수출액,SOURCE,480.0,SOURCE,억 달러,SOURCE,2024,SOURCE,연간,SOURCE,한국,SOURCE,,NOT_APPLICABLE,"{""품목"": ""석유화학""}",SOURCE,,NOT_APPLICABLE,DIRECT_VALUE,SOURCE,,NOT_APPLICABLE,산업통상자원부,SOURCE
+A00006_13,claim_1aba4956ebb5960e,KOSIS_PIPELINE_ELIGIBLE,예,,수출,SOURCE,5.0,SOURCE,%,SOURCE,2024,SOURCE,ANNUAL,SOURCE,한국,SOURCE,,NOT_APPLICABLE,"{""산업"": ""석유화학""}",SOURCE,"{""reference_period"": ""2023"", ""type"": ""YEAR_OVER_YEAR""}",SOURCE,GROWTH_RATE,SOURCE,"{""direction"": ""INCREASE""}",SOURCE,산업통상자원부,SOURCE
