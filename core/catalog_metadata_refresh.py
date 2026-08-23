@@ -7,7 +7,7 @@ from time import monotonic
 
 from core.kosis_catalog_adapter import hydrate_candidate, normalize_item_metadata
 from core.kosis_openapi_transport import get_meta
-from schemas.candidate import KosisCandidateSchema
+from schemas.candidate import KosisCandidateSchema, KosisPeriodRangeSchema
 from schemas.claim import ClaimSchema
 
 
@@ -177,6 +177,25 @@ def _with_period_metadata(
     candidate: KosisCandidateSchema, rows: Iterable[Mapping[str, object]]
 ) -> KosisCandidateSchema:
     materialized_rows = list(rows)
+    grouped_periods: dict[str, dict[str, list[str]]] = {}
+    for row in materialized_rows:
+        frequency = _period_frequency(row)
+        if frequency is None:
+            continue
+        grouped = grouped_periods.setdefault(frequency, {"starts": [], "ends": []})
+        start = str(row.get("STRT_PRD_DE", "")).strip()
+        end = str(row.get("END_PRD_DE", "")).strip()
+        if start:
+            grouped["starts"].append(start)
+        if end:
+            grouped["ends"].append(end)
+    period_ranges = {
+        frequency: KosisPeriodRangeSchema(
+            start_period=min(values["starts"]) if values["starts"] else None,
+            end_period=max(values["ends"]) if values["ends"] else None,
+        )
+        for frequency, values in grouped_periods.items()
+    }
     frequencies = list(dict.fromkeys(
         frequency for row in materialized_rows
         if (frequency := _period_frequency(row)) is not None
@@ -191,6 +210,7 @@ def _with_period_metadata(
         "frequency": "|".join(frequencies),
         "start_period": min(starts) if starts else candidate.start_period,
         "end_period": max(ends) if ends else candidate.end_period,
+        "period_ranges": period_ranges,
         "metadata_status": "OFFICIAL_METADATA_READY",
     })
 
