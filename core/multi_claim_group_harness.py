@@ -78,6 +78,8 @@ _HEADERS = (
     "실제역할표",
     "기대자식수",
     "실제자식수",
+    "개수판정",
+    "역할묶음판정",
     "분리판정",
     "자식Claim번호",
     "12개항목상태",
@@ -113,8 +115,10 @@ def write_multi_claim_evaluation_csv(
             child for child in result.get("children") or [] if isinstance(child, dict)
         ]
         actual_count = len(children)
-        split_outcome = "일치" if actual_count == case.expected_child_count else "불일치"
-        actual_roles = _actual_roles(children)
+        count_outcome = "일치" if actual_count == case.expected_child_count else "불일치"
+        actual_roles = _actual_roles(case, children)
+        role_outcome = "일치" if _roles_match(case.expected_roles, actual_roles) else "불일치"
+        split_outcome = "일치" if count_outcome == role_outcome == "일치" else "불일치"
         row_children: list[dict[str, Any] | None] = children or [None]
         for child in row_children:
             rows.append(
@@ -128,6 +132,8 @@ def write_multi_claim_evaluation_csv(
                     "실제역할표": _json(actual_roles),
                     "기대자식수": case.expected_child_count,
                     "실제자식수": actual_count,
+                    "개수판정": count_outcome,
+                    "역할묶음판정": role_outcome,
                     "분리판정": split_outcome,
                     "자식Claim번호": str(child.get("claim_id") or "") if child else "",
                     "12개항목상태": _slot_summary(child),
@@ -151,22 +157,94 @@ def write_multi_claim_evaluation_csv(
     temporary.replace(path)
 
 
-def _actual_roles(children: list[dict[str, Any]]) -> list[dict[str, object]]:
+def _actual_roles(
+    case: GoldClaimCase, children: list[dict[str, Any]]
+) -> list[dict[str, object]]:
     roles: list[dict[str, object]] = []
+    seen_mentions: set[str] = set()
     for index, child in enumerate(children, start=1):
         audit = child.get("recovery_audit")
+        assignments = audit.get("numeric_role_assignments") if isinstance(audit, dict) else None
+        if isinstance(assignments, list):
+            for assignment in assignments:
+                if not isinstance(assignment, dict):
+                    continue
+                mention_id = str(assignment.get("mention_id") or "")
+                role = str(assignment.get("role") or "")
+                if not mention_id or not role:
+                    continue
+                seen_mentions.add(mention_id)
+                roles.append(
+                    {
+                        "mention_id": mention_id,
+                        "expression": str(assignment.get("expression") or ""),
+                        "role": role,
+                        "group_id": f"g{index}",
+                    }
+                )
+            continue
         numeric_roles = audit.get("numeric_roles") if isinstance(audit, dict) else None
         if not isinstance(numeric_roles, dict):
             continue
         for expression, role in numeric_roles.items():
+            mention_id = _mention_id_for_expression(case, str(expression), seen_mentions)
             roles.append(
                 {
+                    "mention_id": mention_id,
                     "expression": str(expression),
                     "role": str(role),
                     "group_id": f"g{index}",
                 }
             )
+            seen_mentions.add(mention_id)
+    for mention_id, expected in case.expected_roles.items():
+        if mention_id not in seen_mentions and expected.get("role") == "CONTEXT_VALUE":
+            position = int(mention_id[1:]) - 1
+            roles.append(
+                {
+                    "mention_id": mention_id,
+                    "expression": case.discovered_expressions[position],
+                    "role": "CONTEXT_VALUE",
+                    "group_id": None,
+                }
+            )
     return roles
+
+
+def _mention_id_for_expression(
+    case: GoldClaimCase, expression: str, seen_mentions: set[str]
+) -> str:
+    for index, candidate in enumerate(case.discovered_expressions, start=1):
+        mention_id = f"n{index}"
+        if candidate == expression and mention_id not in seen_mentions:
+            return mention_id
+    return ""
+
+
+def _roles_match(
+    expected: dict[str, dict[str, str | None]], actual: list[dict[str, object]]
+) -> bool:
+    actual_by_id = {str(item.get("mention_id") or ""): item for item in actual}
+    if set(actual_by_id) != set(expected):
+        return False
+    mention_ids = sorted(expected, key=lambda item: int(item[1:]))
+    if any(
+        str(actual_by_id[item].get("role") or "") != expected[item].get("role")
+        for item in mention_ids
+    ):
+        return False
+    for left in mention_ids:
+        for right in mention_ids:
+            expected_same = expected[left].get("group_id") is not None and (
+                expected[left].get("group_id") == expected[right].get("group_id")
+            )
+            actual_same = actual_by_id[left].get("group_id") is not None and (
+                actual_by_id[left].get("group_id")
+                == actual_by_id[right].get("group_id")
+            )
+            if expected_same != actual_same:
+                return False
+    return True
 
 
 def _slot_summary(child: dict[str, Any] | None) -> str:

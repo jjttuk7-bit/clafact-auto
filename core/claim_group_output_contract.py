@@ -43,7 +43,7 @@ class ClaimGroupingOutputPayload(BaseModel):
     def to_plan(self) -> ClaimGroupingPlan:
         return ClaimGroupingPlan(
             status=self.status,
-            reason=self.reason.strip() or None,
+            reason=(self.reason.strip() or None) if self.status == "HUMAN_REVIEW" else None,
             assignments=[
                 NumericAssignment(
                     mention_id=assignment.mention_id,

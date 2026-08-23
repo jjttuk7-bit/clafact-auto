@@ -73,14 +73,29 @@ class ClaimGroupingPlan(BaseModel):
         if len(group_ids) != len(set(group_ids)):
             raise ValueError("DUPLICATE_GROUP_ID")
         for group in self.groups:
-            matching = [
+            group_assignments = [
                 assignment
                 for assignment in self.assignments
                 if assignment.group_id == group.group_id
-                and assignment.role == NumericRole.MAIN_VALUE
             ]
-            if len(matching) != 1:
+            anchors = [
+                assignment
+                for assignment in group_assignments
+                if assignment.mention_id == group.main_mention_id
+            ]
+            main_values = [
+                assignment
+                for assignment in group_assignments
+                if assignment.role == NumericRole.MAIN_VALUE
+            ]
+            if len(main_values) > 1:
                 raise ValueError("ONE_MAIN_VALUE_PER_GROUP_REQUIRED")
-            if matching[0].mention_id != group.main_mention_id:
+            if not any(
+                anchor.role
+                in {NumericRole.MAIN_VALUE, NumericRole.CHANGE_VALUE}
+                for anchor in anchors
+            ):
+                raise ValueError("GROUP_MAIN_MENTION_MISMATCH")
+            if main_values and main_values[0].mention_id != group.main_mention_id:
                 raise ValueError("GROUP_MAIN_MENTION_MISMATCH")
         return self

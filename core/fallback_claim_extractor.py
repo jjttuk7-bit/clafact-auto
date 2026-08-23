@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date
+from urllib.error import HTTPError
 
 from core.claim_parser import StructuredClaimExtractor
 from core.openai_function_claim_extractor import (
@@ -24,6 +25,7 @@ class FallbackClaimExtractor:
         self.primary = primary
         self.fallback = fallback
         self.last_provider = "unavailable"
+        self._group_fallback_disabled = False
 
     def extract(
         self, source_sentence: str, *, article_published_at: date | None = None
@@ -47,11 +49,19 @@ class FallbackClaimExtractor:
         self.last_provider = "unavailable"
         try:
             plan = self.primary.group_claims(source_sentence, mentions)  # type: ignore[attr-defined]
-        except (OpenAITransientError, OpenAIContractError):
-            plan = self.fallback.group_claims(  # type: ignore[attr-defined]
-                source_sentence,
-                mentions,
-            )
+        except (OpenAITransientError, OpenAIContractError) as primary_error:
+            if self._group_fallback_disabled:
+                raise
+            try:
+                plan = self.fallback.group_claims(  # type: ignore[attr-defined]
+                    source_sentence,
+                    mentions,
+                )
+            except HTTPError as fallback_error:
+                if fallback_error.code in {401, 403}:
+                    self._group_fallback_disabled = True
+                    raise primary_error from None
+                raise
             self.last_provider = "hcx"
             return plan
 

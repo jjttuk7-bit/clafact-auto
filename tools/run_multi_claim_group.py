@@ -24,6 +24,7 @@ from core.multi_claim_group_harness import (
     load_gold_cases,
     write_multi_claim_evaluation_csv,
 )
+from core.multi_claim_checkpoint import run_cases_with_checkpoint
 from schemas.claim_registry import ClaimRegistryRecord
 
 
@@ -36,7 +37,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     cases = load_gold_cases(args.goldset)
     if len(cases) != 20:
         parser.error(f"FROZEN_GOLDSET_MUST_HAVE_20_CASES:{len(cases)}")
-    selected = cases[: args.limit]
+    selected = _select_cases(cases, args.claim_id, limit=args.limit)
     loaded = load_claim_registry(args.registry)
     if loaded.errors:
         parser.error(f"SOURCE_REGISTRY_ERRORS:{len(loaded.errors)}")
@@ -49,13 +50,22 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     extractor = create_claim_extractor(Settings())
     executor = ContextGroupExecutor(joined, extractor=extractor)
-    results = [
-        executor(_issue(case), ("CLAIM_SPLIT", "CLAIM_PARSE"))
-        for case in selected
-    ]
     code_version = args.code_version
     data_version = args.data_version or _combined_hash(
         args.goldset, args.registry, args.source_registry
+    )
+    signature = _execution_signature(code_version, data_version)
+    checkpoint = args.checkpoint or args.output.with_suffix(".checkpoint.jsonl")
+
+    def execute_case(case: GoldClaimCase) -> dict[str, object]:
+        return executor(_issue(case), ("CLAIM_SPLIT", "CLAIM_PARSE"))
+
+    results = run_cases_with_checkpoint(
+        selected,
+        execute_case,
+        checkpoint,
+        signature=signature,
+        max_attempts=args.max_attempts,
     )
     write_multi_claim_evaluation_csv(
         selected,
@@ -72,7 +82,12 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "parent_pass": sum(result.get("status") == "PASS" for result in results),
                 "parent_review": sum(result.get("status") != "PASS" for result in results),
                 "children": sum(len(result.get("children") or []) for result in results),
+                "operational_failures": sum(
+                    result.get("reason_code") == "CLAIM_GROUPING_PROVIDER_FAILURE"
+                    for result in results
+                ),
                 "official_lookup_attempted": False,
+                "checkpoint": str(checkpoint),
                 "output": str(args.output),
             },
             ensure_ascii=False,
@@ -87,10 +102,28 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--registry", type=Path, required=True)
     parser.add_argument("--source-registry", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--checkpoint", type=Path)
     parser.add_argument("--limit", type=int, default=20)
+    parser.add_argument("--claim-id", action="append", default=[])
+    parser.add_argument("--max-attempts", type=int, choices=(1, 2), default=2)
     parser.add_argument("--code-version", default="multi-claim-role-grouping-v1")
     parser.add_argument("--data-version")
     return parser
+
+def _select_cases(
+    cases: list[GoldClaimCase], requested_ids: list[str], *, limit: int
+) -> list[GoldClaimCase]:
+    if not requested_ids:
+        return cases[:limit]
+    requested = set(requested_ids)
+    if len(requested) != len(requested_ids):
+        raise ValueError("DUPLICATE_REQUESTED_CLAIM_ID")
+    selected = [case for case in cases if case.parent_claim_id in requested]
+    missing = requested - {case.parent_claim_id for case in selected}
+    if missing:
+        raise ValueError(f"UNKNOWN_REQUESTED_CLAIM_ID:{','.join(sorted(missing))}")
+    return selected
+
 
 
 def _load_source_sentences(path: Path) -> dict[str, str]:
@@ -155,6 +188,18 @@ def _combined_hash(*paths: Path) -> str:
     digest = sha256()
     for path in paths:
         digest.update(path.read_bytes())
+    return digest.hexdigest()
+
+
+def _execution_signature(code_version: str, data_version: str) -> str:
+    digest = sha256()
+    digest.update(code_version.encode("utf-8"))
+    digest.update(data_version.encode("utf-8"))
+    for root in (PROJECT_ROOT / "core", PROJECT_ROOT / "schemas"):
+        for path in sorted(root.rglob("*.py")):
+            digest.update(path.relative_to(PROJECT_ROOT).as_posix().encode("utf-8"))
+            digest.update(path.read_bytes())
+    digest.update(Path(__file__).read_bytes())
     return digest.hexdigest()
 
 

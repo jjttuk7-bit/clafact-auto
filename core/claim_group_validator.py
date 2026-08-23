@@ -18,6 +18,7 @@ class ValidatedClaimGroup:
     main_mention_id: str
     main_expression: str
     numeric_roles: tuple[tuple[str, str], ...]
+    numeric_assignments: tuple[tuple[str, str, str], ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -63,14 +64,25 @@ def validate_grouping_plan(
             for assignment in plan.assignments
             if assignment.group_id == group.group_id
         ]
-        main_assignments = [
+        anchors = [
+            assignment
+            for assignment in group_assignments
+            if assignment.mention_id == group.main_mention_id
+        ]
+        main_values = [
             assignment
             for assignment in group_assignments
             if assignment.role == NumericRole.MAIN_VALUE
         ]
         if (
-            len(main_assignments) != 1
-            or main_assignments[0].mention_id != group.main_mention_id
+            len(main_values) > 1
+            or len(anchors) != 1
+            or anchors[0].role
+            not in {NumericRole.MAIN_VALUE, NumericRole.CHANGE_VALUE}
+            or (
+                bool(main_values)
+                and main_values[0].mention_id != group.main_mention_id
+            )
         ):
             return _failure("GROUPING_MAIN_VALUE_INVALID")
         main = mention_by_id.get(group.main_mention_id)
@@ -83,12 +95,21 @@ def validate_grouping_plan(
             )
             for assignment in group_assignments
         )
+        numeric_assignments = tuple(
+            (
+                assignment.mention_id,
+                mention_by_id[assignment.mention_id].expression,
+                assignment.role.value,
+            )
+            for assignment in group_assignments
+        )
         validated.append(
             ValidatedClaimGroup(
                 group_id=group.group_id,
                 main_mention_id=group.main_mention_id,
                 main_expression=main.expression,
                 numeric_roles=roles,
+                numeric_assignments=numeric_assignments,
             )
         )
     return GroupValidationResult(valid=True, groups=tuple(validated))
