@@ -30,6 +30,9 @@ class _OfficialFetcher:
         self.batch_calls.append([cell.prd_de for cell in cells])
         return [self._value(cell.prd_de) for cell in cells]
 
+    def fetch_record_history(self, cells, *, article_date):
+        return self.fetch_many(cells, article_date=article_date)
+
     def _value(self, period: str) -> KosisValue:
         return KosisValue(
             self.values[period], "SUCCESS", f"hash-{period}", "API",
