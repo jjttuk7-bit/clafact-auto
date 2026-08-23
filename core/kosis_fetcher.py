@@ -121,6 +121,208 @@ class OfficialValueFetcher:
         ).hexdigest()
         return [self._api_result(cell, rows, article_date, digest) for cell in cells]
 
+    def fetch_record_history(
+        self,
+        cells: list[EvidenceCellSchema],
+        *,
+        article_date: date,
+    ) -> list[KosisValue]:
+        """Fetch a record-comparison range with one verified target release."""
+        if not cells:
+            return []
+        first = cells[0]
+        coordinate = (
+            first.org_id,
+            first.tbl_id,
+            first.itm_id,
+            first.obj_id,
+            first.member_code,
+            first.dimension_members,
+            first.dimension_codes,
+            first.prd_se,
+            first.unit,
+        )
+        if any(
+            (
+                cell.org_id,
+                cell.tbl_id,
+                cell.itm_id,
+                cell.obj_id,
+                cell.member_code,
+                cell.dimension_members,
+                cell.dimension_codes,
+                cell.prd_se,
+                cell.unit,
+            )
+            != coordinate
+            for cell in cells[1:]
+        ):
+            return [
+                KosisValue(None, "INVALID_RESPONSE", "", "NONE")
+                for _ in cells
+            ]
+
+        source_url = _api_range_source_url(cells)
+        retrieved_at = _now()
+        batch_lookup = getattr(self._api_lookup, "fetch_many", None)
+        if not self._prefer_api or not callable(batch_lookup):
+            return [
+                KosisValue(
+                    None,
+                    "FETCH_FAILED",
+                    "",
+                    "NONE",
+                    source_url=source_url,
+                    retrieved_at=retrieved_at,
+                )
+                for _ in cells
+            ]
+        try:
+            rows = batch_lookup(cells)
+        except Exception:
+            return [
+                KosisValue(
+                    None,
+                    "FETCH_FAILED",
+                    "",
+                    "NONE",
+                    source_url=source_url,
+                    retrieved_at=retrieved_at,
+                )
+                for _ in cells
+            ]
+        if not isinstance(rows, list):
+            return [
+                KosisValue(
+                    None,
+                    "INVALID_RESPONSE",
+                    "",
+                    "API",
+                    source_url=source_url,
+                    retrieved_at=retrieved_at,
+                )
+                for _ in cells
+            ]
+
+        digest = hashlib.sha256(
+            json.dumps(
+                rows, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+            ).encode("utf-8")
+        ).hexdigest()
+        publication = self._fetch_publication(cells[-1])
+        if publication is None or publication.status != "VERIFIED" or publication.published_at is None:
+            status: ValueStatus = (
+                "PUBLICATION_FETCH_FAILED"
+                if publication is not None and publication.status == "FETCH_FAILED"
+                else "AS_OF_UNAVAILABLE"
+            )
+            return [
+                KosisValue(
+                    None,
+                    status,
+                    digest,
+                    "API",
+                    publication,
+                    source_url=source_url,
+                    retrieved_at=retrieved_at,
+                )
+                for _ in cells
+            ]
+        if publication.published_at > article_date:
+            return [
+                KosisValue(
+                    None,
+                    "AS_OF_UNAVAILABLE",
+                    digest,
+                    "API",
+                    publication,
+                    source_url=source_url,
+                    retrieved_at=retrieved_at,
+                )
+                for _ in cells
+            ]
+
+        range_publication = replace(
+            publication,
+            evidence_scope="CALCULATION_RANGE",
+            reference_period=cells[-1].prd_de,
+            coverage_start_period=cells[0].prd_de,
+            coverage_end_period=cells[-1].prd_de,
+        )
+        resolved: list[KosisValue] = []
+        for cell in cells:
+            matching = [
+                row
+                for row in rows
+                if isinstance(row, dict)
+                and _matches_cell(row, cell, allow_missing_codes=True)
+            ]
+            if len(matching) != 1:
+                status = "NO_DATA" if not matching else "INVALID_RESPONSE"
+                return [
+                    KosisValue(
+                        None,
+                        status,
+                        digest,
+                        "API",
+                        range_publication,
+                        source_url=source_url,
+                        retrieved_at=retrieved_at,
+                    )
+                    for _ in cells
+                ]
+            row = matching[0]
+            changed_text = str(row.get("LST_CHN_DE", "")).strip()
+            try:
+                changed_at = date.fromisoformat(changed_text)
+            except ValueError:
+                changed_at = None
+            if (
+                changed_at is None
+                or changed_at.isoformat() != changed_text
+                or changed_at > article_date
+            ):
+                return [
+                    KosisValue(
+                        None,
+                        "AS_OF_UNAVAILABLE",
+                        digest,
+                        "API",
+                        range_publication,
+                        source_url=source_url,
+                        retrieved_at=retrieved_at,
+                    )
+                    for _ in cells
+                ]
+            raw_value = row.get("value", row.get("DT"))
+            try:
+                numeric_value = float(raw_value)
+            except (TypeError, ValueError):
+                return [
+                    KosisValue(
+                        None,
+                        "INVALID_RESPONSE",
+                        digest,
+                        "API",
+                        range_publication,
+                        source_url=source_url,
+                        retrieved_at=retrieved_at,
+                    )
+                    for _ in cells
+                ]
+            resolved.append(
+                KosisValue(
+                    numeric_value,
+                    "SUCCESS",
+                    digest,
+                    "API",
+                    range_publication,
+                    source_url=source_url,
+                    retrieved_at=retrieved_at,
+                    value_last_changed_at=changed_at,
+                )
+            )
+        return resolved
     def _fetch_api(self, cell: EvidenceCellSchema, article_date: date | None) -> KosisValue | None:
         if self._api_lookup is None:
             return None
@@ -300,6 +502,28 @@ def _matches_cell(row: dict[str, Any], cell: EvidenceCellSchema, *, allow_missin
 
 
 
+
+
+def _api_range_source_url(cells: list[EvidenceCellSchema]) -> str:
+    first, last = cells[0], cells[-1]
+    frequency = {
+        "월": "M", "monthly": "M", "month": "M",
+        "년": "Y", "year": "Y", "yearly": "Y", "annual": "Y",
+        "분기": "Q", "반기": "H",
+    }.get(first.prd_se.casefold(), first.prd_se)
+    params = {
+        "method": "getList",
+        "orgId": first.org_id,
+        "tblId": first.tbl_id,
+        "itmId": first.itm_id,
+        "prdSe": frequency,
+        "startPrdDe": api_period(first.prd_de),
+        "endPrdDe": api_period(last.prd_de),
+    }
+    params.update(
+        {f"objL{index}": code for index, code in enumerate(first.dimension_codes.values(), start=1)}
+    )
+    return "https://kosis.kr/openapi/Param/statisticsParameterData.do?" + urlencode(params)
 def _api_source_url(cell: EvidenceCellSchema) -> str:
     frequency = {
         "월": "M", "monthly": "M", "month": "M",
