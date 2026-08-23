@@ -187,6 +187,9 @@ def write_context_child_csv(
         "재입장경로",
         "12개항목완성",
         "남은문제",
+        "재분류결과",
+        "재분류사유",
+        "다음경로",
     ]
     for _, label in _SLOT_LABELS:
         headers.extend((label, f"{label}상태"))
@@ -215,6 +218,9 @@ def write_context_child_csv(
                 "남은문제": " | ".join(
                     str(reason) for reason in audit.get("reason_codes") or []
                 ),
+                "재분류결과": str(child.get("disposition") or ""),
+                "재분류사유": str(child.get("disposition_reason") or ""),
+                "다음경로": str(child.get("next_route") or ""),
             }
             for slot, label in _SLOT_LABELS:
                 row[label] = _csv_value(claim.get(slot))

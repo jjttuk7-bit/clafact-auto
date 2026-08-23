@@ -248,6 +248,9 @@ _LEDGER_HEADERS = (
     "개선후상태",
     "개선후사유",
     "개선판정",
+    "재분류결과",
+    "재분류사유",
+    "다음경로",
     "공식통계표",
     "공식값출처",
     "실행횟수",
@@ -325,10 +328,15 @@ def write_issue_ledgers(
             "전체수": counts[group],
             "시도수": 0,
             "개선수": 0,
+            "공식조회진입수": 0,
+            "재분류완료수": 0,
             "남은수": counts[group],
         }
 
     summary_headers = ("문제코드", "전체수", "시도수", "개선수", "남은수", "완료여부")
+    summary_headers = (
+        summary_headers[:4] + ("공식조회진입수", "재분류완료수") + summary_headers[4:]
+    )
     summary_rows = [
         {
             "문제코드": group.value,
@@ -367,6 +375,9 @@ def _ledger_row(record: ClaimIssueRecord) -> dict[str, object]:
         "개선후상태": "",
         "개선후사유": "",
         "개선판정": "",
+        "재분류결과": "",
+        "재분류사유": "",
+        "다음경로": "",
         "공식통계표": "",
         "공식값출처": "",
         "실행횟수": 0,
@@ -499,6 +510,9 @@ class RunComparison:
     official_evidence: bool
     table_id: str | None = None
     source_url: str | None = None
+    reclassification_result: str | None = None
+    reclassification_reason: str | None = None
+    next_route: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -532,6 +546,9 @@ _RUN_HEADERS = (
     "개선후단계",
     "개선후사유",
     "개선판정",
+    "재분류결과",
+    "재분류사유",
+    "다음경로",
     "공식근거확인",
     "공식통계표",
     "공식값출처",
@@ -557,6 +574,8 @@ def compare_result(
         raise ValueError(f"INCOMPLETE_AFTER_RESULT:{claim_id}")
     if after_status == "AUTO":
         outcome = "RESOLVED"
+    elif after_status == "RECLASSIFIED":
+        outcome = "RECLASSIFIED"
     elif after_status == "PASS" and before.current_status != "PASS":
         outcome = "IMPROVED"
     else:
@@ -580,6 +599,9 @@ def compare_result(
         official_evidence=bool(after.get("official_evidence")),
         table_id=_text(after.get("table_id")),
         source_url=_text(after.get("source_url")),
+        reclassification_result=_text(after.get("reclassification_result")),
+        reclassification_reason=_text(after.get("reclassification_reason")),
+        next_route=_text(after.get("next_route")),
     )
 
 
@@ -624,6 +646,9 @@ def record_group_run(
             "개선후단계": item.after_stage or "",
             "개선후사유": item.after_reason or "",
             "개선판정": item.outcome,
+            "재분류결과": item.reclassification_result or "",
+            "재분류사유": item.reclassification_reason or "",
+            "다음경로": item.next_route or "",
             "공식근거확인": "예" if item.official_evidence else "아니오",
             "공식통계표": item.table_id or "",
             "공식값출처": item.source_url or "",
@@ -669,7 +694,7 @@ def evaluate_group_gate(
     for claim_id in sorted(observed - expected_claim_ids):
         reasons.append(f"UNEXPECTED_COMPARISON:{claim_id}")
     for item in comparisons:
-        if item.outcome not in {"IMPROVED", "RESOLVED"}:
+        if item.outcome not in {"IMPROVED", "RESOLVED", "RECLASSIFIED"}:
             reasons.append(f"{item.outcome}:{item.claim_id}")
         if group in _OFFICIAL_GROUPS and not item.official_evidence:
             reasons.append(f"MISSING_OFFICIAL_EVIDENCE:{item.claim_id}")
@@ -719,6 +744,9 @@ def _update_master_after_run(
         row["개선후상태"] = item.after_status
         row["개선후사유"] = item.after_reason or ""
         row["개선판정"] = item.outcome
+        row["재분류결과"] = item.reclassification_result or ""
+        row["재분류사유"] = item.reclassification_reason or ""
+        row["다음경로"] = item.next_route or ""
         row["공식통계표"] = item.table_id or ""
         row["공식값출처"] = item.source_url or ""
         row["실행횟수"] = int(row.get("실행횟수") or 0) + 1
@@ -743,11 +771,20 @@ def _update_group_summary(
         ]
     attempted = sum(int(row.get("실행횟수") or 0) > 0 for row in master_rows)
     improved = sum(
-        row.get("개선판정") in {"IMPROVED", "RESOLVED"}
+        row.get("개선판정") in {"IMPROVED", "RESOLVED", "RECLASSIFIED"}
         for row in master_rows
+    )
+    official_entry = sum(
+        row.get("개선후상태") in {"PASS", "AUTO"}
+        and row.get("다음경로") == "OFFICIAL_SEARCH"
+        for row in master_rows
+    )
+    reclassified = sum(
+        bool(row.get("재분류결과")) for row in master_rows
     )
     remaining = max(0, len(master_rows) - improved)
     headers = ("문제코드", "전체수", "시도수", "개선수", "남은수", "완료여부")
+    headers = headers[:4] + ("공식조회진입수", "재분류완료수") + headers[4:]
     with summary_path.open(encoding="utf-8-sig", newline="") as source:
         summary_rows = list(csv.DictReader(source))
     for row in summary_rows:
@@ -756,6 +793,8 @@ def _update_group_summary(
         row["전체수"] = len(master_rows)
         row["시도수"] = attempted
         row["개선수"] = improved
+        row["공식조회진입수"] = official_entry
+        row["재분류완료수"] = reclassified
         row["남은수"] = remaining
         row["완료여부"] = "예" if master_rows and not remaining else "아니오"
     _write_csv_atomic(summary_path, headers, summary_rows)
