@@ -10,6 +10,7 @@ from core.openai_function_claim_extractor import (
     OpenAITransientError,
 )
 from schemas.claim import ClaimSchema
+from schemas.claim_group import ClaimGroupingPlan, NumericMention
 
 
 class FallbackClaimExtractor:
@@ -37,3 +38,22 @@ class FallbackClaimExtractor:
 
         self.last_provider = "openai"
         return claim
+
+    def group_claims(
+        self,
+        source_sentence: str,
+        mentions: list[NumericMention],
+    ) -> ClaimGroupingPlan:
+        self.last_provider = "unavailable"
+        try:
+            plan = self.primary.group_claims(source_sentence, mentions)  # type: ignore[attr-defined]
+        except (OpenAITransientError, OpenAIContractError):
+            plan = self.fallback.group_claims(  # type: ignore[attr-defined]
+                source_sentence,
+                mentions,
+            )
+            self.last_provider = "hcx"
+            return plan
+
+        self.last_provider = "openai"
+        return plan
