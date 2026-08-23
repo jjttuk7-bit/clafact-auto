@@ -36,6 +36,12 @@ class ClaimIssueRecord:
     current_stop_stage: str | None
     primary_group: IssueGroup
     secondary_issues: tuple[str, ...] = ()
+    domain: str = ""
+    slot_summary: str = ""
+    eligible_for_official_search: bool = False
+    catalog_attempted: int = 0
+    metadata_item_attempted: int = 0
+    metadata_period_attempted: int = 0
 
 
 _REASON_GROUP: dict[str, IssueGroup] = {
@@ -122,6 +128,7 @@ def classify_claim(row: dict[str, Any]) -> ClaimIssueRecord:
         stop_stage = _REASON_STAGE.get(terminal_reason or "")
         secondary = ()
 
+    details = _classification_details(row)
     return ClaimIssueRecord(
         article_id=str(row.get("article_id") or ""),
         sentence_id=str(row.get("sentence_id") or ""),
@@ -133,6 +140,12 @@ def classify_claim(row: dict[str, Any]) -> ClaimIssueRecord:
         current_stop_stage=stop_stage,
         primary_group=group,
         secondary_issues=secondary,
+        domain=details["domain"],
+        slot_summary=details["slot_summary"],
+        eligible_for_official_search=details["eligible"],
+        catalog_attempted=details["catalog_attempted"],
+        metadata_item_attempted=details["metadata_item_attempted"],
+        metadata_period_attempted=details["metadata_period_attempted"],
     )
 
 
@@ -170,12 +183,60 @@ def _text(value: object) -> str | None:
     return str(value) if value is not None and str(value) else None
 
 
+def _classification_details(row: dict[str, Any]) -> dict[str, Any]:
+    claim = row.get("claim")
+    domain = str(
+        row.get("domain")
+        or (claim.get("domain") if isinstance(claim, dict) else "")
+        or ""
+    )
+    slot_audit = row.get("slot_audit")
+    entries = slot_audit.get("entries") if isinstance(slot_audit, dict) else []
+    slot_parts = []
+    for entry in entries or []:
+        if not isinstance(entry, dict):
+            continue
+        slot = str(entry.get("slot") or "")
+        status = str(entry.get("status") or "")
+        if slot and status:
+            slot_parts.append(f"{slot}={status}")
+    resolution = row.get("official_resolution")
+    diagnostics = (
+        resolution.get("catalog_diagnostics")
+        if isinstance(resolution, dict)
+        else None
+    )
+    diagnostics = diagnostics if isinstance(diagnostics, dict) else {}
+    return {
+        "domain": domain,
+        "slot_summary": " | ".join(slot_parts),
+        "eligible": bool(
+            slot_audit.get("eligible_for_official_search")
+            if isinstance(slot_audit, dict)
+            else False
+        ),
+        "catalog_attempted": int(diagnostics.get("attempted_queries") or 0),
+        "metadata_item_attempted": int(
+            diagnostics.get("metadata_itm_attempted") or 0
+        ),
+        "metadata_period_attempted": int(
+            diagnostics.get("metadata_prd_attempted") or 0
+        ),
+    }
+
+
 _LEDGER_HEADERS = (
     "기사번호",
     "문장번호",
     "부모Claim번호",
     "Claim번호",
     "원문",
+    "분야",
+    "12개항목상태",
+    "12개항목공식조회가능",
+    "통계표검색시도",
+    "항목정보조회시도",
+    "기간정보조회시도",
     "현재상태",
     "현재중단단계",
     "현재사유",
@@ -288,6 +349,12 @@ def _ledger_row(record: ClaimIssueRecord) -> dict[str, object]:
         "부모Claim번호": record.parent_claim_id,
         "Claim번호": record.claim_id,
         "원문": record.source_sentence,
+        "분야": record.domain,
+        "12개항목상태": record.slot_summary,
+        "12개항목공식조회가능": "예" if record.eligible_for_official_search else "아니오",
+        "통계표검색시도": record.catalog_attempted,
+        "항목정보조회시도": record.metadata_item_attempted,
+        "기간정보조회시도": record.metadata_period_attempted,
         "현재상태": record.current_status,
         "현재중단단계": record.current_stop_stage or "",
         "현재사유": record.current_reason or "",
@@ -488,6 +555,8 @@ def compare_result(
         raise ValueError(f"INCOMPLETE_AFTER_RESULT:{claim_id}")
     if after_status == "AUTO":
         outcome = "RESOLVED"
+    elif after_status == "PASS" and before.current_status != "PASS":
+        outcome = "IMPROVED"
     else:
         before_rank = _STAGE_ORDER.get(before.current_stop_stage or "", -1)
         after_rank = _STAGE_ORDER.get(after_stage, -1)
