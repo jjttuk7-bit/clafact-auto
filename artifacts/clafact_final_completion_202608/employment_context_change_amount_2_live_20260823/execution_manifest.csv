@@ -1,0 +1,3 @@
+claim_id,official_result_file,run_scope,final_status
+claim_51187645801dea7d,run/claim_verification_results.jsonl,initial_2_claim_run,AUTO_MATCH
+claim_60c76d3e7237ece9,../employment_context_change_amount_30s_1_fixed_live_20260823/run/claim_verification_results.jsonl,failed_claim_only_retry_after_age_alias_fix,AUTO_MATCH

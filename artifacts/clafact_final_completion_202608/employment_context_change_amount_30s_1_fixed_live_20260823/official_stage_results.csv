@@ -1,0 +1,2 @@
+﻿claim_id,reclassified,calculation,official_periods,official_values,official_api_cells,publication_verified_cells,calculated_value,terminal_verdict,terminal_reason,gate_passed,gate_reasons
+claim_60c76d3e7237ece9,true,DIFFERENCE,2025-05|2024-05,5573.2|5441.4,2,2,131800.00000000017,MATCH,WITHIN_TOLERANCE,true,

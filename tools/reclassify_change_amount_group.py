@@ -6,6 +6,7 @@ import argparse
 import csv
 import json
 from pathlib import Path
+import re
 import sys
 from typing import Sequence
 
@@ -15,6 +16,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from core.claim_registry_loader import load_claim_registry
+from core.context_comparison_resolver import ContextComparison, resolve_context_comparison
 from core.validated_claim_recovery import recover_validated_claim
 from schemas.claim_registry import ClaimRegistryRecord
 
@@ -32,6 +34,9 @@ CSV_FIELDS = (
     "direction",
     "result",
     "reason",
+    "comparison_context_type",
+    "comparison_context_sentence_ids",
+    "comparison_context_sentences",
 )
 
 
@@ -54,17 +59,26 @@ def main(argv: Sequence[str] | None = None) -> int:
     except ValueError as error:
         parser.error(str(error))
 
+    context_records: list[ClaimRegistryRecord] = []
+    if args.context_registry is not None:
+        context_loaded = load_claim_registry(args.context_registry)
+        if context_loaded.errors:
+            parser.error(f"Context Registry contains {len(context_loaded.errors)} invalid row(s)")
+        context_records = context_loaded.records
+
     corrected: list[ClaimRegistryRecord] = []
     audit_rows: list[dict[str, str]] = []
     for record in selected:
         before = record.claim
         enrichment = dict(record.slot_enrichment or {})
         expression = str(enrichment.get("target_numeric_expression") or "").strip()
+        context = _preceding_context_comparison(record, context_records)
         recovered = (
             recover_validated_claim(
                 before,
                 record.article_published_at,
                 source_value_text=expression,
+                context_comparison_type=context.comparison_type if context else None,
             )
             if expression
             else before
@@ -84,6 +98,12 @@ def main(argv: Sequence[str] | None = None) -> int:
                 previous_calculation=before.calculation,
                 reclassification_reason=reason,
             )
+            if context is not None:
+                enrichment.update(
+                    comparison_context_type=context.comparison_type,
+                    comparison_context_sentence_ids=list(context.sentence_ids),
+                    comparison_context_sentences=list(context.sentences),
+                )
             corrected.append(record.model_copy(update={
                 "claim": recovered,
                 "slot_enrichment": enrichment,
@@ -99,6 +119,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             "direction": str((recovered.condition or {}).get("direction") or ""),
             "result": "RECLASSIFIED" if changed else "NOT_RECLASSIFIED",
             "reason": reason,
+            "comparison_context_type": context.comparison_type if context else "",
+            "comparison_context_sentence_ids": "|".join(context.sentence_ids) if context else "",
+            "comparison_context_sentences": "|".join(context.sentences) if context else "",
         })
 
     args.output_registry.parent.mkdir(parents=True, exist_ok=True)
@@ -130,11 +153,38 @@ def _select_records(
     return [by_id[claim_id] for claim_id in claim_ids]
 
 
+def _preceding_context_comparison(
+    target: ClaimRegistryRecord,
+    context_records: Sequence[ClaimRegistryRecord],
+) -> ContextComparison | None:
+    target_order = _sentence_number(target.sentence_id)
+    if target_order is None:
+        return None
+    preceding: list[tuple[int, str, str]] = []
+    for record in context_records:
+        if record.article_id != target.article_id:
+            continue
+        order = _sentence_number(record.sentence_id)
+        if order is None or order >= target_order:
+            continue
+        preceding.append((order, record.sentence_id, record.claim.source_sentence))
+    preceding.sort(key=lambda row: (row[0], row[1]))
+    return resolve_context_comparison([
+        (sentence_id, sentence) for _, sentence_id, sentence in preceding
+    ])
+
+
+def _sentence_number(sentence_id: str) -> int | None:
+    match = re.match(r"\s*(\d+)", sentence_id)
+    return int(match.group(1)) if match else None
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("source_registry", type=Path)
     parser.add_argument("output_registry", type=Path)
     parser.add_argument("audit_csv", type=Path)
+    parser.add_argument("--context-registry", type=Path)
     parser.add_argument("--claim-id", dest="claim_ids", action="append", default=[])
     return parser
 

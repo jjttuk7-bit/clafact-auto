@@ -56,6 +56,18 @@ def test_decade_phrase_maps_to_official_age_range() -> None:
     assert cell.dimension_codes["G"] == "40"
 
 
+def test_korean_age_group_key_maps_decade_to_official_age_range() -> None:
+    claim = _claim(source_sentence="2025년 5월 30대 취업자는 13만2000명 늘었다.", indicator="취업자 수", value=132_000, unit="명", time="2025년 5월", frequency="월", population="취업자", dimension={"연령대": "30대"})
+    candidate = _candidate(tbl_id="DT_1DA7002S", tbl_name="연령별 경제활동인구 총괄", core_item_ids=["T30"], core_item_names=["취업자"], dimension_ids=["G"], dimension_names=["연령계층별"], dimension_members={"G": ["15세 이상 전체", "30 - 39세"]}, dimension_member_codes={"G": {"15세 이상 전체": "00", "30 - 39세": "30"}}, unit_names=["천명"], item_units={"T30": "천명"})
+
+    assert apply_hard_guard(claim, candidate).passed is True
+    cell = resolve_evidence_cell(claim, candidate)
+
+    assert cell.status == "CONFIRMED"
+    assert cell.dimension_members == {"G": "30 - 39세"}
+    assert cell.dimension_codes == {"G": "30"}
+
+
 def test_temporary_worker_definition_maps_to_one_official_status_coordinate() -> None:
     claim = _claim(source_sentence="임시직(1개월 이상 1년 미만) 취업자가 1만9000명 감소했다.", indicator="취업자 수", value=-19_000, unit="명", time="2024년 12월", frequency="월", population="임금 근로자", dimension={"고용계약기간": "1개월 이상 1년 미만", "고용형태": "임시직"})
     candidate = _candidate(tbl_id="DT_1DA7010S", tbl_name="종사상지위별 취업자", core_item_ids=["T30"], core_item_names=["취업자"], dimension_ids=["J"], dimension_names=["종사상지위별"], dimension_members={"J": ["계", "임금근로자", "-상용근로자", "-임시근로자", "-일용근로자"]}, dimension_member_codes={"J": {"계": "00", "임금근로자": "30", "-상용근로자": "41", "-임시근로자": "51", "-일용근로자": "52"}}, unit_names=["천명"], item_units={"T30": "천명"})

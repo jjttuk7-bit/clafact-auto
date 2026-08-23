@@ -178,3 +178,62 @@ def test_does_not_reclassify_direct_level_followed_by_separate_comparison() -> N
     )
 
     assert recovered.calculation == "DIRECT_VALUE"
+
+
+def test_missing_comparison_basis_is_not_reclassified_without_context() -> None:
+    claim = ClaimSchema(
+        claim_id="context-change",
+        source_sentence="60세 이상 취업자는 37만명 늘었다.",
+        indicator="취업자 수 증가", value=370000, unit="명",
+        time="2025년 5월", frequency="월", comparison=None,
+        calculation="DIRECT_VALUE", condition={"direction": "INCREASE"},
+        parse_status="AUTO_OK",
+    )
+
+    recovered = recover_validated_claim(
+        claim, date(2025, 6, 11), source_value_text="37만명",
+    )
+
+    assert recovered.calculation == "DIRECT_VALUE"
+    assert recovered.comparison is None
+
+
+def test_reclassifies_change_amount_with_explicit_context_basis() -> None:
+    claim = ClaimSchema(
+        claim_id="context-change",
+        source_sentence="60세 이상 취업자는 37만명 늘었다.",
+        indicator="취업자 수 증가", value=370000, unit="명",
+        time="2025년 5월", frequency="월",
+        comparison={"비교 연령대": "30대", "비교 증가 수": "132000명"},
+        calculation="DIRECT_VALUE", condition={"direction": "INCREASE"},
+        parse_status="AUTO_OK",
+    )
+
+    recovered = recover_validated_claim(
+        claim,
+        date(2025, 6, 11),
+        source_value_text="37만명",
+        context_comparison_type="YEAR_OVER_YEAR",
+    )
+
+    assert recovered.calculation == "DIFFERENCE"
+    assert recovered.comparison == {
+        "type": "YEAR_OVER_YEAR",
+        "operand_source": "OFFICIAL_EVIDENCE",
+    }
+
+
+def test_does_not_accept_unsupported_context_basis() -> None:
+    claim = ClaimSchema(
+        claim_id="context-change", source_sentence="취업자는 37만명 늘었다.",
+        indicator="취업자 수", value=370000, unit="명", time="2025년 5월",
+        frequency="월", calculation="DIRECT_VALUE",
+        condition={"direction": "INCREASE"}, parse_status="AUTO_OK",
+    )
+
+    recovered = recover_validated_claim(
+        claim, date(2025, 6, 11), source_value_text="37만명",
+        context_comparison_type="ITEM_DIFFERENCE",
+    )
+
+    assert recovered.calculation == "DIRECT_VALUE"

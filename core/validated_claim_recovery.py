@@ -17,6 +17,7 @@ def recover_validated_claim(
     claim: ClaimSchema,
     article_date: date | None,
     *, source_value_text: str | None = None,
+    context_comparison_type: str | None = None,
 ) -> ClaimSchema:
     """Re-admit only source-backed Claims that satisfy the executable contract."""
     was_auto = claim.parse_status == "AUTO_OK"
@@ -35,6 +36,16 @@ def recover_validated_claim(
     if grounding_text is not None and not _source_supports_claim_value(recovered, grounding_text):
         return recovered.model_copy(update={"parse_status": "HOLD", "parse_reason": "TARGET_VALUE_NOT_IN_SOURCE_SENTENCE"})
     if source_value_text is not None:
+        existing_type = str((recovered.comparison or {}).get("type", "")).strip().upper()
+        context_type = str(context_comparison_type or "").strip().upper()
+        if (
+            not existing_type
+            and context_type in _CHANGE_COMPARISONS
+            and recovered.calculation == "DIRECT_VALUE"
+        ):
+            recovered = recovered.model_copy(update={
+                "comparison": {"type": context_type},
+            })
         recovered = _repair_source_grounded_change_amount(recovered, source_value_text)
     if recovered.parse_status == "AUTO_OK":
         decision = assess_claim_contract(recovered)

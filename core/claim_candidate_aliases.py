@@ -98,7 +98,7 @@ def _is_education_key(key: str) -> bool:
 
 
 def _is_age_key(key: str) -> bool:
-    return _compact(key) in {"age", "연령", "나이"}
+    return _compact(key) in {"age", "연령", "연령대", "나이"}
 
 
 def _compact(value: str) -> str:
