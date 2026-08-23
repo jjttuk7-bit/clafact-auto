@@ -9,9 +9,11 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from core.admission_recovery_v3 import recover_registry_record_v3
+from core.claim_disposition import classify_claim_disposition
 from core.claim_parser import StructuredClaimExtractor
 from core.issue_group_harness import ClaimIssueRecord
 from core.slot_audit import audit_claim_slots
+from schemas.claim import ClaimSchema
 from schemas.claim_registry import ClaimRegistryRecord
 
 
@@ -73,6 +75,7 @@ class ContextGroupExecutor:
         children = []
         for entry in recovery.entries:
             audit = audit_claim_slots(entry.record.claim)
+            disposition = classify_claim_disposition(entry.record.claim)
             children.append(
                 {
                     "claim_id": entry.record.claim.claim_id,
@@ -81,6 +84,9 @@ class ContextGroupExecutor:
                     "slot_audit": audit.model_dump(mode="json"),
                     "claim": entry.record.claim.model_dump(mode="json"),
                     "recovery_audit": entry.record.slot_enrichment,
+                    "disposition": disposition.disposition,
+                    "disposition_reason": disposition.reason_code,
+                    "next_route": disposition.next_route,
                 }
             )
         admitted = bool(children) and all(
@@ -88,7 +94,7 @@ class ContextGroupExecutor:
             and child["twelve_slot_complete"]
             for child in children
         )
-        return {
+        return normalize_context_result({
             "claim_id": issue.claim_id,
             "status": "PASS" if admitted else "HUMAN_REVIEW",
             "reason_code": (
@@ -103,7 +109,7 @@ class ContextGroupExecutor:
             "recovery_action": recovery.recovery_action,
             "child_count": len(children),
             "children": children,
-        }
+        })
 
 
 class _AdmissionOnlyResolver:
@@ -113,7 +119,7 @@ class _AdmissionOnlyResolver:
         return None
 
 
-def normalize_context_result(result: dict[str, Any]) -> dict[str, Any]:
+def _legacy_normalize_context_result(result: dict[str, Any]) -> dict[str, Any]:
     """Recompute parent admission status from saved child results only."""
 
     normalized = dict(result)
@@ -227,3 +233,105 @@ def _csv_value(value: object) -> object:
     if value is None or isinstance(value, (str, int, float, bool)):
         return "" if value is None else value
     return json.dumps(value, ensure_ascii=False, sort_keys=True)
+
+
+def normalize_context_result(result: dict[str, Any]) -> dict[str, Any]:
+    """Recompute parent status from official, excluded, and unresolved children."""
+
+    normalized = dict(result)
+    children = [
+        _with_disposition(child)
+        for child in normalized.get("children") or []
+        if isinstance(child, dict)
+    ]
+    normalized["children"] = children
+    official = [child for child in children if _official_ready(child)]
+    excluded = [child for child in children if _safely_excluded(child)]
+    unresolved = [
+        child for child in children
+        if child not in official and child not in excluded
+    ]
+    reasons = sorted({
+        str(child.get("disposition_reason") or "")
+        for child in excluded
+        if child.get("disposition_reason")
+    })
+    if children and not unresolved and official:
+        mixed = bool(excluded)
+        normalized.update(
+            status="PASS",
+            reason_code=(
+                "CHILDREN_READY_WITH_RECLASSIFICATION"
+                if mixed else "KOSIS_PIPELINE_ELIGIBLE"
+            ),
+            reclassification_result=(
+                "PARTIAL_RECLASSIFICATION" if mixed else ""
+            ),
+            reclassification_reason=" | ".join(reasons),
+            next_route="OFFICIAL_SEARCH",
+        )
+    elif children and not unresolved and excluded:
+        normalized.update(
+            status="RECLASSIFIED",
+            reason_code="PRE_VERIFICATION_RECLASSIFIED",
+            reclassification_result="ALL_RECLASSIFIED",
+            reclassification_reason=" | ".join(reasons),
+            next_route="PRE_VERIFICATION_EXCLUDE",
+        )
+    elif children:
+        normalized.update(
+            status="HUMAN_REVIEW",
+            reason_code=_remaining_reason(children),
+            reclassification_result=(
+                "PARTIAL_RECLASSIFICATION" if excluded else ""
+            ),
+            reclassification_reason=" | ".join(reasons),
+            next_route="CONTEXT_REVIEW",
+        )
+    return normalized
+
+
+def _with_disposition(child: dict[str, Any]) -> dict[str, Any]:
+    normalized = dict(child)
+    if normalized.get("disposition"):
+        return normalized
+    claim = normalized.get("claim")
+    if isinstance(claim, dict):
+        decision = classify_claim_disposition(ClaimSchema.model_validate(claim))
+        normalized.update(
+            disposition=decision.disposition,
+            disposition_reason=decision.reason_code,
+            next_route=decision.next_route,
+        )
+    elif (
+        normalized.get("admission_route") == "KOSIS_PIPELINE_ELIGIBLE"
+        and bool(normalized.get("twelve_slot_complete"))
+    ):
+        normalized.update(
+            disposition="OFFICIAL_VERIFICATION_TARGET",
+            disposition_reason="TWELVE_SLOT_COMPLETE",
+            next_route="OFFICIAL_SEARCH",
+        )
+    else:
+        normalized.update(
+            disposition="SOURCE_CONTEXT_INSUFFICIENT",
+            disposition_reason="SOURCE_CONTEXT_INSUFFICIENT",
+            next_route="CONTEXT_REVIEW",
+        )
+    return normalized
+
+
+def _official_ready(child: dict[str, Any]) -> bool:
+    return (
+        child.get("disposition") == "OFFICIAL_VERIFICATION_TARGET"
+        and child.get("admission_route") == "KOSIS_PIPELINE_ELIGIBLE"
+        and bool(child.get("twelve_slot_complete"))
+    )
+
+
+def _safely_excluded(child: dict[str, Any]) -> bool:
+    return (
+        child.get("disposition")
+        in {"FORECAST_OR_POLICY", "NO_VERIFIABLE_NUMERIC_ASSERTION"}
+        and child.get("next_route") == "PRE_VERIFICATION_EXCLUDE"
+    )
