@@ -17,7 +17,10 @@ def recover_validated_claim(claim, article_date: date | None, *, source_value_te
     was_auto = claim.parse_status == "AUTO_OK"
     recovered = resolve_relative_time(claim, article_date)
     comparison_type = str((recovered.comparison or {}).get("type", "")).upper()
-    if comparison_type in {"RECORD_HIGH", "RECORD_LOW"}:
+    if (
+        comparison_type in {"RECORD_HIGH", "RECORD_LOW"}
+        and recovered.calculation != comparison_type
+    ):
         return recovered.model_copy(update={"parse_status": "HOLD", "parse_reason": "RECORD_COMPARISON_REQUIRES_SEPARATE_CLAIM"})
     if any(marker in (recovered.time or "") for marker in _UNRESOLVED_TIME_MARKERS):
         return recovered.model_copy(update={"parse_status": "HOLD", "parse_reason": "RELATIVE_TIME_UNRESOLVED"})

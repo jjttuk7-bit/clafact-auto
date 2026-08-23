@@ -11,6 +11,7 @@ from core.admission_recovery_v2 import recover_registry_record_v2
 from core.claim_admissibility import classify_admissibility
 from core.claim_parser import StructuredClaimExtractor, parse_claim
 from core.operational_error import run_operational_stage
+from core.record_comparison_splitter import split_record_comparison_claim
 from core.targeted_claim_splitter import build_targeted_claim_inputs
 from core.validated_claim_recovery import recover_validated_claim
 from schemas.claim import ClaimSchema
@@ -24,6 +25,9 @@ class _StaticExtractor:
 
 def recover_registry_record_v3(record: ClaimRegistryRecord, *, extractor: StructuredClaimExtractor, official_service: OfficialEvidenceResolver, article_context: str | None = None) -> RecoveryResult:
     """Split targets, then use article context only as a controlled second pass."""
+    record_children = split_record_comparison_claim(record.claim)
+    if len(record_children) > 1:
+        return _recover_record_children(record, record_children, official_service)
     targets = build_targeted_claim_inputs(record.claim.source_sentence)
     if not targets:
         return recover_registry_record_v2(record, extractor=extractor, official_service=official_service, article_context=article_context)
@@ -56,6 +60,33 @@ def recover_registry_record_v3(record: ClaimRegistryRecord, *, extractor: Struct
         resolution = official_service.resolve(parsed, article_date=record.article_published_at) if route == "KOSIS_PIPELINE_ELIGIBLE" and record.article_published_at is not None else None
         entries.append(RecoveryEntry(record.claim.claim_id, derived, route, resolution))
     return RecoveryResult(cast(RecoveryAction, "MULTI_CLAIM_SPLIT"), entries)
+
+
+def _recover_record_children(
+    parent: ClaimRegistryRecord,
+    children: list[ClaimSchema],
+    official_service: OfficialEvidenceResolver,
+) -> RecoveryResult:
+    entries: list[RecoveryEntry] = []
+    for child in children:
+        child = recover_validated_claim(
+            child, parent.article_published_at, source_value_text=parent.claim.source_sentence
+        )
+        route = _admission_route(child)
+        derived = parent.model_copy(update={
+            "claim": child,
+            "source_ref": "admission_recovery_v3",
+            "slot_enrichment": {
+                "stage": "RECORD_COMPARISON_SPLIT",
+                "parent_claim_id": parent.claim.claim_id,
+                "record_child_type": child.calculation,
+                "admission_route": route,
+                "source_ref": parent.source_ref,
+            },
+        })
+        resolution = official_service.resolve(child, article_date=parent.article_published_at) if route == "KOSIS_PIPELINE_ELIGIBLE" and parent.article_published_at is not None else None
+        entries.append(RecoveryEntry(parent.claim.claim_id, derived, route, resolution))
+    return RecoveryResult(cast(RecoveryAction, "RECORD_COMPARISON_SPLIT"), entries)
 
 
 def _parse_target(expression: str, extractor_input: str, extractor: StructuredClaimExtractor, record: ClaimRegistryRecord) -> ClaimSchema:

@@ -18,6 +18,8 @@ SUPPORTED_CALCULATIONS = frozenset({
     "MULTIPLE",
     "RANK",
     "THRESHOLD",
+    "RECORD_HIGH",
+    "RECORD_LOW",
 })
 
 _COMMON_REQUIRED_SLOTS = (
@@ -74,6 +76,14 @@ def assess_claim_contract(claim: ClaimSchema) -> ClaimContractDecision:
         return _assess_rank(claim)
     if calculation == "THRESHOLD":
         return _assess_threshold(claim)
+    if calculation in {"RECORD_HIGH", "RECORD_LOW"}:
+        comparison_type = str((claim.comparison or {}).get("type", "")).strip().upper()
+        if comparison_type != calculation:
+            return ClaimContractDecision(
+                status="HOLD",
+                reason_code="CLAIM_COMPARISON_UNSUPPORTED",
+                detail=comparison_type,
+            )
     return ClaimContractDecision(status="PASS")
 
 

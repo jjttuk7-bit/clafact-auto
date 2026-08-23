@@ -31,7 +31,7 @@ def build_recovery_stage_audit(
     )
     now = datetime.now(timezone.utc).isoformat()
     input_hash = sha256(claim.source_sentence.encode("utf-8")).hexdigest()
-    split_status = "PASS" if recovery_action == "MULTI_CLAIM_SPLIT" else "SKIPPED"
+    split_status = "PASS" if recovery_action in {"MULTI_CLAIM_SPLIT", "RECORD_COMPARISON_SPLIT"} else "SKIPPED"
     split_reason = None if split_status == "PASS" else "SINGLE_CLAIM_OR_STORED_RESULT"
     parse_status = (
         "PASS" if admission_route == "KOSIS_PIPELINE_ELIGIBLE" else "HUMAN_REVIEW"

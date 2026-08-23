@@ -21,7 +21,7 @@ AdmissionRoute = Literal[
     "CONTEXT_REQUIRED",
     "STRUCTURAL_HOLD",
 ]
-RecoveryAction = Literal["DIRECT", "MULTI_CLAIM_SPLIT", "CONTEXT_REPARSE", "NO_RECOVERY"]
+RecoveryAction = Literal["DIRECT", "MULTI_CLAIM_SPLIT", "RECORD_COMPARISON_SPLIT", "CONTEXT_REPARSE", "NO_RECOVERY"]
 
 
 class OfficialEvidenceResolver(Protocol):
