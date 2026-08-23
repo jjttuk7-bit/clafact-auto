@@ -111,8 +111,14 @@ class _AdmissionOnlyResolver:
 
 
 def _remaining_reason(children: list[dict[str, Any]]) -> str:
-    routes = [str(child.get("admission_route") or "") for child in children]
-    return routes[0] if routes else "NO_RECOVERED_CHILD"
+    routes = {
+        str(child.get("admission_route") or "")
+        for child in children
+        if child.get("admission_route")
+    }
+    if len(routes) > 1:
+        return "PARTIAL_CHILD_ADMISSION"
+    return next(iter(routes), "NO_RECOVERED_CHILD")
 
 
 def _sentence_order(record: ClaimRegistryRecord) -> tuple[int, str]:

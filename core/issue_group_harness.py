@@ -247,6 +247,7 @@ _LEDGER_HEADERS = (
     "개선전사유",
     "개선후상태",
     "개선후사유",
+    "개선판정",
     "공식통계표",
     "공식값출처",
     "실행횟수",
@@ -365,6 +366,7 @@ def _ledger_row(record: ClaimIssueRecord) -> dict[str, object]:
         "개선전사유": record.current_reason or "",
         "개선후상태": "",
         "개선후사유": "",
+        "개선판정": "",
         "공식통계표": "",
         "공식값출처": "",
         "실행횟수": 0,
@@ -641,6 +643,11 @@ def record_group_run(
         data_version=data_version,
         recorded_at=recorded_at,
     )
+    _update_group_summary(
+        output_dir / "claim_issue_master.csv",
+        output_dir / "group_summary.csv",
+        group,
+    )
     return comparisons
 
 
@@ -711,6 +718,7 @@ def _update_master_after_run(
             continue
         row["개선후상태"] = item.after_status
         row["개선후사유"] = item.after_reason or ""
+        row["개선판정"] = item.outcome
         row["공식통계표"] = item.table_id or ""
         row["공식값출처"] = item.source_url or ""
         row["실행횟수"] = int(row.get("실행횟수") or 0) + 1
@@ -718,6 +726,39 @@ def _update_master_after_run(
         row["데이터버전"] = data_version
         row["기록시각"] = recorded_at
     _write_csv_atomic(path, _LEDGER_HEADERS, rows)
+
+
+def _update_group_summary(
+    master_path: Path,
+    summary_path: Path,
+    group: IssueGroup,
+) -> None:
+    if not master_path.is_file() or not summary_path.is_file():
+        return
+    with master_path.open(encoding="utf-8-sig", newline="") as source:
+        master_rows = [
+            row
+            for row in csv.DictReader(source)
+            if row.get("대표문제") == group.value
+        ]
+    attempted = sum(int(row.get("실행횟수") or 0) > 0 for row in master_rows)
+    improved = sum(
+        row.get("개선판정") in {"IMPROVED", "RESOLVED"}
+        for row in master_rows
+    )
+    remaining = max(0, len(master_rows) - improved)
+    headers = ("문제코드", "전체수", "시도수", "개선수", "남은수", "완료여부")
+    with summary_path.open(encoding="utf-8-sig", newline="") as source:
+        summary_rows = list(csv.DictReader(source))
+    for row in summary_rows:
+        if row.get("문제코드") != group.value:
+            continue
+        row["전체수"] = len(master_rows)
+        row["시도수"] = attempted
+        row["개선수"] = improved
+        row["남은수"] = remaining
+        row["완료여부"] = "예" if master_rows and not remaining else "아니오"
+    _write_csv_atomic(summary_path, headers, summary_rows)
 
 
 def _write_json_atomic(path: Path, payload: dict[str, Any]) -> None:

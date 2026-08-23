@@ -48,6 +48,55 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
         )
         return 0
+    if args.command == "record-results":
+        group = IssueGroup(args.group)
+        baseline_rows = _load_jsonl(args.baseline_path)
+        issues = build_issue_registry(baseline_rows)
+        if not (args.output_dir / "claim_issue_master.csv").is_file():
+            write_issue_ledgers(issues, args.output_dir)
+        saved_results = _load_jsonl(args.results_path)
+        by_id = {
+            str(result.get("claim_id") or ""): result
+            for result in saved_results
+        }
+        if len(by_id) != len(saved_results):
+            parser.error("DUPLICATE_SAVED_RESULT")
+
+        def replay(issue, allowed_stages):
+            result = by_id.get(issue.claim_id)
+            if result is None:
+                raise ValueError(f"SAVED_RESULT_NOT_FOUND:{issue.claim_id}")
+            return result
+
+        validated_results = run_group_slice(
+            issues,
+            group,
+            replay,
+            limit=len(saved_results),
+            offset=args.offset,
+        )
+        comparisons = record_group_run(
+            issues,
+            group,
+            validated_results,
+            output_dir=args.output_dir,
+            run_id=args.run_id,
+            code_version=args.code_version,
+            data_version=args.data_version or _file_hash(args.baseline_path),
+        )
+        print(
+            json.dumps(
+                {
+                    "group": group.value,
+                    "recorded": len(comparisons),
+                    "outcome_counts": _counts(item.outcome for item in comparisons),
+                    "run_id": args.run_id,
+                    "network_used": False,
+                },
+                ensure_ascii=False,
+            )
+        )
+        return 0
     if args.command == "run-group":
         group = IssueGroup(args.group)
         if group is not IssueGroup.CONTEXT:
@@ -116,6 +165,17 @@ def _parser() -> argparse.ArgumentParser:
     run_group.add_argument("--run-id", required=True)
     run_group.add_argument("--code-version", default="issue-group-harness-v1")
     run_group.add_argument("--data-version")
+    record_results = commands.add_parser("record-results")
+    record_results.add_argument("baseline_path", type=Path)
+    record_results.add_argument("results_path", type=Path)
+    record_results.add_argument("output_dir", type=Path)
+    record_results.add_argument(
+        "--group", choices=[group.value for group in IssueGroup], required=True
+    )
+    record_results.add_argument("--offset", type=int, default=0)
+    record_results.add_argument("--run-id", required=True)
+    record_results.add_argument("--code-version", default="issue-group-harness-v1")
+    record_results.add_argument("--data-version")
     return parser
 
 
