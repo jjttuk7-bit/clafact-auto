@@ -43,7 +43,8 @@ def test_month_basis_record_plan_compares_only_same_month_across_years() -> None
         dimension_members={"G": ["15 - 64\uc138"]},
         dimension_member_codes={"G": {"15 - 64\uc138": "63"}},
         unit_names=["%"], item_units={"T90": "%"}, frequency="\uc6d4|\ubd84\uae30|\ub144",
-        start_period="1999.06", end_period="2026.07", metadata_status="OFFICIAL_METADATA_READY",
+        start_period="1999.06", end_period="2026.07",
+        period_ranges={"월": {"start_period": "1999.06", "end_period": "2026.07"}}, metadata_status="OFFICIAL_METADATA_READY",
     )
 
     plan = build_calculation_plan(claim, current, candidate)

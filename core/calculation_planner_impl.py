@@ -23,7 +23,7 @@ def build_calculation_plan(
     if calculation == "DIRECT_VALUE":
         return CalculationPlan(calculation_type="DIRECT_VALUE", required_cells=[current])
     if calculation in {"RECORD_HIGH", "RECORD_LOW"}:
-        start_period = candidate.start_period if candidate else None
+        start_period = _official_start_period(candidate, current.prd_se)
         periods = (
             enumerate_same_month_periods(start_period, current.prd_de)
             if _same_month_record_basis(claim, current)
@@ -57,6 +57,55 @@ def build_calculation_plan(
         return CalculationPlan(calculation_type=calculation, required_cells=[current, prior])
     return None
 
+
+
+def _official_start_period(
+    candidate: KosisCandidateSchema | None,
+    evidence_frequency: str,
+) -> str | None:
+    if candidate is None:
+        return None
+    target_frequency = _normalize_frequency(evidence_frequency)
+    if target_frequency is None:
+        return None
+    if candidate.period_ranges:
+        starts = {
+            period_range.start_period
+            for label, period_range in candidate.period_ranges.items()
+            if _normalize_frequency(label) == target_frequency
+            and period_range.start_period
+        }
+        return starts.pop() if len(starts) == 1 else None
+    frequencies = {
+        normalized
+        for part in (candidate.frequency or "").split("|")
+        if (normalized := _normalize_frequency(part)) is not None
+    }
+    if frequencies != {target_frequency}:
+        return None
+    return candidate.start_period
+
+
+def _normalize_frequency(value: str) -> str | None:
+    normalized = value.replace(" ", "").casefold()
+    aliases = {
+        "월": "월",
+        "m": "월",
+        "month": "월",
+        "monthly": "월",
+        "분기": "분기",
+        "q": "분기",
+        "quarter": "분기",
+        "quarterly": "분기",
+        "년": "년",
+        "연": "년",
+        "연간": "년",
+        "y": "년",
+        "year": "년",
+        "yearly": "년",
+        "annual": "년",
+    }
+    return aliases.get(normalized)
 
 def _same_month_record_basis(claim: ClaimSchema, current: EvidenceCellSchema) -> bool:
     if current.prd_se.replace(" ", "").casefold() not in {"월", "m", "month", "monthly"}:
