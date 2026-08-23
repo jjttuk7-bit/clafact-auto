@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import csv
+from datetime import datetime, timezone
+import json
 from collections import Counter
 from dataclasses import dataclass
 from enum import StrEnum
@@ -413,3 +415,250 @@ def run_group_slice(
                 raise ValueError(f"STAGE_OUT_OF_GROUP_POLICY:{stage}")
         results.append(result)
     return results
+
+
+@dataclass(frozen=True, slots=True)
+class RunComparison:
+    claim_id: str
+    before_status: str
+    before_reason: str | None
+    before_stage: str | None
+    after_status: str
+    after_reason: str | None
+    after_stage: str | None
+    outcome: str
+    official_evidence: bool
+    table_id: str | None = None
+    source_url: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class GroupGateResult:
+    group: IssueGroup
+    passed: bool
+    reasons: tuple[str, ...]
+    code_version: str
+    data_version: str
+    evaluated_at: str
+
+
+_OFFICIAL_GROUPS = {
+    IssueGroup.OFFICIAL_PATH,
+    IssueGroup.HARD_GUARD,
+    IssueGroup.COORDINATE,
+    IssueGroup.SEMANTIC,
+    IssueGroup.CALCULATION,
+    IssueGroup.VALUE_PUBLICATION,
+    IssueGroup.REGRESSION,
+}
+
+_RUN_HEADERS = (
+    "실행번호",
+    "Claim번호",
+    "대표문제",
+    "개선전상태",
+    "개선전단계",
+    "개선전사유",
+    "개선후상태",
+    "개선후단계",
+    "개선후사유",
+    "개선판정",
+    "공식근거확인",
+    "공식통계표",
+    "공식값출처",
+    "코드버전",
+    "데이터버전",
+    "기록시각",
+)
+
+
+def compare_result(
+    before: ClaimIssueRecord,
+    after: dict[str, Any],
+) -> RunComparison:
+    """Compare pipeline progress without treating a changed reason as success."""
+
+    claim_id = str(after.get("claim_id") or "")
+    if claim_id != before.claim_id:
+        raise ValueError(f"RESULT_CLAIM_ID_MISMATCH:{before.claim_id}:{claim_id}")
+    after_status = str(after.get("status") or after.get("terminal_status") or "")
+    after_reason = _text(after.get("reason_code"))
+    after_stage = _text(after.get("stop_stage"))
+    if not after_status or not after_stage:
+        raise ValueError(f"INCOMPLETE_AFTER_RESULT:{claim_id}")
+    if after_status == "AUTO":
+        outcome = "RESOLVED"
+    else:
+        before_rank = _STAGE_ORDER.get(before.current_stop_stage or "", -1)
+        after_rank = _STAGE_ORDER.get(after_stage, -1)
+        if after_rank > before_rank:
+            outcome = "IMPROVED"
+        elif after_rank < before_rank:
+            outcome = "REGRESSED"
+        else:
+            outcome = "UNCHANGED"
+    return RunComparison(
+        claim_id=claim_id,
+        before_status=before.current_status,
+        before_reason=before.current_reason,
+        before_stage=before.current_stop_stage,
+        after_status=after_status,
+        after_reason=after_reason,
+        after_stage=after_stage,
+        outcome=outcome,
+        official_evidence=bool(after.get("official_evidence")),
+        table_id=_text(after.get("table_id")),
+        source_url=_text(after.get("source_url")),
+    )
+
+
+def record_group_run(
+    records: list[ClaimIssueRecord],
+    group: IssueGroup,
+    results: list[dict[str, Any]],
+    *,
+    output_dir: Path,
+    run_id: str,
+    code_version: str,
+    data_version: str,
+) -> list[RunComparison]:
+    """Persist an auditable before/after ledger and update the master rows."""
+
+    if not run_id or any(character not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.-" for character in run_id):
+        raise ValueError("INVALID_RUN_ID")
+    before_by_id = {
+        record.claim_id: record
+        for record in records
+        if record.primary_group is group
+    }
+    result_ids = [str(result.get("claim_id") or "") for result in results]
+    if len(result_ids) != len(set(result_ids)):
+        raise ValueError("DUPLICATE_RUN_RESULT")
+    if any(claim_id not in before_by_id for claim_id in result_ids):
+        raise ValueError("RUN_RESULT_OUTSIDE_GROUP")
+    comparisons = [
+        compare_result(before_by_id[claim_id], result)
+        for claim_id, result in zip(result_ids, results, strict=True)
+    ]
+    recorded_at = _utc_now()
+    run_rows = [
+        {
+            "실행번호": run_id,
+            "Claim번호": item.claim_id,
+            "대표문제": group.value,
+            "개선전상태": item.before_status,
+            "개선전단계": item.before_stage or "",
+            "개선전사유": item.before_reason or "",
+            "개선후상태": item.after_status,
+            "개선후단계": item.after_stage or "",
+            "개선후사유": item.after_reason or "",
+            "개선판정": item.outcome,
+            "공식근거확인": "예" if item.official_evidence else "아니오",
+            "공식통계표": item.table_id or "",
+            "공식값출처": item.source_url or "",
+            "코드버전": code_version,
+            "데이터버전": data_version,
+            "기록시각": recorded_at,
+        }
+        for item in comparisons
+    ]
+    run_dir = output_dir / "runs"
+    run_dir.mkdir(parents=True, exist_ok=True)
+    _write_csv_atomic(run_dir / f"{run_id}.csv", _RUN_HEADERS, run_rows)
+    _update_master_after_run(
+        output_dir / "claim_issue_master.csv",
+        comparisons,
+        code_version=code_version,
+        data_version=data_version,
+        recorded_at=recorded_at,
+    )
+    return comparisons
+
+
+def evaluate_group_gate(
+    group: IssueGroup,
+    comparisons: list[RunComparison],
+    *,
+    expected_claim_ids: set[str],
+    gate_dir: Path,
+    code_version: str,
+    data_version: str,
+) -> GroupGateResult:
+    """Persist a version-bound group gate after complete before/after evidence."""
+
+    reasons: list[str] = []
+    observed = {item.claim_id for item in comparisons}
+    for claim_id in sorted(expected_claim_ids - observed):
+        reasons.append(f"MISSING_COMPARISON:{claim_id}")
+    for claim_id in sorted(observed - expected_claim_ids):
+        reasons.append(f"UNEXPECTED_COMPARISON:{claim_id}")
+    for item in comparisons:
+        if item.outcome not in {"IMPROVED", "RESOLVED"}:
+            reasons.append(f"{item.outcome}:{item.claim_id}")
+        if group in _OFFICIAL_GROUPS and not item.official_evidence:
+            reasons.append(f"MISSING_OFFICIAL_EVIDENCE:{item.claim_id}")
+    evaluated_at = _utc_now()
+    gate = GroupGateResult(
+        group=group,
+        passed=not reasons and bool(expected_claim_ids),
+        reasons=tuple(reasons or ()),
+        code_version=code_version,
+        data_version=data_version,
+        evaluated_at=evaluated_at,
+    )
+    gate_dir.mkdir(parents=True, exist_ok=True)
+    _write_json_atomic(
+        gate_dir / f"{group.value}.json",
+        {
+            "group": group.value,
+            "passed": gate.passed,
+            "reasons": list(gate.reasons),
+            "expected_claim_count": len(expected_claim_ids),
+            "comparison_count": len(comparisons),
+            "code_version": code_version,
+            "data_version": data_version,
+            "evaluated_at": evaluated_at,
+        },
+    )
+    return gate
+
+
+def _update_master_after_run(
+    path: Path,
+    comparisons: list[RunComparison],
+    *,
+    code_version: str,
+    data_version: str,
+    recorded_at: str,
+) -> None:
+    if not path.is_file():
+        return
+    comparison_by_id = {item.claim_id: item for item in comparisons}
+    with path.open(encoding="utf-8-sig", newline="") as source:
+        rows = list(csv.DictReader(source))
+    for row in rows:
+        item = comparison_by_id.get(row.get("Claim번호") or "")
+        if item is None:
+            continue
+        row["개선후상태"] = item.after_status
+        row["개선후사유"] = item.after_reason or ""
+        row["공식통계표"] = item.table_id or ""
+        row["공식값출처"] = item.source_url or ""
+        row["실행횟수"] = int(row.get("실행횟수") or 0) + 1
+        row["코드버전"] = code_version
+        row["데이터버전"] = data_version
+        row["기록시각"] = recorded_at
+    _write_csv_atomic(path, _LEDGER_HEADERS, rows)
+
+
+def _write_json_atomic(path: Path, payload: dict[str, Any]) -> None:
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    temporary.replace(path)
+
+
+def _utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat()

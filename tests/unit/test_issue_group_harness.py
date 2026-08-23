@@ -190,3 +190,135 @@ def test_run_group_slice_rejects_a_downstream_stage_reported_by_executor() -> No
 
     with pytest.raises(ValueError, match="STAGE_OUT_OF_GROUP_POLICY:CATALOG_SEARCH"):
         run_group_slice(records, IssueGroup.CONTEXT, executor, limit=1)
+
+
+from core.issue_group_harness import evaluate_group_gate, record_group_run
+
+
+def test_record_group_run_writes_before_after_csv_and_updates_master(tmp_path) -> None:
+    records = build_issue_registry(
+        [
+            _row_with_id("C-001", "NO_HARD_GUARD_CANDIDATE"),
+            _row_with_id("C-002", "NO_HARD_GUARD_CANDIDATE"),
+            _row_with_id("C-003", "NO_HARD_GUARD_CANDIDATE"),
+        ]
+    )
+    write_issue_ledgers(records, tmp_path)
+
+    comparisons = record_group_run(
+        records,
+        IssueGroup.HARD_GUARD,
+        [
+            {
+                "claim_id": "C-001",
+                "status": "HOLD",
+                "reason_code": "NO_EVIDENCE_COORDINATE_CANDIDATE",
+                "stop_stage": "EVIDENCE_CELL",
+            },
+            {
+                "claim_id": "C-002",
+                "status": "HOLD",
+                "reason_code": "NO_HARD_GUARD_CANDIDATE",
+                "stop_stage": "HARD_GUARD",
+            },
+            {
+                "claim_id": "C-003",
+                "status": "HOLD",
+                "reason_code": "CONCEPT_NOT_FOUND",
+                "stop_stage": "SEMANTIC_MAPPING",
+            },
+        ],
+        output_dir=tmp_path,
+        run_id="hard-guard-001",
+        code_version="code-v1",
+        data_version="data-v1",
+    )
+
+    assert [item.outcome for item in comparisons] == [
+        "IMPROVED",
+        "UNCHANGED",
+        "REGRESSED",
+    ]
+    with (tmp_path / "runs" / "hard-guard-001.csv").open(
+        encoding="utf-8-sig", newline=""
+    ) as source:
+        run_rows = list(csv.DictReader(source))
+    assert len(run_rows) == 3
+    assert run_rows[0]["개선판정"] == "IMPROVED"
+
+    with (tmp_path / "claim_issue_master.csv").open(
+        encoding="utf-8-sig", newline=""
+    ) as source:
+        master = {row["Claim번호"]: row for row in csv.DictReader(source)}
+    assert master["C-001"]["개선후사유"] == "NO_EVIDENCE_COORDINATE_CANDIDATE"
+    assert master["C-001"]["실행횟수"] == "1"
+
+
+def test_group_gate_rejects_unchanged_regressed_or_missing_official_evidence(tmp_path) -> None:
+    records = build_issue_registry(
+        [
+            _row_with_id("C-001", "FETCH_FAILED"),
+            _row_with_id("C-002", "FETCH_FAILED"),
+        ]
+    )
+    comparisons = record_group_run(
+        records,
+        IssueGroup.VALUE_PUBLICATION,
+        [
+            {
+                "claim_id": "C-001",
+                "status": "AUTO",
+                "reason_code": "WITHIN_TOLERANCE",
+                "stop_stage": "VERDICT",
+                "official_evidence": True,
+            },
+            {
+                "claim_id": "C-002",
+                "status": "AUTO",
+                "reason_code": "WITHIN_TOLERANCE",
+                "stop_stage": "VERDICT",
+                "official_evidence": False,
+            },
+        ],
+        output_dir=tmp_path,
+        run_id="value-001",
+        code_version="code-v1",
+        data_version="data-v1",
+    )
+
+    gate = evaluate_group_gate(
+        IssueGroup.VALUE_PUBLICATION,
+        comparisons,
+        expected_claim_ids={"C-001", "C-002"},
+        gate_dir=tmp_path / "gates",
+        code_version="code-v1",
+        data_version="data-v1",
+    )
+
+    assert gate.passed is False
+    assert "MISSING_OFFICIAL_EVIDENCE:C-002" in gate.reasons
+
+
+def test_group_gate_passes_and_persists_version_bound_completion(tmp_path) -> None:
+    records = build_issue_registry([_row_with_id("C-001", "CONTEXT_REQUIRED")])
+    comparisons = record_group_run(
+        records,
+        IssueGroup.CONTEXT,
+        [{"claim_id": "C-001", "status": "AUTO", "stop_stage": "VERDICT"}],
+        output_dir=tmp_path,
+        run_id="context-001",
+        code_version="code-v1",
+        data_version="data-v1",
+    )
+
+    gate = evaluate_group_gate(
+        IssueGroup.CONTEXT,
+        comparisons,
+        expected_claim_ids={"C-001"},
+        gate_dir=tmp_path / "gates",
+        code_version="code-v1",
+        data_version="data-v1",
+    )
+
+    assert gate.passed is True
+    assert (tmp_path / "gates" / "CONTEXT.json").is_file()
