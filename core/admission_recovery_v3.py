@@ -31,7 +31,7 @@ def recover_registry_record_v3(record: ClaimRegistryRecord, *, extractor: Struct
         parsed = _parse_target(target.expression, target.extractor_input, extractor, record)
         parsed_before_context = parsed
         context_used = False
-        if _admission_route(parsed) == "CONTEXT_REQUIRED" and article_context:
+        if _should_retry_with_context(parsed) and article_context:
             payload = json.loads(target.extractor_input)
             payload["article_context"] = article_context
             payload["instruction"] = "부족한 지역·시점·대상만 본문으로 보강하고 target_numeric_expression 하나만 12슬롯 구조화"
@@ -66,6 +66,19 @@ def _admission_route(claim: ClaimSchema) -> AdmissionRoute:
     if decision.route == "VERIFIABLE": return "KOSIS_PIPELINE_ELIGIBLE"
     if decision.route == "CONTEXT_REQUIRED": return "CONTEXT_REQUIRED"
     return "STRUCTURAL_HOLD"
+
+
+def _should_retry_with_context(claim: ClaimSchema) -> bool:
+    if _admission_route(claim) == "CONTEXT_REQUIRED":
+        return True
+    prefix = "MISSING_REQUIRED_SLOTS:"
+    reason = (claim.parse_reason or "").strip()
+    if not reason.startswith(prefix):
+        return False
+    missing_slots = {
+        slot.strip() for slot in reason[len(prefix):].split(",") if slot.strip()
+    }
+    return bool(missing_slots) and missing_slots <= {"time"}
 
 
 def _child_id(source_sentence: str, expression: str) -> str:
