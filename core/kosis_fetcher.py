@@ -72,6 +72,7 @@ class OfficialValueFetcher:
         as_of_unavailable = False
         publication_failed = False
         fetch_failed = False
+        api_result: KosisValue | None = None
         if self._prefer_api:
             api_result = self._fetch_api(cell, article_date)
             if api_result is not None and api_result.status == "SUCCESS":
@@ -98,6 +99,8 @@ class OfficialValueFetcher:
             else "FETCH_FAILED" if fetch_failed
             else "NO_DATA"
         )
+        if self._prefer_api and api_result is not None and api_result.status == status:
+            return api_result
         return KosisValue(None, status, "", "NONE")
 
     def fetch_many(
@@ -530,12 +533,31 @@ class OfficialValueFetcher:
             return KosisValue(None, "NO_DATA", digest, source)
         usable = filter_rows_as_of(matching, article_date) if article_date else matching
         if article_date and not usable:
-            return KosisValue(None, "AS_OF_UNAVAILABLE", digest, source)
-        value = usable[0].get("value", usable[0].get("DT"))
+            changed_at = _row_changed_at(matching[0])
+            return KosisValue(
+                None, "AS_OF_UNAVAILABLE", digest, source, publication,
+                value_last_changed_at=changed_at,
+            )
+        selected = usable[0]
+        value = selected.get("value", selected.get("DT"))
+        changed_at = _row_changed_at(selected)
         try:
-            return KosisValue(float(value), "SUCCESS", digest, source, publication)
+            return KosisValue(
+                float(value), "SUCCESS", digest, source, publication,
+                value_last_changed_at=changed_at,
+            )
         except (TypeError, ValueError):
             return KosisValue(None, "INVALID_RESPONSE", digest, source)
+
+
+def _row_changed_at(row: dict[str, Any]) -> date | None:
+    changed_text = row.get("LST_CHN_DE") or row.get("last_changed_at")
+    if not isinstance(changed_text, str):
+        return None
+    try:
+        return date.fromisoformat(changed_text)
+    except ValueError:
+        return None
 
 
 def _matches_cell(row: dict[str, Any], cell: EvidenceCellSchema, *, allow_missing_codes: bool = False) -> bool:

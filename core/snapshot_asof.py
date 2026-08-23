@@ -18,8 +18,17 @@ def filter_rows_as_of(rows: list[dict[str, Any]], article_date: date) -> list[di
                 published = date.fromisoformat(official_date)
             except ValueError:
                 continue
-            if published <= article_date:
-                accepted.append(row)
+            if published > article_date:
+                continue
+            raw_changed = row.get("LST_CHN_DE") or row.get("last_changed_at")
+            if isinstance(raw_changed, str):
+                try:
+                    changed = date.fromisoformat(raw_changed)
+                except ValueError:
+                    continue
+                if changed > article_date:
+                    continue
+            accepted.append(row)
             continue
         if row.get("official_release_verified") is True:
             continue

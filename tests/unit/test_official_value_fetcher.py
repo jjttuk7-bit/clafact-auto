@@ -37,6 +37,7 @@ def test_unified_fetcher_uses_api_rows_when_snapshot_has_no_value() -> None:
 
     assert result.status == "SUCCESS"
     assert result.source == "API"
+    assert result.value_last_changed_at == date(2025, 5, 30)
 
     assert len(result.snapshot_hash) == 64
 
@@ -180,7 +181,7 @@ def test_strict_live_asof_holds_without_verified_release_metadata() -> None:
     assert result.value is None
 
 
-def test_strict_live_asof_uses_dynamic_official_publication_lookup() -> None:
+def test_verified_release_does_not_accept_value_revised_after_article() -> None:
     rows = [{
         "TBL_ID": "DT", "ITM_ID": "T", "PRD_DE": "202505",
         "DT": "109.67", "LST_CHN_DE": "2025-07-01",
@@ -206,10 +207,10 @@ def test_strict_live_asof_uses_dynamic_official_publication_lookup() -> None:
         require_verified_release_metadata=True,
     ).fetch(cell(), article_date=date(2025, 6, 26))
 
-    assert result.status == "SUCCESS"
-    assert result.value == 109.67
+    assert result.status == "AS_OF_UNAVAILABLE"
+    assert result.value is None
     assert result.publication is not None
-    assert result.publication.source_url.startswith("https://kosis.kr/")
+    assert result.value_last_changed_at == date(2025, 7, 1)
 
 
 def test_dynamic_publication_after_article_date_is_not_accepted() -> None:

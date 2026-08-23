@@ -352,6 +352,14 @@ def test_annual_employment_release_search_uses_december_annual_title() -> None:
         "2024년 12월 및 연간 고용동향"
     ]
 
+
+def test_population_release_search_uses_official_population_board() -> None:
+    assert publication._press_release_board_id("인구동향조사") == "204"
+    assert publication._press_release_queries("인구동향조사", "2025-04") == [
+        "2025년 4월 인구동향"
+    ]
+
+
 def test_quarterly_employment_release_uses_last_month_official_release() -> None:
     explanation = (
         '[{"statsNm":"경제활동인구조사","pubDate":"조사대상월 익월 15일경",'

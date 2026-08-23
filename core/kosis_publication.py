@@ -35,7 +35,7 @@ _KOSTAT_PRESS_RELEASE_PARAMS = {
     "act": "list", "mid": "a10301010000", "keyField": "T",}
 _KOSTAT_RELEASE_PROFILES = {
     "경제활동인구조사": ("210", "고용동향"),
-    "인구동향조사": ("213", "인구동향"),
+    "인구동향조사": ("204", "인구동향"),
     "소비자물가조사": ("213", "소비자물가동향"),
 }
 _VIEW_LINK = re.compile(

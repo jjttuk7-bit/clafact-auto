@@ -30,6 +30,19 @@ def test_verified_official_release_date_overrides_earlier_last_changed_date() ->
     assert filter_rows_as_of([row], date(2025, 11, 4)) == [row]
 
 
+def test_verified_release_does_not_override_post_article_value_revision() -> None:
+    row = {
+        "PRD_DE": "202501",
+        "DT": "24099",
+        "LST_CHN_DE": "2026-02-23",
+        "official_published_at": "2025-03-26",
+        "official_release_verified": True,
+    }
+
+    assert filter_rows_as_of([row], date(2025, 3, 27)) == []
+    assert filter_rows_as_of([row], date(2026, 2, 23)) == [row]
+
+
 def test_official_release_date_overrides_goldset_adjudication() -> None:
     row = {
         "PRD_DE": "202510",
