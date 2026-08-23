@@ -1,0 +1,23 @@
+{
+  "child_parent_mapping_count": 17,
+  "completed_claim_count": 24,
+  "master_count": 1542,
+  "output_sha256": "839607dbed274359be7c02a6bc263ea34209b3bcd208298e1406c24c5c2c8965",
+  "remaining_by_primary_group": {
+    "CALCULATION": 48,
+    "CONTEXT": 685,
+    "COORDINATE": 199,
+    "HARD_GUARD": 222,
+    "OFFICIAL_PATH": 206,
+    "SEMANTIC": 100,
+    "VALUE_PUBLICATION": 58
+  },
+  "remaining_claim_count": 1518,
+  "results_roots": [
+    "D:\\projects\\services\\archived\\clafact-auto\\.worktrees\\final-completion-execution\\artifacts\\clafact_final_completion_202608"
+  ],
+  "unique_claim_count": 1542,
+  "unmapped_result_count": 0,
+  "update_record_count": 1824,
+  "updated_claim_count": 1542
+}
