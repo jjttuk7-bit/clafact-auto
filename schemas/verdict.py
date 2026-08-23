@@ -36,6 +36,20 @@ class OfficialValueProvenanceSchema(BaseModel):
     publication: OfficialPublicationProvenanceSchema | None = None
 
 
+class RecordComparisonSummarySchema(BaseModel):
+    """Auditable extrema calculation over one comparable official series."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    comparison_type: Literal["RECORD_HIGH", "RECORD_LOW"]
+    start_period: str
+    end_period: str
+    observed_count: int = Field(ge=1)
+    record_value: float
+    record_unit: str | None = None
+    record_periods: list[str] = Field(default_factory=list)
+
+
 class VerdictSchema(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -51,6 +65,7 @@ class VerdictSchema(BaseModel):
     official_value_provenance: list[OfficialValueProvenanceSchema] = Field(
         default_factory=list
     )
+    record_comparison: RecordComparisonSummarySchema | None = None
     execution_trace: PipelineTraceSchema | None = None
     dataset_version: str
     preprocess_version: str = "1.0"

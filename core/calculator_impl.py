@@ -14,6 +14,12 @@ def calculate(plan: CalculationPlan, values: list[float]) -> float:
         if (plan.operator or "DESC").upper() == "ASC":
             return float(1 + sum(value < values[0] for value in values[1:]))
         return float(1 + sum(value > values[0] for value in values[1:]))
+    if plan.calculation_type in {"RECORD_HIGH", "RECORD_LOW"}:
+        if not values:
+            raise ValueError("calculation requires at least 1 value")
+        if plan.calculation_type == "RECORD_HIGH":
+            return max(values)
+        return min(values)
     if plan.calculation_type == "SHARE":
         if len(values) < 2:
             raise ValueError("calculation requires at least 2 values")

@@ -24,6 +24,7 @@ from schemas.evidence import CalculationPlan, EvidenceCellSchema
 from schemas.verdict import (
     OfficialPublicationProvenanceSchema,
     OfficialValueProvenanceSchema,
+    RecordComparisonSummarySchema,
     VerdictSchema,
 )
 
@@ -151,25 +152,85 @@ def verify_claim_against_kosis(
             official_value_provenance=provenance,
         )
     recorder.calculation_completed()
-    if calculation_type == "DIFFERENCE" and _is_percentage_point_unit(claim.unit):
+    record_summary: RecordComparisonSummarySchema | None = None
+    if calculation_type in {"RECORD_HIGH", "RECORD_LOW"}:
+        verdict, record_summary = _record_verdict(
+            claim, calculation_type, evidence_cells, official_values, calculated, cell.unit
+        )
+    elif calculation_type == "DIFFERENCE" and _is_percentage_point_unit(claim.unit):
         claim_unit_value = _direction_checked_difference(calculated, claim)
     elif calculation_type in {"GROWTH_RATE", "SHARE"}:
         claim_unit_value = calculated
     else:
         claim_unit_value = convert_value(calculated, cell.unit or "", claim.unit or "")
-    verdict = make_verdict(
-        claim.claim_id, claim.value, official_values, claim_unit_value, tolerance=_claim_tolerance(claim)
-    )
+    if calculation_type not in {"RECORD_HIGH", "RECORD_LOW"}:
+        verdict = make_verdict(
+            claim.claim_id, claim.value, official_values, claim_unit_value, tolerance=_claim_tolerance(claim)
+        )
     recorder.verdict_completed()
     return attach_trace(
         verdict.model_copy(
             update={
                 "evidence_cells": evidence_cells,
                 "official_value_provenance": provenance,
+                "record_comparison": record_summary,
             }
         ),
         recorder.build(),
     )
+
+
+def _record_verdict(
+    claim: ClaimSchema,
+    calculation_type: str,
+    evidence_cells: list[EvidenceCellSchema],
+    official_values: list[float],
+    record_value: float,
+    official_unit: str | None,
+) -> tuple[VerdictSchema, RecordComparisonSummarySchema]:
+    source_unit = official_unit or ""
+    target_unit = claim.unit or ""
+    converted_record = convert_value(record_value, source_unit, target_unit)
+    converted_current = convert_value(official_values[-1], source_unit, target_unit)
+    tolerance = _claim_tolerance(claim)
+    source_matches_current = (
+        claim.value is not None
+        and abs(claim.value - converted_current) <= tolerance
+    )
+    current_is_record = abs(converted_current - converted_record) <= tolerance
+    confirmed = source_matches_current and current_is_record
+    base = make_verdict(
+        claim.claim_id,
+        claim.value,
+        official_values,
+        converted_record,
+        tolerance=tolerance,
+    )
+    verdict = base.model_copy(update={
+        "verdict": "MATCH" if confirmed else "MISMATCH",
+        "route_status": "AUTO",
+        "reason_code": "RECORD_CONFIRMED" if confirmed else "RECORD_NOT_CONFIRMED",
+        "explanation": (
+            "The current official value equals the official historical record."
+            if confirmed
+            else "The current official value does not equal the official historical record."
+        ),
+    })
+    record_periods = [
+        cell.prd_de
+        for cell, value in zip(evidence_cells, official_values, strict=True)
+        if abs(value - record_value) <= max(1e-12, abs(record_value) * 1e-12)
+    ]
+    summary = RecordComparisonSummarySchema(
+        comparison_type=calculation_type,
+        start_period=evidence_cells[0].prd_de,
+        end_period=evidence_cells[-1].prd_de,
+        observed_count=len(official_values),
+        record_value=record_value,
+        record_unit=official_unit,
+        record_periods=record_periods,
+    )
+    return verdict, summary
 
 
 
