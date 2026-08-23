@@ -28,6 +28,7 @@ class KosisValue:
     publication: PublicationEvidence | None = None
     source_url: str = ""
     retrieved_at: str = ""
+    value_last_changed_at: date | None = None
 
 
 def fetch_kosis_value(cell: EvidenceCellSchema, snapshot_path: Path) -> KosisValue:

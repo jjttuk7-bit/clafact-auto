@@ -368,6 +368,7 @@ def _value_provenance(
         content_hash=official_value.snapshot_hash,
         source_url=official_value.source_url,
         retrieved_at=official_value.retrieved_at,
+        value_last_changed_at=official_value.value_last_changed_at,
         publication=(
             OfficialPublicationProvenanceSchema(
                 status=publication.status,
@@ -378,6 +379,10 @@ def _value_provenance(
                 source_url=publication.source_url,
                 retrieved_at=publication.retrieved_at,
                 content_hash=publication.content_hash,
+                evidence_scope=publication.evidence_scope,
+                reference_period=publication.reference_period,
+                coverage_start_period=publication.coverage_start_period,
+                coverage_end_period=publication.coverage_end_period,
             )
             if publication is not None
             else None

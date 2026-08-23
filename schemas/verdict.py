@@ -21,6 +21,10 @@ class OfficialPublicationProvenanceSchema(BaseModel):
     publication_method_url: str | None = None
     source_url: str
     retrieved_at: str
+    evidence_scope: Literal["PERIOD", "CALCULATION_RANGE"] = "PERIOD"
+    reference_period: str | None = None
+    coverage_start_period: str | None = None
+    coverage_end_period: str | None = None
     content_hash: str
 
 class OfficialValueProvenanceSchema(BaseModel):
@@ -35,6 +39,7 @@ class OfficialValueProvenanceSchema(BaseModel):
     content_hash: str
     publication: OfficialPublicationProvenanceSchema | None = None
 
+    value_last_changed_at: date | None = None
 
 class RecordComparisonSummarySchema(BaseModel):
     """Auditable extrema calculation over one comparable official series."""

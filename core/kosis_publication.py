@@ -103,6 +103,10 @@ class PublicationEvidence:
     source_url: str = ""
     retrieved_at: str = ""
     content_hash: str = ""
+    evidence_scope: Literal["PERIOD", "CALCULATION_RANGE"] = "PERIOD"
+    reference_period: str | None = None
+    coverage_start_period: str | None = None
+    coverage_end_period: str | None = None
 
 
 class KosisPublicationLookup:
