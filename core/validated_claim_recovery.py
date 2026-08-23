@@ -54,6 +54,16 @@ def recover_validated_claim(
         return recovered.model_copy(update={"parse_status": "HOLD", "parse_reason": decision.reason_code})
 
     reason = (recovered.parse_reason or "").strip()
+    if reason == "MISSING_REQUIRED_SLOTS:time" and recovered.time:
+        candidate = recovered.model_copy(
+            update={"parse_status": "AUTO_OK", "parse_reason": None}
+        )
+        decision = assess_claim_contract(candidate)
+        if decision.status == "PASS":
+            return candidate
+        return candidate.model_copy(
+            update={"parse_status": "HOLD", "parse_reason": decision.reason_code}
+        )
     can_repair_difference = recovered.calculation == "DIFFERENCE" and reason.startswith("MISSING_REQUIRED_SLOTS:comparison")
     if reason not in _REVALIDATABLE_REASONS and not can_repair_difference:
         return claim

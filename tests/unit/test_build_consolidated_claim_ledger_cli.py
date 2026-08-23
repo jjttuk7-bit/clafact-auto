@@ -47,6 +47,7 @@ def test_cli_builds_one_row_and_summary(tmp_path: Path) -> None:
     assert payload["master_count"] == 1
     assert payload["updated_claim_count"] == 1
     assert payload["unmapped_result_count"] == 0
+    assert payload["remaining_by_current_group"] == {"CONTEXT": 1}
 
 
 def test_cli_refuses_existing_output_without_replace(tmp_path: Path) -> None:

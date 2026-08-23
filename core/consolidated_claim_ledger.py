@@ -29,6 +29,7 @@ EXTRA_HEADERS = (
     "최신기록시각",
     "반영된결과수",
     "남은작업",
+    "현재문제묶음",
 )
 
 
@@ -126,6 +127,7 @@ def consolidate_rows(
             "최신기록시각": current[0].recorded_at,
             "반영된결과수": str(len(history)),
             "남은작업": _remaining_work(row, status, reason, details["verdict"]),
+            "현재문제묶음": _current_issue_group(row, reason, stage),
         })
         row["실행횟수"] = str(max(int(row.get("실행횟수") or 0), len(history)))
     return copied
@@ -538,6 +540,56 @@ def _remaining_work(row: dict[str, str], status: str, reason: str, verdict: str)
     if status == "PASS":
         return str(row.get("다음경로") or row.get("다음실행단계") or "다음 단계 실행")
     return reason or str(row.get("다음실행단계") or "미분류")
+
+
+_REASON_ISSUE_GROUP = {
+    "CONTEXT_REQUIRED": "CONTEXT",
+    "MULTI_CLAIM_SPLIT_REQUIRED": "CONTEXT",
+    "STRUCTURAL_HOLD": "CONTEXT",
+    "KOSIS_CATALOG_UNAVAILABLE": "OFFICIAL_PATH",
+    "KOSIS_METADATA_UNAVAILABLE": "OFFICIAL_PATH",
+    "NO_HARD_GUARD_CANDIDATE": "HARD_GUARD",
+    "NO_EVIDENCE_COORDINATE_CANDIDATE": "COORDINATE",
+    "LOW_SEMANTIC_SCORE": "SEMANTIC",
+    "AMBIGUOUS_MARGIN": "SEMANTIC",
+    "CONCEPT_NOT_FOUND": "SEMANTIC",
+    "CALCULATION_EVIDENCE_PLAN_UNRESOLVED": "CALCULATION",
+    "CALCULATION_FAILED": "CALCULATION",
+    "FETCH_FAILED": "VALUE_PUBLICATION",
+    "AS_OF_UNAVAILABLE": "VALUE_PUBLICATION",
+    "PUBLICATION_FETCH_FAILED": "VALUE_PUBLICATION",
+}
+_STAGE_ISSUE_GROUP = {
+    "CLAIM_SPLIT": "CONTEXT",
+    "CLAIM_PARSE": "CONTEXT",
+    "SEMANTIC_MAPPING": "SEMANTIC",
+    "CATALOG_SEARCH": "OFFICIAL_PATH",
+    "KOSIS_METADATA": "OFFICIAL_PATH",
+    "HARD_GUARD": "HARD_GUARD",
+    "SEMANTIC_MATCH": "SEMANTIC",
+    "EVIDENCE_CELL": "COORDINATE",
+    "OFFICIAL_VALUE_FETCH": "VALUE_PUBLICATION",
+    "CALCULATION": "CALCULATION",
+}
+_ISSUE_PRIORITY = (
+    "CONTEXT", "OFFICIAL_PATH", "HARD_GUARD", "SEMANTIC",
+    "COORDINATE", "VALUE_PUBLICATION", "CALCULATION",
+)
+
+
+def _current_issue_group(row: dict[str, str], reason: str, stage: str) -> str:
+    groups = {
+        _REASON_ISSUE_GROUP[token]
+        for token in reason.split("|")
+        if token in _REASON_ISSUE_GROUP
+    }
+    for group in _ISSUE_PRIORITY:
+        if group in groups:
+            return group
+    for token in stage.split("|"):
+        if token in _STAGE_ISSUE_GROUP:
+            return _STAGE_ISSUE_GROUP[token]
+    return str(row.get("대표문제") or "UNCLASSIFIED")
 
 
 def _truth(value: object) -> bool:

@@ -6,6 +6,8 @@ import re
 
 def resolve_relative_time(c, article_date: date | None):
     v = (c.time or "").strip()
+    if not v:
+        return _resolve_source_previous_month(c, article_date)
     v = re.sub(r"\s*\(\s*1\s*[~～-]\s*3\s*월\s*\)\s*$", "", v)
     if v in {"올해", "금년"}:
         return _hold(c) if article_date is None else c.model_copy(update={"time": f"{article_date.year}년", "frequency": "년"})
@@ -57,6 +59,31 @@ def resolve_relative_time(c, article_date: date | None):
     if month == 0:
         year, month = year - 1, 12
     return c.model_copy(update={"time": f"{year}년 {month}월", "frequency": "월"})
+
+
+_BARE_MONTH = re.compile(
+    r"(?<![\d~～∼\-–])(?P<month>1[0-2]|[1-9])월(?!\s*\d{1,2}일)"
+)
+_MONTH_QUALIFIER = re.compile(
+    r"(?:(?:19|20)\d{2}년|작년|지난해|전년|올해|금년|지난)\s*$"
+)
+
+
+def _resolve_source_previous_month(c, article_date: date | None):
+    """Recover only a unique bare month equal to the article's previous month."""
+    if article_date is None:
+        return c
+    matches = list(_BARE_MONTH.finditer(c.source_sentence))
+    if len(matches) != 1:
+        return c
+    if _MONTH_QUALIFIER.search(c.source_sentence[: matches[0].start()]):
+        return c
+    month = int(matches[0]["month"])
+    previous_year = article_date.year if article_date.month > 1 else article_date.year - 1
+    previous_month = article_date.month - 1 if article_date.month > 1 else 12
+    if month != previous_month:
+        return c
+    return c.model_copy(update={"time": f"{previous_year}년 {month}월", "frequency": "월"})
 
 
 def _hold(c):

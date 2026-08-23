@@ -291,3 +291,20 @@ def test_multiple_children_are_complete_when_every_verdict_is_terminal() -> None
     row = consolidate_rows([_master("C1")], [direct, record])[0]
 
     assert row["남은작업"] == "완료"
+
+
+def test_latest_failure_moves_claim_to_current_issue_group() -> None:
+    update = replace(
+        _update(
+            "C1",
+            status="HOLD",
+            reason="NO_EVIDENCE_COORDINATE_CANDIDATE",
+        ),
+        stage="HARD_GUARD",
+        verdict="UNDETERMINED",
+    )
+
+    row = consolidate_rows([_master("C1")], [update])[0]
+
+    assert row["대표문제"] == "CONTEXT"
+    assert row["현재문제묶음"] == "COORDINATE"

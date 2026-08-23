@@ -58,7 +58,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     digest = hashlib.sha256(args.output_csv.read_bytes()).hexdigest()
     updated = [row for row in rows if row.get("반영된결과수")]
     remaining_by_group = Counter(
-        str(row.get("대표문제") or "UNCLASSIFIED")
+        str(row.get("현재문제묶음") or row.get("대표문제") or "UNCLASSIFIED")
         for row in rows
         if row.get("남은작업") != "완료"
     )
@@ -70,6 +70,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "completed_claim_count": sum(row.get("남은작업") == "완료" for row in rows),
         "remaining_claim_count": sum(row.get("남은작업") != "완료" for row in rows),
         "remaining_by_primary_group": dict(sorted(remaining_by_group.items())),
+        "remaining_by_current_group": dict(sorted(remaining_by_group.items())),
         "child_parent_mapping_count": len(child_parent),
         "unmapped_result_count": 0,
         "output_sha256": digest,

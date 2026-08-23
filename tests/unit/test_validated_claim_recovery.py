@@ -237,3 +237,50 @@ def test_does_not_accept_unsupported_context_basis() -> None:
     )
 
     assert recovered.calculation == "DIRECT_VALUE"
+
+
+def _missing_month_claim(*, value: float = 2.2, source: str = "6월 소비자물가 상승률은 2.2%였다.") -> ClaimSchema:
+    return ClaimSchema(
+        claim_id="previous-month",
+        source_sentence=source,
+        indicator="소비자물가 상승률",
+        value=value,
+        unit="%",
+        time=None,
+        calculation="DIRECT_VALUE",
+        parse_status="HOLD",
+        parse_reason="MISSING_REQUIRED_SLOTS:time",
+    )
+
+
+def test_readmits_source_grounded_claim_after_safe_previous_month_recovery() -> None:
+    recovered = recover_validated_claim(
+        _missing_month_claim(),
+        date(2025, 7, 2),
+    )
+
+    assert recovered.time == "2025년 6월"
+    assert recovered.frequency == "월"
+    assert recovered.parse_status == "AUTO_OK"
+    assert recovered.parse_reason is None
+
+
+def test_previous_month_recovery_still_requires_target_value_grounding() -> None:
+    recovered = recover_validated_claim(
+        _missing_month_claim(value=2.3),
+        date(2025, 7, 2),
+    )
+
+    assert recovered.parse_status == "HOLD"
+    assert recovered.parse_reason == "TARGET_VALUE_NOT_IN_SOURCE_SENTENCE"
+
+
+def test_non_previous_month_remains_held() -> None:
+    recovered = recover_validated_claim(
+        _missing_month_claim(source="4월 소비자물가 상승률은 2.2%였다."),
+        date(2025, 7, 2),
+    )
+
+    assert recovered.time is None
+    assert recovered.parse_status == "HOLD"
+    assert recovered.parse_reason == "MISSING_REQUIRED_SLOTS:time"
