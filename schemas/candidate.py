@@ -5,6 +5,13 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class KosisPeriodRangeSchema(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    start_period: str | None = None
+    end_period: str | None = None
+
+
 class KosisCandidateSchema(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -22,6 +29,7 @@ class KosisCandidateSchema(BaseModel):
     frequency: str | None = None
     start_period: str | None = None
     end_period: str | None = None
+    period_ranges: dict[str, KosisPeriodRangeSchema] = Field(default_factory=dict)
     source_stat_id: str | None = None
     source_name: str | None = None
     metadata_status: str
