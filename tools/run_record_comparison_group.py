@@ -31,6 +31,8 @@ CSV_FIELDS = (
     "requested_period_range", "requested_period_count", "observed_count",
     "record_value", "record_unit", "record_periods",
     "source_urls", "response_hashes", "official_api_verified",
+    "publication_evidence_scope", "publication_reference_period",
+    "publication_coverage", "value_last_changed_dates",
     "official_trace_json", "stage_results_json",
 )
 
@@ -139,6 +141,23 @@ def _csv_row(row: dict[str, Any]) -> dict[str, str]:
     hashes = _unique(str(
         item.get("content_hash") or item.get("response_hash") or item.get("snapshot_hash") or ""
     ) for item in provenance)
+    publications = [_dict(item.get("publication")) for item in provenance]
+    publication_scopes = _unique(
+        str(item.get("evidence_scope") or "") for item in publications
+    )
+    publication_references = _unique(
+        str(item.get("reference_period") or "") for item in publications
+    )
+    publication_coverages = _unique(
+        f"{item.get('coverage_start_period')}~{item.get('coverage_end_period')}"
+        for item in publications
+        if item.get("coverage_start_period") and item.get("coverage_end_period")
+    )
+    value_last_changed_dates = [
+        str(item.get("value_last_changed_at") or "")
+        for item in provenance
+        if item.get("value_last_changed_at")
+    ]
     api_verified = (
         bool(evidence)
         and len(provenance) == len(evidence)
@@ -171,6 +190,10 @@ def _csv_row(row: dict[str, Any]) -> dict[str, str]:
         "source_urls": "|".join(source_urls),
         "response_hashes": "|".join(hashes),
         "official_api_verified": "true" if api_verified else "false",
+        "publication_evidence_scope": "|".join(publication_scopes),
+        "publication_reference_period": "|".join(publication_references),
+        "publication_coverage": "|".join(publication_coverages),
+        "value_last_changed_dates": "|".join(value_last_changed_dates),
         "official_trace_json": json.dumps(verdict.get("execution_trace") or {}, ensure_ascii=False, sort_keys=True),
         "stage_results_json": json.dumps(row.get("stage_results") or [], ensure_ascii=False, sort_keys=True),
     }
