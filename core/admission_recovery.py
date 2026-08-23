@@ -10,6 +10,7 @@ from typing import Any, Literal, Protocol
 from core.claim_admissibility import classify_admissibility
 from core.claim_parser import StructuredClaimExtractor, parse_claim
 from core.claim_splitter import split_complex_claim
+from core.validated_claim_recovery import recover_validated_claim
 from schemas.claim import ClaimSchema
 from schemas.claim_registry import ClaimRegistryRecord
 
@@ -96,12 +97,26 @@ def _recover_source(
     official_service: OfficialEvidenceResolver,
 ) -> RecoveryEntry:
     parsed = parse_claim(source, extractor, article_published_at=parent.article_published_at)
+    grounding_text = parsed.source_sentence
+    audit_updates: dict[str, Any] | None = None
     if action == "CONTEXT_REPARSE":
         parsed = parsed.model_copy(update={
             "claim_id": parent.claim.claim_id,
             "source_sentence": parent.claim.source_sentence,
         })
-    return _recover_claim(parent, parsed, action=action, official_service=official_service)
+        grounding_text = parent.claim.source_sentence
+        audit_updates = {
+            "article_context_used": True,
+            "context_enriched_slots": _changed_slots(parent.claim, parsed),
+        }
+    parsed = recover_validated_claim(parsed, parent.article_published_at, source_value_text=grounding_text)
+    return _recover_claim(
+        parent,
+        parsed,
+        action=action,
+        official_service=official_service,
+        audit_updates=audit_updates,
+    )
 
 
 def _recover_claim(
@@ -110,9 +125,17 @@ def _recover_claim(
     *,
     action: RecoveryAction,
     official_service: OfficialEvidenceResolver,
+    audit_updates: dict[str, Any] | None = None,
 ) -> RecoveryEntry:
+    claim = recover_validated_claim(claim, parent.article_published_at)
     route = _admission_route(claim)
-    derived = _derived_record(parent, claim, action=action, admission_route=route)
+    derived = _derived_record(
+        parent,
+        claim,
+        action=action,
+        admission_route=route,
+        audit_updates=audit_updates,
+    )
     resolution = (
         official_service.resolve(claim, article_date=parent.article_published_at)
         if route == "KOSIS_PIPELINE_ELIGIBLE" and parent.article_published_at is not None
@@ -139,18 +162,35 @@ def _derived_record(
     *,
     action: RecoveryAction,
     admission_route: AdmissionRoute,
+    audit_updates: dict[str, Any] | None = None,
 ) -> ClaimRegistryRecord:
+    enrichment = {
+        "stage": "ADMISSION_RECOVERY",
+        "parent_claim_id": parent.claim.claim_id,
+        "recovery_action": action,
+        "admission_route": admission_route,
+        "source_ref": parent.source_ref,
+    }
+    enrichment.update(audit_updates or {})
     return parent.model_copy(update={
         "source_ref": "admission_recovery_v1",
         "claim": claim,
-        "slot_enrichment": {
-            "stage": "ADMISSION_RECOVERY",
-            "parent_claim_id": parent.claim.claim_id,
-            "recovery_action": action,
-            "admission_route": admission_route,
-            "source_ref": parent.source_ref,
-        },
+        "slot_enrichment": enrichment,
     })
+
+
+def _changed_slots(before: ClaimSchema, after: ClaimSchema) -> list[str]:
+    slot_names = (
+        "indicator", "value", "unit", "time", "frequency", "region",
+        "population", "dimension", "comparison", "calculation", "condition",
+        "source_hint",
+    )
+    return [
+        name
+        for name in slot_names
+        if getattr(before, name) != getattr(after, name)
+        and getattr(after, name) not in (None, "")
+    ]
 
 
 def _entry_for_unrecovered(record: ClaimRegistryRecord) -> RecoveryEntry:

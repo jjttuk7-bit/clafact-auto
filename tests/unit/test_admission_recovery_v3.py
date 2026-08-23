@@ -71,3 +71,49 @@ def test_v3_creates_one_12_slot_child_per_statistical_target_and_reenters_offici
     assert len({entry.record.claim.claim_id for entry in result.entries}) == 2
     assert all(entry.record.claim.source_sentence == source for entry in result.entries)
     assert len(service.claims) == 2
+
+
+class _IndexExtractor:
+    def extract(self, source_sentence: str, *, article_published_at=None) -> ClaimSchema:
+        expression = json.loads(source_sentence)["target_numeric_expression"]
+        is_index = expression.startswith("116.31")
+        return ClaimSchema(
+            claim_id="temporary",
+            source_sentence=source_sentence,
+            indicator="\uc18c\ube44\uc790\ubb3c\uac00\uc9c0\uc218" if is_index else "\uc18c\ube44\uc790\ubb3c\uac00 \uc0c1\uc2b9\ub960",
+            value=116.31 if is_index else 2.2,
+            unit="2020=100" if is_index else "%",
+            time="2025\ub144 1\uc6d4",
+            frequency="\uc6d4",
+            calculation="DIRECT_VALUE",
+            parse_status="AUTO_OK",
+        )
+
+
+def test_v3_preserves_index_basis_and_admits_the_index_child() -> None:
+    source = (
+        "\uc9c0\ub09c\ub2ec \uc18c\ube44\uc790\ubb3c\uac00\uc9c0\uc218\ub294 116.31(2020\ub144=100)\ub85c "
+        "\uc791\ub144 \ub3d9\uc6d4 \ub300\ube44 2.2% \uc62c\ub790\ub2e4."
+    )
+    record = ClaimRegistryRecord(
+        article_id="A2",
+        sentence_id="1",
+        article_published_at=date(2025, 2, 1),
+        source_ref="registry",
+        claim=ClaimSchema(
+            claim_id="parent",
+            source_sentence=source,
+            parse_status="HOLD",
+            parse_reason="MULTI_CLAIM_SPLIT_REQUIRED",
+        ),
+    )
+    service = _Service()
+
+    result = recover_registry_record_v3(
+        record, extractor=_IndexExtractor(), official_service=service
+    )
+
+    assert result.entries[0].record.slot_enrichment["target_numeric_expression"] == "116.31(2020\ub144=100)"
+    assert result.entries[0].record.claim.unit == "2020=100"
+    assert result.entries[0].admission_route == "KOSIS_PIPELINE_ELIGIBLE"
+    assert len(service.claims) == 2

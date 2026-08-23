@@ -9,7 +9,7 @@ class _Extractor:
     def extract(self, source_sentence: str, *, article_published_at: date | None = None) -> ClaimSchema:
         return ClaimSchema(
             claim_id="placeholder", source_sentence=source_sentence, indicator="고용률",
-            value=60, unit="%", time="2024년", frequency="년",
+            value=61 if "61%" in source_sentence else 60, unit="%", time="2024년", frequency="년",
             calculation="DIRECT_VALUE", parse_status="AUTO_OK",
         )
 

@@ -15,4 +15,4 @@ def test_targeted_splitter_handles_index_level_and_growth_rate() -> None:
         "지난달 소비자물가지수는 116.31(2020년=100)로 작년 동월 대비 2.2% 올랐다."
     )
 
-    assert [target.expression for target in targets] == ["116.31", "2.2%"]
+    assert [target.expression for target in targets] == ["116.31(2020년=100)", "2.2%"]

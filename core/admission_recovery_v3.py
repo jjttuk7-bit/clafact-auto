@@ -12,6 +12,7 @@ from core.claim_admissibility import classify_admissibility
 from core.claim_parser import StructuredClaimExtractor, parse_claim
 from core.operational_error import run_operational_stage
 from core.targeted_claim_splitter import build_targeted_claim_inputs
+from core.validated_claim_recovery import recover_validated_claim
 from schemas.claim import ClaimSchema
 from schemas.claim_registry import ClaimRegistryRecord
 
@@ -44,6 +45,7 @@ def recover_registry_record_v3(record: ClaimRegistryRecord, *, extractor: Struct
             context_used = True
         context_enriched_slots = _changed_slots(parsed_before_context, parsed) if context_used else []
         parsed = parsed.model_copy(update={"claim_id": _child_id(record.claim.source_sentence, target.expression), "source_sentence": record.claim.source_sentence})
+        parsed = recover_validated_claim(parsed, record.article_published_at, source_value_text=target.expression)
         route = _admission_route(parsed)
         derived = record.model_copy(update={"claim": parsed, "source_ref": "admission_recovery_v3", "slot_enrichment": {
             "stage": "TARGETED_MULTI_CLAIM_SPLIT", "parent_claim_id": record.claim.claim_id,

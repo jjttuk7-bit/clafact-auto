@@ -19,6 +19,7 @@ from core.canonical_pipeline import create_claim_extractor
 from core.claim_registry_loader import load_claim_registry
 from core.issue_group_executor import (
     ContextGroupExecutor,
+    revalidate_saved_context_result,
     normalize_context_result,
     write_context_child_csv,
 )
@@ -60,9 +61,22 @@ def main(argv: Sequence[str] | None = None) -> int:
             write_issue_ledgers(issues, args.output_dir)
         saved_results = _load_jsonl(args.results_path)
         if group is IssueGroup.CONTEXT:
-            saved_results = [
-                normalize_context_result(result) for result in saved_results
-            ]
+            if args.registry_path is not None:
+                registry = load_claim_registry(args.registry_path)
+                if registry.errors:
+                    parser.error(f"SOURCE_REGISTRY_ERRORS:{len(registry.errors)}")
+                dates = {
+                    record.claim.claim_id: record.article_published_at
+                    for record in registry.records
+                }
+                saved_results = [
+                    revalidate_saved_context_result(
+                        result, dates.get(str(result.get("claim_id") or ""))
+                    )
+                    for result in saved_results
+                ]
+            else:
+                saved_results = [normalize_context_result(result) for result in saved_results]
         by_id = {
             str(result.get("claim_id") or ""): result
             for result in saved_results
@@ -97,6 +111,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                 saved_results,
                 args.output_dir / "runs" / f"{args.run_id}_children.csv",
             )
+        _write_jsonl(
+            args.output_dir / "runs" / f"{args.run_id}.jsonl",
+            validated_results,
+        )
         print(
             json.dumps(
                 {
@@ -193,6 +211,7 @@ def _parser() -> argparse.ArgumentParser:
     record_results.add_argument("--run-id", required=True)
     record_results.add_argument("--code-version", default="issue-group-harness-v1")
     record_results.add_argument("--data-version")
+    record_results.add_argument("--registry-path", type=Path)
     return parser
 
 

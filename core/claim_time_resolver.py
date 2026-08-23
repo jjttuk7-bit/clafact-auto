@@ -36,13 +36,13 @@ def resolve_relative_time(c, article_date: date | None):
         explicit_target = re.search(r"(?:지난|올해|금년)\s*([1-4])분기", c.source_sentence)
         quarter = int(explicit_target.group(1)) if explicit_target else (article_date.month - 1) // 3 + 1
         return c.model_copy(update={"time": f"{article_date.year - 1}년 {quarter}분기", "frequency": "분기"})
-    if v not in {"지난달", "전월", "이달", "당월", "작년", "전년"}:
+    if v not in {"지난달", "전월", "이달", "당월", "지난해", "작년", "전년"}:
         return c
     if article_date is None:
         return _hold(c)
     if v in {"이달", "당월"}:
         return c.model_copy(update={"time": f"{article_date.year}년 {article_date.month}월", "frequency": "월"})
-    if v in {"작년", "전년"}:
+    if v in {"지난해", "작년", "전년"}:
         return c.model_copy(update={"time": f"{article_date.year - 1}년", "frequency": "년"})
     year, month = article_date.year, article_date.month - 1
     if month == 0:

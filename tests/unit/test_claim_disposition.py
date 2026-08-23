@@ -112,3 +112,51 @@ def test_approximate_percent_claim_is_not_excluded_as_non_numeric() -> None:
     )
 
     assert result.disposition == "SOURCE_CONTEXT_INSUFFICIENT"
+
+
+def test_complete_slots_do_not_override_value_missing_from_target_sentence() -> None:
+    result = classify_claim_disposition(
+        _claim(
+            "\uc9c0\ub09c\ud574 \uc5ed\ub300 \ucd5c\ub300 \uc218\ucd9c \uc2e4\uc801\uacfc \ubb34\uc5ed\uc218\uc9c0 \ud751\uc790\ub97c \uae30\ub85d\ud588\ub2e4.",
+            indicator="\uc218\ucd9c \uc2e4\uc801",
+            value=6838,
+            unit="\uc5b5 \ub2ec\ub7ec",
+            time="2024\ub144",
+            frequency="\ub144",
+            calculation="DIRECT_VALUE",
+            parse_status="HOLD",
+            parse_reason="TARGET_VALUE_NOT_IN_SOURCE_SENTENCE",
+        )
+    )
+
+    assert result.disposition == "SOURCE_CONTEXT_INSUFFICIENT"
+    assert result.reason_code == "TARGET_VALUE_NOT_IN_SOURCE_SENTENCE"
+    assert result.next_route == "CONTEXT_REVIEW"
+
+
+def test_complete_slots_do_not_override_unresolved_time_reason() -> None:
+    result = classify_claim_disposition(
+        _claim(
+            "18.2% increased during the same period.",
+            parse_status="HOLD",
+            parse_reason="RELATIVE_TIME_UNRESOLVED",
+        )
+    )
+
+    assert result.disposition == "SOURCE_CONTEXT_INSUFFICIENT"
+    assert result.reason_code == "RELATIVE_TIME_UNRESOLVED"
+    assert result.next_route == "CONTEXT_REVIEW"
+
+
+def test_complete_slots_do_not_override_record_comparison_split_reason() -> None:
+    result = classify_claim_disposition(
+        _claim(
+            "The value was 1419 and set a record high.",
+            parse_status="HOLD",
+            parse_reason="RECORD_COMPARISON_REQUIRES_SEPARATE_CLAIM",
+        )
+    )
+
+    assert result.disposition == "SOURCE_CONTEXT_INSUFFICIENT"
+    assert result.reason_code == "RECORD_COMPARISON_REQUIRES_SEPARATE_CLAIM"
+    assert result.next_route == "CONTEXT_REVIEW"

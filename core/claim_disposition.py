@@ -61,6 +61,19 @@ def classify_claim_disposition(claim: ClaimSchema) -> ClaimDispositionDecision:
             "PRE_VERIFICATION_EXCLUDE",
         )
 
+    unresolved_reason = (claim.parse_reason or "").strip()
+    if unresolved_reason in {
+        "TARGET_VALUE_NOT_IN_SOURCE_SENTENCE",
+        "RELATIVE_TIME_UNRESOLVED",
+        "RECORD_COMPARISON_REQUIRES_SEPARATE_CLAIM",
+        "CLAIM_COMPARISON_UNSUPPORTED",
+    }:
+        return ClaimDispositionDecision(
+            "SOURCE_CONTEXT_INSUFFICIENT",
+            unresolved_reason,
+            "CONTEXT_REVIEW",
+        )
+
     audit = audit_claim_slots(claim)
     if audit.eligible_for_official_search:
         return ClaimDispositionDecision(

@@ -4,15 +4,18 @@ from __future__ import annotations
 
 import csv
 from collections import defaultdict
+from datetime import date
 import json
 from pathlib import Path
 from typing import Any, Iterable
 
 from core.admission_recovery_v3 import recover_registry_record_v3
+from core.claim_admissibility import classify_admissibility
 from core.claim_disposition import classify_claim_disposition
 from core.claim_parser import StructuredClaimExtractor
 from core.issue_group_harness import ClaimIssueRecord
 from core.slot_audit import audit_claim_slots
+from core.validated_claim_recovery import recover_validated_claim
 from schemas.claim import ClaimSchema
 from schemas.claim_registry import ClaimRegistryRecord
 
@@ -239,6 +242,64 @@ def _csv_value(value: object) -> object:
     if value is None or isinstance(value, (str, int, float, bool)):
         return "" if value is None else value
     return json.dumps(value, ensure_ascii=False, sort_keys=True)
+
+
+def revalidate_saved_context_result(
+    result: dict[str, Any],
+    article_published_at: date | None,
+) -> dict[str, Any]:
+    """Apply deterministic admission repair to saved Structured Output only."""
+
+    updated = dict(result)
+    children: list[dict[str, Any]] = []
+    for raw_child in updated.get("children") or []:
+        if not isinstance(raw_child, dict):
+            continue
+        child = dict(raw_child)
+        raw_claim = child.get("claim")
+        if not isinstance(raw_claim, dict):
+            children.append(child)
+            continue
+        before = ClaimSchema.model_validate(raw_claim)
+        recovery_audit = (
+            dict(child.get("recovery_audit"))
+            if isinstance(child.get("recovery_audit"), dict)
+            else {}
+        )
+        grounding_text = recovery_audit.get("target_numeric_expression") or before.source_sentence
+        recovered = recover_validated_claim(
+            before, article_published_at, source_value_text=str(grounding_text)
+        )
+        audit = audit_claim_slots(recovered)
+        admission = classify_admissibility(
+            recovered.parse_reason,
+            "AUTO" if recovered.parse_status == "AUTO_OK" else "HOLD",
+        )
+        route = {
+            "VERIFIABLE": "KOSIS_PIPELINE_ELIGIBLE",
+            "CONTEXT_REQUIRED": "CONTEXT_REQUIRED",
+            "MULTI_CLAIM_SPLIT_REQUIRED": "MULTI_CLAIM_SPLIT_REQUIRED",
+            "STRUCTURAL_HOLD": "STRUCTURAL_HOLD",
+        }[admission.route]
+        decision = classify_claim_disposition(recovered)
+        recovery_audit.update(
+            offline_revalidated=True,
+            previous_admission_route=child.get("admission_route"),
+            admission_route=route,
+        )
+        child.update(
+            claim=recovered.model_dump(mode="json"),
+            admission_route=route,
+            twelve_slot_complete=audit.eligible_for_official_search,
+            slot_audit=audit.model_dump(mode="json"),
+            recovery_audit=recovery_audit,
+            disposition=decision.disposition,
+            disposition_reason=decision.reason_code,
+            next_route=decision.next_route,
+        )
+        children.append(child)
+    updated["children"] = children
+    return normalize_context_result(updated)
 
 
 def normalize_context_result(result: dict[str, Any]) -> dict[str, Any]:
