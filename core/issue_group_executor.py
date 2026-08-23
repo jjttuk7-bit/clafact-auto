@@ -110,6 +110,27 @@ class _AdmissionOnlyResolver:
         return None
 
 
+def normalize_context_result(result: dict[str, Any]) -> dict[str, Any]:
+    """Recompute parent admission status from saved child results only."""
+
+    normalized = dict(result)
+    children = [
+        child
+        for child in normalized.get("children") or []
+        if isinstance(child, dict)
+    ]
+    admitted = bool(children) and all(
+        child.get("admission_route") == "KOSIS_PIPELINE_ELIGIBLE"
+        and bool(child.get("twelve_slot_complete"))
+        for child in children
+    )
+    if admitted:
+        normalized.update(status="PASS", reason_code="KOSIS_PIPELINE_ELIGIBLE")
+    elif children:
+        normalized.update(status="HUMAN_REVIEW", reason_code=_remaining_reason(children))
+    return normalized
+
+
 def _remaining_reason(children: list[dict[str, Any]]) -> str:
     routes = {
         str(child.get("admission_route") or "")

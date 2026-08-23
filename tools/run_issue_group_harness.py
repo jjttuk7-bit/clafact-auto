@@ -17,7 +17,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from config.settings import Settings
 from core.canonical_pipeline import create_claim_extractor
 from core.claim_registry_loader import load_claim_registry
-from core.issue_group_executor import ContextGroupExecutor
+from core.issue_group_executor import ContextGroupExecutor, normalize_context_result
 from core.issue_group_harness import (
     IssueGroup,
     build_issue_registry,
@@ -55,6 +55,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         if not (args.output_dir / "claim_issue_master.csv").is_file():
             write_issue_ledgers(issues, args.output_dir)
         saved_results = _load_jsonl(args.results_path)
+        if group is IssueGroup.CONTEXT:
+            saved_results = [
+                normalize_context_result(result) for result in saved_results
+            ]
         by_id = {
             str(result.get("claim_id") or ""): result
             for result in saved_results
