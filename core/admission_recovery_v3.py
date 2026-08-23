@@ -9,13 +9,20 @@ from typing import cast
 from core.admission_recovery import AdmissionRoute, OfficialEvidenceResolver, RecoveryAction, RecoveryEntry, RecoveryResult
 from core.admission_recovery_v2 import recover_registry_record_v2
 from core.claim_admissibility import classify_admissibility
+from core.claim_group_recovery import build_grouping_hold
+from core.claim_group_validator import validate_grouping_plan
 from core.claim_parser import StructuredClaimExtractor, parse_claim
 from core.operational_error import run_operational_stage
 from core.record_comparison_splitter import split_record_comparison_claim
-from core.targeted_claim_splitter import build_targeted_claim_inputs
+from core.targeted_claim_splitter import (
+    TargetedClaimInput,
+    build_targeted_claim_inputs,
+    discover_numeric_mentions,
+)
 from core.validated_claim_recovery import recover_validated_claim
 from schemas.claim import ClaimSchema
 from schemas.claim_registry import ClaimRegistryRecord
+from schemas.claim_group import ClaimGroupingPlan
 
 
 class _StaticExtractor:
@@ -28,11 +35,54 @@ def recover_registry_record_v3(record: ClaimRegistryRecord, *, extractor: Struct
     record_children = split_record_comparison_claim(record.claim)
     if len(record_children) > 1:
         return _recover_record_children(record, record_children, official_service)
-    targets = build_targeted_claim_inputs(record.claim.source_sentence)
+    mentions = discover_numeric_mentions(record.claim.source_sentence)
+    grouper = getattr(extractor, "group_claims", None)
+    target_roles: list[dict[str, str]]
+    if len(mentions) >= 2 and callable(grouper):
+        plan = run_operational_stage(
+            "CLAIM_SPLIT",
+            lambda: grouper(record.claim.source_sentence, mentions),
+        )
+        if not isinstance(plan, ClaimGroupingPlan):
+            raise TypeError("Structured grouper must return ClaimGroupingPlan")
+        validation = validate_grouping_plan(mentions, plan)
+        if not validation.valid:
+            return build_grouping_hold(
+                record,
+                mentions=mentions,
+                reason_code=validation.reason_code or "GROUPING_AMBIGUOUS",
+            )
+        targets = []
+        target_roles = []
+        for group in validation.groups:
+            numeric_roles = dict(group.numeric_roles)
+            payload = {
+                "source_sentence": record.claim.source_sentence,
+                "target_numeric_expression": group.main_expression,
+                "supporting_numeric_expressions": [
+                    {"expression": expression, "role": role}
+                    for expression, role in group.numeric_roles
+                    if role != "MAIN_VALUE"
+                ],
+                "instruction": (
+                    "중심 수치와 같은 Claim에 속한 비교·증감 수치를 함께 사용해 "
+                    "독립 Claim 하나만 12슬롯으로 구조화"
+                ),
+            }
+            targets.append(
+                TargetedClaimInput(
+                    group.main_expression,
+                    json.dumps(payload, ensure_ascii=False),
+                )
+            )
+            target_roles.append(numeric_roles)
+    else:
+        targets = build_targeted_claim_inputs(record.claim.source_sentence)
+        target_roles = [{} for _ in targets]
     if not targets:
         return recover_registry_record_v2(record, extractor=extractor, official_service=official_service, article_context=article_context)
     entries: list[RecoveryEntry] = []
-    for target in targets:
+    for target, numeric_roles in zip(targets, target_roles, strict=True):
         parsed = _parse_target(target.expression, target.extractor_input, extractor, record)
         parsed_before_context = parsed
         context_used = False
@@ -54,6 +104,7 @@ def recover_registry_record_v3(record: ClaimRegistryRecord, *, extractor: Struct
         derived = record.model_copy(update={"claim": parsed, "source_ref": "admission_recovery_v3", "slot_enrichment": {
             "stage": "TARGETED_MULTI_CLAIM_SPLIT", "parent_claim_id": record.claim.claim_id,
             "target_numeric_expression": target.expression, "admission_route": route,
+            "numeric_roles": numeric_roles,
             "source_ref": record.source_ref, "article_context_used": context_used,
             "context_enriched_slots": context_enriched_slots,
         }})
