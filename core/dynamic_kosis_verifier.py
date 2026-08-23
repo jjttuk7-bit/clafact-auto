@@ -113,15 +113,21 @@ def verify_claim_against_kosis(
     official_values: list[float] = []
     provenance: list[OfficialValueProvenanceSchema] = []
     batch_fetch = getattr(official_fetcher, "fetch_many", None)
+    record_fetch = getattr(official_fetcher, "fetch_record_history", None)
     try:
-        fetched_values = (
-            batch_fetch(evidence_cells, article_date=article_date)
-            if callable(batch_fetch)
-            else [
+        if calculation_type in {"RECORD_HIGH", "RECORD_LOW"} and callable(record_fetch):
+            fetched_values = record_fetch(
+                evidence_cells, article_date=article_date
+            )
+        elif callable(batch_fetch):
+            fetched_values = batch_fetch(
+                evidence_cells, article_date=article_date
+            )
+        else:
+            fetched_values = [
                 official_fetcher.fetch(item, article_date=article_date)
                 for item in evidence_cells
             ]
-        )
         if len(fetched_values) != len(evidence_cells):
             raise ValueError("KOSIS_VALUE_RESPONSE_COUNT_MISMATCH")
     except Exception:
