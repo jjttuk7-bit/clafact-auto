@@ -182,3 +182,48 @@ def test_percentage_point_difference_fetches_two_official_periods_and_matches_de
     assert verdict.verdict == "MATCH"
     assert verdict.claim_value == 0.6
     assert abs((verdict.calculated_value or 0) - 0.6) < 1e-9
+
+@pytest.mark.parametrize(
+    ("direction", "expected_verdict"),
+    [("DECREASE", "MATCH"), ("INCREASE", "MISMATCH")],
+)
+def test_count_difference_checks_direction_and_matches_reported_magnitude(
+    direction: str, expected_verdict: str,
+) -> None:
+    periods: list[str] = []
+
+    class Fetcher:
+        def fetch(self, cell, *, article_date):
+            periods.append(cell.prd_de)
+            return KosisValue(
+                {"2024-12": 4376.3, "2023-12": 4395.3}[cell.prd_de],
+                "SUCCESS", "test", "API",
+            )
+
+    claim = ClaimSchema(
+        claim_id=f"employment-{direction.casefold()}",
+        source_sentence=f"임시근로자는 전년 같은 달보다 1만9000명 {'감소' if direction == 'DECREASE' else '증가'}했다.",
+        indicator="취업자 수", value=19000, unit="명", time="2024년 12월", frequency="월",
+        comparison={"type": "YEAR_OVER_YEAR", "operand_source": "OFFICIAL_EVIDENCE"},
+        calculation="DIFFERENCE", condition={"direction": direction}, parse_status="AUTO_OK",
+    )
+    candidate = KosisCandidateSchema(
+        org_id="101", tbl_id="DT_EMPLOYMENT", tbl_name="종사상지위별 취업자",
+        core_item_ids=["T30"], core_item_names=["취업자 수"],
+        dimension_ids=[], dimension_names=[], dimension_members={}, dimension_member_codes={},
+        unit_names=["천명"], item_units={"T30": "천명"}, frequency="월",
+        start_period="2000.01", end_period="2025.12",
+        metadata_status="OFFICIAL_METADATA_READY",
+    )
+    concept = StandardConceptSchema(
+        concept_id="employment", canonical_name="취업자 수",
+        standard_key="employment", matched_alias="취업자 수", status="MATCHED",
+    )
+
+    verdict = verify_claim_against_kosis(
+        claim, concept, [candidate], article_date=date(2025, 1, 15), official_fetcher=Fetcher(),
+    )
+
+    assert periods == ["2024-12", "2023-12"]
+    assert verdict.verdict == expected_verdict
+    assert abs(abs(verdict.calculated_value or 0) - 19000) < 1e-9

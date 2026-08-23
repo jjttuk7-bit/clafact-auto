@@ -1,0 +1,80 @@
+{
+  "admission_route_counts": {
+    "KOSIS_PIPELINE_ELIGIBLE": 2
+  },
+  "all_claims_terminal": true,
+  "checkpoint_parent_count": 2,
+  "derived_claims": 2,
+  "input_coverage_complete": true,
+  "input_registry_records": 2,
+  "official_api_counts": {
+    "api_provenance_cells": 4,
+    "api_provenance_claims": 2,
+    "catalog_query_attempted": 7,
+    "catalog_query_empty": 0,
+    "catalog_query_failed": 0,
+    "catalog_query_succeeded_nonempty": 7,
+    "metadata_itm_attempted": 173,
+    "metadata_itm_failed": 0,
+    "metadata_itm_succeeded": 173,
+    "metadata_prd_attempted": 173,
+    "metadata_prd_failed": 0,
+    "metadata_prd_succeeded": 173,
+    "official_value_fetch_hold": 0,
+    "official_value_fetch_pass": 2,
+    "verified_publication_claims": 2
+  },
+  "official_resolution_count": 2,
+  "operational_failure_count": 0,
+  "recovery_action_counts": {
+    "DIRECT": 2
+  },
+  "registry_load_errors": [],
+  "resumed_parent_count": 0,
+  "run_signature": {
+    "context_sha256": null,
+    "git_head": "60d8225e99fbb11c6936dbc1b18da4d8ea5cb2d0",
+    "live_budget_seconds": 120.0,
+    "runner_version": "canonical-v5-auditable-live-metadata",
+    "runtime_source_sha256": "c5ce62fee067a04f0496d064763c36d3f71a0d5a207ea639e5d6304066946983",
+    "semantic_catalog_sha256": "da509e4cf7399e79878de525462c4d16613f0e7eb9c240cfe6cc137102104ac7",
+    "stored_slots_only": true,
+    "worker_timeout_seconds": 240.0
+  },
+  "stage_status_counts": {
+    "CALCULATION": {
+      "PASS": 2
+    },
+    "CATALOG_SEARCH": {
+      "PASS": 2
+    },
+    "CLAIM_PARSE": {
+      "PASS": 2
+    },
+    "EVIDENCE_CELL": {
+      "PASS": 2
+    },
+    "HARD_GUARD": {
+      "PASS": 2
+    },
+    "OFFICIAL_VALUE_FETCH": {
+      "PASS": 2
+    },
+    "SEMANTIC_MAPPING": {
+      "PASS": 2
+    },
+    "SEMANTIC_MATCH": {
+      "PASS": 2
+    },
+    "VERDICT": {
+      "PASS": 2
+    }
+  },
+  "terminal_reason_counts": {
+    "OUTSIDE_TOLERANCE": 1,
+    "WITHIN_TOLERANCE": 1
+  },
+  "terminal_route_counts": {
+    "AUTO": 2
+  }
+}

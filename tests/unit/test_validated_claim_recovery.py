@@ -125,3 +125,56 @@ def test_does_not_reduce_record_high_claim_to_direct_value_only() -> None:
 
     assert recovered.parse_status == "HOLD"
     assert recovered.parse_reason == "RECORD_COMPARISON_REQUIRES_SEPARATE_CLAIM"
+
+
+def test_reclassifies_source_grounded_count_decrease_as_official_difference() -> None:
+    claim = ClaimSchema(
+        claim_id="employment-change",
+        source_sentence="임시근로자는 전년 같은 달보다 1만9000명 감소했다.",
+        indicator="취업자 수", value=19000, unit="명", time="2024년 12월", frequency="월",
+        comparison={"type": "YEAR_OVER_YEAR"}, calculation="DIRECT_VALUE",
+        condition={"direction": "DECREASE"}, parse_status="AUTO_OK",
+    )
+
+    recovered = recover_validated_claim(
+        claim, date(2025, 1, 15), source_value_text="1만9000명",
+    )
+
+    assert recovered.calculation == "DIFFERENCE"
+    assert recovered.comparison == {
+        "type": "YEAR_OVER_YEAR",
+        "operand_source": "OFFICIAL_EVIDENCE",
+    }
+    assert recovered.parse_status == "AUTO_OK"
+
+
+def test_reclassifies_coordinated_count_decrease_target() -> None:
+    claim = ClaimSchema(
+        claim_id="coordinated-change",
+        source_sentence="40대와 50대는 각각 4만9000명, 2만6000명 줄었다.",
+        indicator="취업자 수", value=49000, unit="명", time="2025년 3월", frequency="월",
+        comparison={"type": "YEAR_OVER_YEAR"}, calculation="DIRECT_VALUE",
+        condition={"direction": "DECREASE"}, parse_status="AUTO_OK",
+    )
+
+    recovered = recover_validated_claim(
+        claim, date(2025, 4, 15), source_value_text="4만9000명",
+    )
+
+    assert recovered.calculation == "DIFFERENCE"
+
+
+def test_does_not_reclassify_direct_level_followed_by_separate_comparison() -> None:
+    claim = ClaimSchema(
+        claim_id="area-level",
+        source_sentence="올해 재배면적은 67만8000ha로 전년 69만8000ha보다 감소했다.",
+        indicator="재배 면적", value=678000, unit="ha", time="2024년", frequency="년",
+        comparison={"type": "YEAR_OVER_YEAR"}, calculation="DIRECT_VALUE",
+        condition={"direction": "DECREASE"}, parse_status="AUTO_OK",
+    )
+
+    recovered = recover_validated_claim(
+        claim, date(2025, 1, 15), source_value_text="67만8000ha",
+    )
+
+    assert recovered.calculation == "DIRECT_VALUE"

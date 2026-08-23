@@ -1,5 +1,7 @@
 from datetime import date
 
+import pytest
+
 from core.dynamic_kosis_verifier import verify_claim_against_kosis
 from core.kosis_fetcher import KosisValue
 from core.kosis_publication import PublicationEvidence
@@ -366,3 +368,55 @@ def test_direct_value_tie_with_different_official_values_remains_hold() -> None:
 
     assert verdict.route_status == "HOLD"
     assert verdict.reason_code == "AMBIGUOUS_MARGIN"
+
+@pytest.mark.parametrize("second_current", [4376.3, 4377.3])
+def test_difference_tie_requires_equal_two_period_official_evidence(
+    second_current: float,
+) -> None:
+    claim = ClaimSchema(
+        claim_id="employment-change-tie",
+        source_sentence="임시근로자는 전년 같은 달보다 1만9000명 감소했다.",
+        indicator="취업자 수", value=19000, unit="명", time="2024년 12월",
+        frequency="월", region="한국", dimension={"고용형태": "임시직"},
+        comparison={"type": "YEAR_OVER_YEAR", "operand_source": "OFFICIAL_EVIDENCE"},
+        calculation="DIFFERENCE", condition={"direction": "DECREASE"}, parse_status="AUTO_OK",
+    )
+    concept = StandardConceptSchema(
+        concept_id="employment_count", canonical_name="취업자 수",
+        standard_key="employment_count", matched_alias="취업자 수", status="MATCHED",
+    )
+    candidates = [
+        KosisCandidateSchema(
+            org_id="101", tbl_id=table_id, tbl_name="종사상지위별 취업자",
+            core_item_ids=["T30"], core_item_names=["취업자"],
+            dimension_ids=["J"], dimension_names=["종사상지위별"],
+            dimension_members={"J": ["계", "-임시근로자"]},
+            dimension_member_codes={"J": {"계": "00", "-임시근로자": "51"}},
+            unit_names=["천명"], frequency="월", metadata_status="OFFICIAL_METADATA_READY",
+        )
+        for table_id in ("DT_A", "DT_B")
+    ]
+
+    class Fetcher:
+        def fetch(self, cell, *, article_date):
+            current = 4376.3 if cell.tbl_id == "DT_A" else second_current
+            value = current if cell.prd_de == "2024-12" else 4395.3
+            return KosisValue(
+                value, "SUCCESS", "official", "API",
+                PublicationEvidence(
+                    status="VERIFIED",
+                    published_at=date(2025, 1, 15) if cell.prd_de == "2024-12" else date(2024, 1, 15),
+                ),
+            )
+
+    verdict = verify_claim_against_kosis(
+        claim, concept, candidates, article_date=date(2025, 1, 16), official_fetcher=Fetcher(),
+    )
+
+    if second_current == 4376.3:
+        assert verdict.route_status == "AUTO"
+        assert verdict.verdict == "MATCH"
+        assert len(verdict.evidence_cells) == 2
+    else:
+        assert verdict.route_status == "HOLD"
+        assert verdict.reason_code == "AMBIGUOUS_MARGIN"

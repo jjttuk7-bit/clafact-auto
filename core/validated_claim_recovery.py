@@ -6,13 +6,18 @@ import re
 from core.claim_contract import assess_claim_contract
 from core.claim_time_resolver import resolve_relative_time
 from core.deterministic_slot_enricher import infer_explicit_slots
+from schemas.claim import ClaimSchema
 
 
 _REVALIDATABLE_REASONS = {"AMBIGUOUS_COMPARISON"}
 _UNRESOLVED_TIME_MARKERS = ("\uac19\uc740 \uae30\uac04", "\uc774 \uae30\uac04", "\ucd5c\uadfc", "\uc774\ubc88")
 
 
-def recover_validated_claim(claim, article_date: date | None, *, source_value_text: str | None = None):
+def recover_validated_claim(
+    claim: ClaimSchema,
+    article_date: date | None,
+    *, source_value_text: str | None = None,
+) -> ClaimSchema:
     """Re-admit only source-backed Claims that satisfy the executable contract."""
     was_auto = claim.parse_status == "AUTO_OK"
     recovered = resolve_relative_time(claim, article_date)
@@ -29,6 +34,8 @@ def recover_validated_claim(claim, article_date: date | None, *, source_value_te
     grounding_text = source_value_text if source_value_text is not None else (None if was_auto else recovered.source_sentence)
     if grounding_text is not None and not _source_supports_claim_value(recovered, grounding_text):
         return recovered.model_copy(update={"parse_status": "HOLD", "parse_reason": "TARGET_VALUE_NOT_IN_SOURCE_SENTENCE"})
+    if source_value_text is not None:
+        recovered = _repair_source_grounded_change_amount(recovered, source_value_text)
     if recovered.parse_status == "AUTO_OK":
         decision = assess_claim_contract(recovered)
         if decision.status == "PASS":
@@ -52,6 +59,64 @@ def recover_validated_claim(claim, article_date: date | None, *, source_value_te
     if decision.status == "HOLD":
         return candidate.model_copy(update={"parse_status": "HOLD", "parse_reason": decision.reason_code})
     return candidate
+
+
+_CHANGE_COMPARISONS = {
+    "YEAR_OVER_YEAR",
+    "MONTH_OVER_MONTH",
+    "QUARTER_OVER_QUARTER",
+}
+_DIRECTION_TERMS = {
+    "INCREASE": ("증가", "늘", "상승", "확대"),
+    "DECREASE": ("감소", "줄", "하락", "축소"),
+}
+_LEVEL_SUFFIXES = (
+    "로", "으로", "에서", "였다", "이었다", "이다", "이며", "이고", "보다",
+)
+
+
+def _repair_source_grounded_change_amount(
+    claim: ClaimSchema, source_value_text: str,
+) -> ClaimSchema:
+    """Repair only a target expression that the source asserts as a change amount."""
+    comparison = dict(claim.comparison or {})
+    comparison_type = str(comparison.get("type", "")).strip().upper()
+    direction = str((claim.condition or {}).get("direction", "")).strip().upper()
+    if (
+        claim.calculation != "DIRECT_VALUE"
+        or comparison_type not in _CHANGE_COMPARISONS
+        or direction not in _DIRECTION_TERMS
+        or "%" in (claim.unit or "")
+        or not _target_has_change_predicate(
+            claim.source_sentence, source_value_text, direction
+        )
+    ):
+        return claim
+    comparison["operand_source"] = "OFFICIAL_EVIDENCE"
+    return claim.model_copy(update={
+        "calculation": "DIFFERENCE",
+        "comparison": comparison,
+    })
+
+
+def _target_has_change_predicate(
+    source_sentence: str, source_value_text: str, direction: str,
+) -> bool:
+    source = re.sub(r"[\s,]", "", source_sentence)
+    target = re.sub(r"[\s,]", "", source_value_text)
+    if not target or target not in source:
+        return False
+    tail = source.split(target, 1)[1]
+    if tail.startswith(_LEVEL_SUFFIXES):
+        return False
+    clause = re.split(r"[.!?。！？]", tail, maxsplit=1)[0][:80]
+    expected = _DIRECTION_TERMS[direction]
+    opposite = _DIRECTION_TERMS["DECREASE" if direction == "INCREASE" else "INCREASE"]
+    expected_positions = [clause.find(term) for term in expected if term in clause]
+    if not expected_positions:
+        return False
+    first_expected = min(expected_positions)
+    return not any(term in clause[:first_expected] for term in opposite)
 
 
 _NUMBER_EXPRESSION = re.compile(r"\d+(?:[,.]\d+)*(?:(?:\uc870|\uc5b5|\ub9cc|\ucc9c)\d*(?:[,.]\d+)*)*")
