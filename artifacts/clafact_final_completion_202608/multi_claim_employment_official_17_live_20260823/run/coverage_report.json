@@ -1,0 +1,89 @@
+{
+  "admission_route_counts": {
+    "KOSIS_PIPELINE_ELIGIBLE": 17
+  },
+  "all_claims_terminal": true,
+  "checkpoint_parent_count": 17,
+  "derived_claims": 17,
+  "input_coverage_complete": true,
+  "input_registry_records": 17,
+  "official_api_counts": {
+    "api_provenance_cells": 10,
+    "api_provenance_claims": 8,
+    "catalog_query_attempted": 64,
+    "catalog_query_empty": 0,
+    "catalog_query_failed": 3,
+    "catalog_query_succeeded_nonempty": 61,
+    "metadata_itm_attempted": 810,
+    "metadata_itm_failed": 2,
+    "metadata_itm_succeeded": 808,
+    "metadata_prd_attempted": 807,
+    "metadata_prd_failed": 2,
+    "metadata_prd_succeeded": 805,
+    "official_value_fetch_hold": 2,
+    "official_value_fetch_pass": 8,
+    "verified_publication_claims": 8
+  },
+  "official_resolution_count": 17,
+  "operational_failure_count": 0,
+  "recovery_action_counts": {
+    "DIRECT": 17
+  },
+  "registry_load_errors": [],
+  "resumed_parent_count": 0,
+  "run_signature": {
+    "context_sha256": null,
+    "git_head": "f39c05baca4fb8971fcb742d895b6c69403ab051",
+    "live_budget_seconds": 45.0,
+    "runner_version": "canonical-v5-auditable-live-metadata",
+    "runtime_source_sha256": "c5ce62fee067a04f0496d064763c36d3f71a0d5a207ea639e5d6304066946983",
+    "semantic_catalog_sha256": "da509e4cf7399e79878de525462c4d16613f0e7eb9c240cfe6cc137102104ac7",
+    "stored_slots_only": true,
+    "worker_timeout_seconds": 180.0
+  },
+  "stage_status_counts": {
+    "CALCULATION": {
+      "PASS": 8
+    },
+    "CATALOG_SEARCH": {
+      "PASS": 17
+    },
+    "CLAIM_PARSE": {
+      "PASS": 17
+    },
+    "EVIDENCE_CELL": {
+      "HOLD": 1,
+      "PASS": 10
+    },
+    "HARD_GUARD": {
+      "HOLD": 6,
+      "PASS": 11
+    },
+    "OFFICIAL_VALUE_FETCH": {
+      "HOLD": 2,
+      "PASS": 8
+    },
+    "SEMANTIC_MAPPING": {
+      "PASS": 17
+    },
+    "SEMANTIC_MATCH": {
+      "HOLD": 1,
+      "PASS": 10
+    },
+    "VERDICT": {
+      "PASS": 8
+    }
+  },
+  "terminal_reason_counts": {
+    "AMBIGUOUS_MARGIN": 1,
+    "FETCH_FAILED": 2,
+    "NO_EVIDENCE_COORDINATE_CANDIDATE": 2,
+    "NO_HARD_GUARD_CANDIDATE": 4,
+    "OUTSIDE_TOLERANCE": 4,
+    "WITHIN_TOLERANCE": 4
+  },
+  "terminal_route_counts": {
+    "AUTO": 8,
+    "HOLD": 9
+  }
+}
