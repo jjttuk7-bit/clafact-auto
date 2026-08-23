@@ -1,6 +1,7 @@
 """Refresh KOSIS metadata under an overall wall-clock budget."""
 
 from __future__ import annotations
+import re
 
 from collections.abc import Callable, Iterable, Mapping
 from time import monotonic
@@ -220,8 +221,8 @@ def _period_frequency(row: Mapping[str, object]) -> str | None:
     if label in {"월", "분기", "년"}:
         return label
     sample = str(row.get("STRT_PRD_DE") or row.get("END_PRD_DE") or "").strip()
-    if "." in sample:
+    if re.fullmatch(r"\d{4}[.-](0[1-9]|1[0-2])", sample):
         return "월"
-    if "/" in sample:
+    if re.fullmatch(r"\d{4}\s+[1-4]/4", sample):
         return "분기"
     return "년" if sample.isdigit() and len(sample) == 4 else None

@@ -3,7 +3,11 @@
 import re
 
 from core.comparison_normalizer import normalize_comparison
-from core.record_periods import enumerate_record_periods, enumerate_same_month_periods
+from core.record_periods import (
+    enumerate_record_periods,
+    enumerate_same_month_periods,
+    is_period_within_official_range,
+)
 from schemas.candidate import KosisCandidateSchema
 from schemas.claim import ClaimSchema
 from schemas.evidence import CalculationPlan, EvidenceCellSchema
@@ -23,7 +27,12 @@ def build_calculation_plan(
     if calculation == "DIRECT_VALUE":
         return CalculationPlan(calculation_type="DIRECT_VALUE", required_cells=[current])
     if calculation in {"RECORD_HIGH", "RECORD_LOW"}:
-        start_period = _official_start_period(candidate, current.prd_se)
+        official_range = _official_period_range(candidate, current.prd_se)
+        if official_range is None:
+            return None
+        start_period, end_period = official_range
+        if end_period is not None and not is_period_within_official_range(start_period, current.prd_de, end_period, current.prd_se):
+            return None
         periods = (
             enumerate_same_month_periods(start_period, current.prd_de)
             if _same_month_record_basis(claim, current)
@@ -59,31 +68,36 @@ def build_calculation_plan(
 
 
 
-def _official_start_period(
+def _official_period_range(
     candidate: KosisCandidateSchema | None,
     evidence_frequency: str,
-) -> str | None:
+) -> tuple[str, str | None] | None:
     if candidate is None:
         return None
     target_frequency = _normalize_frequency(evidence_frequency)
     if target_frequency is None:
         return None
     if candidate.period_ranges:
-        starts = {
-            period_range.start_period
+        ranges = {
+            (
+                period_range.start_period,
+                period_range.end_period,
+            )
             for label, period_range in candidate.period_ranges.items()
             if _normalize_frequency(label) == target_frequency
             and period_range.start_period
+            and period_range.end_period
         }
-        return starts.pop() if len(starts) == 1 else None
-    frequencies = {
-        normalized
-        for part in (candidate.frequency or "").split("|")
-        if (normalized := _normalize_frequency(part)) is not None
-    }
-    if frequencies != {target_frequency}:
+        return ranges.pop() if len(ranges) == 1 else None
+    declared = [part for part in (candidate.frequency or "").split("|") if part.strip()]
+    frequencies = [_normalize_frequency(part) for part in declared]
+    if len(frequencies) != 1 or frequencies[0] is None:
         return None
-    return candidate.start_period
+    if frequencies[0] != target_frequency:
+        return None
+    if not candidate.start_period:
+        return None
+    return candidate.start_period, candidate.end_period
 
 
 def _normalize_frequency(value: str) -> str | None:

@@ -30,6 +30,35 @@ def enumerate_record_periods(
     return None
 
 
+
+def is_period_within_official_range(
+    start_period: str | None,
+    current_period: str,
+    end_period: str | None,
+    frequency: str,
+) -> bool:
+    """Return whether the current coordinate is inside one official range."""
+    if not start_period or not end_period:
+        return False
+    normalized_frequency = frequency.replace(" ", "").upper()
+    if normalized_frequency in _ANNUAL:
+        def parser(value: str) -> int | None:
+            return int(value) if re.fullmatch(r"\d{4}", value) else None
+    elif normalized_frequency in _MONTHLY:
+        def parser(value: str) -> int | None:
+            return _year_part(value, 12)
+    elif normalized_frequency in _QUARTERLY:
+        def parser(value: str) -> int | None:
+            return _year_part(value, 4, quarter=True)
+    else:
+        return False
+    first = parser(start_period)
+    current = parser(current_period)
+    last = parser(end_period)
+    if first is None or current is None or last is None:
+        return False
+    return first <= current <= last
+
 def enumerate_same_month_periods(
     start_period: str | None,
     current_period: str,
@@ -87,11 +116,17 @@ def _quarterly(start: str, current: str, limit: int) -> list[str] | None:
 
 
 def _year_part(raw: str, periods_per_year: int, *, quarter: bool = False) -> int | None:
-    pattern = r"(?P<year>\d{4})[.-]?Q(?P<part>[1-4])" if quarter else r"(?P<year>\d{4})[.-]?(?P<part>0[1-9]|1[0-2])"
-    match = re.fullmatch(pattern, raw, re.IGNORECASE)
+    if quarter:
+        pattern = r"(?P<year>\d{4})(?:[.-]?Q(?P<part>[1-4])|\s+(?P<fraction_part>[1-4])/4)"
+        match = re.fullmatch(pattern, raw, re.IGNORECASE)
+        part = match["part"] or match["fraction_part"] if match else None
+    else:
+        pattern = r"(?P<year>\d{4})[.-]?(?P<part>0[1-9]|1[0-2])"
+        match = re.fullmatch(pattern, raw, re.IGNORECASE)
+        part = match["part"] if match else None
     if match is None:
         return None
-    return int(match["year"]) * periods_per_year + int(match["part"]) - 1
+    return int(match["year"]) * periods_per_year + int(part) - 1
 
 
 def _bounded(values: range, limit: int, formatter) -> list[str] | None:
