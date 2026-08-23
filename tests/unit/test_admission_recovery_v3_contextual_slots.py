@@ -75,6 +75,7 @@ def test_v3_retries_missing_time_with_article_context_before_structural_hold() -
 
     child = result.entries[0]
     assert len(extractor.calls) == 4
+    assert extractor.calls[1]["target_already_split"] is True
     assert child.admission_route == "KOSIS_PIPELINE_ELIGIBLE"
     assert child.record.claim.time == "2024"
     assert child.record.slot_enrichment["article_context_used"] is True

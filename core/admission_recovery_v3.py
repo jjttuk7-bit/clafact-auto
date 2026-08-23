@@ -34,6 +34,11 @@ def recover_registry_record_v3(record: ClaimRegistryRecord, *, extractor: Struct
         if _should_retry_with_context(parsed) and article_context:
             payload = json.loads(target.extractor_input)
             payload["article_context"] = article_context
+            payload["target_already_split"] = True
+            payload["target_split_instruction"] = (
+                "The target_numeric_expression is already one separate child Claim. "
+                "Do not HOLD it only because the source sentence has other numbers."
+            )
             payload["instruction"] = "부족한 지역·시점·대상만 본문으로 보강하고 target_numeric_expression 하나만 12슬롯 구조화"
             parsed = _parse_target(target.expression, json.dumps(payload, ensure_ascii=False), extractor, record)
             context_used = True
