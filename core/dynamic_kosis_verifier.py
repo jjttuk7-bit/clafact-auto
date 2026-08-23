@@ -197,7 +197,8 @@ def _record_verdict(
         claim.value is not None
         and abs(claim.value - converted_current) <= tolerance
     )
-    current_is_record = abs(converted_current - converted_record) <= tolerance
+    official_tolerance = max(1e-12, abs(record_value) * 1e-12)
+    current_is_record = abs(official_values[-1] - record_value) <= official_tolerance
     confirmed = source_matches_current and current_is_record
     base = make_verdict(
         claim.claim_id,

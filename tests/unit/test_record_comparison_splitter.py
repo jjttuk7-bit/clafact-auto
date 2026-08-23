@@ -36,3 +36,24 @@ def test_does_not_split_record_assertion_with_missing_source_value() -> None:
     claim = _record_claim().model_copy(update={"value": None, "unit": None})
 
     assert split_record_comparison_claim(claim) == [claim]
+
+
+def test_does_not_invent_record_assertion_from_untrusted_structured_output() -> None:
+    claim = _record_claim().model_copy(update={
+        "source_sentence": "\uc218\ucd9c\uc561\uc740 1419\uc5b5\ub2ec\ub7ec\uc600\ub2e4.",
+        "parse_reason": "CLAIM_PARSE_UNCERTAIN",
+    })
+
+    assert split_record_comparison_claim(claim) == [claim]
+
+
+def test_does_not_promote_unrelated_hold_even_when_source_mentions_record() -> None:
+    claim = _record_claim().model_copy(update={"parse_reason": "CLAIM_PARSE_UNCERTAIN"})
+
+    assert split_record_comparison_claim(claim) == [claim]
+
+
+def test_auto_claim_still_requires_matching_record_language() -> None:
+    claim = _record_claim().model_copy(update={"parse_status": "AUTO_OK", "parse_reason": None, "source_sentence": "\uc218\ucd9c\uc561\uc740 1419\uc5b5\ub2ec\ub7ec\uc600\ub2e4."})
+
+    assert split_record_comparison_claim(claim) == [claim]

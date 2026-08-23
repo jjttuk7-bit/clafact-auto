@@ -87,6 +87,25 @@ def test_record_high_mismatches_when_current_value_is_below_historical_maximum()
     assert verdict.reason_code == "RECORD_NOT_CONFIRMED"
 
 
+def test_official_record_comparison_does_not_use_article_rounding_tolerance() -> None:
+    claim = _claim(2.2).model_copy(update={
+        "source_sentence": "\uc218\ucd9c\uc561\uc740 2.2%\ub85c \uc5ed\ub300 \ucd5c\ub300\uc600\ub2e4.",
+        "unit": "%",
+    })
+    candidate = _candidate().model_copy(update={
+        "unit_names": ["%"], "item_units": {"T": "%"},
+    })
+    fetcher = _Fetcher({"2022": _value(2.24), "2023": _value(2.1), "2024": _value(2.2)})
+
+    verdict = verify_claim_against_kosis(
+        claim, _concept(), [candidate],
+        article_date=date(2025, 1, 2), official_fetcher=fetcher,
+    )
+
+    assert verdict.verdict == "MISMATCH"
+    assert verdict.reason_code == "RECORD_NOT_CONFIRMED"
+
+
 def test_record_high_holds_when_any_historical_value_is_missing() -> None:
     fetcher = _Fetcher({"2022": _value(1000), "2023": _value(None, "NO_DATA"), "2024": _value(1419)})
 
