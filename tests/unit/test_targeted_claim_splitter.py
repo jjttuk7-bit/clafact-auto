@@ -1,4 +1,20 @@
-from core.targeted_claim_splitter import build_targeted_claim_inputs
+from core.targeted_claim_splitter import (
+    build_targeted_claim_inputs,
+    discover_numeric_mentions,
+)
+
+
+def test_discovers_mentions_without_creating_children() -> None:
+    mentions = discover_numeric_mentions(
+        "고용률은 60%로 전년 58%보다 2%포인트 올랐다."
+    )
+
+    assert [mention.mention_id for mention in mentions] == ["n1", "n2", "n3"]
+    assert [mention.expression for mention in mentions] == [
+        "60%",
+        "58%",
+        "2%포인트",
+    ]
 
 
 def test_targeted_splitter_emits_each_independently_verifiable_statistic_not_dates_or_ages() -> None:
