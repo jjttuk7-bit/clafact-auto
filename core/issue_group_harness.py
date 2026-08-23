@@ -662,3 +662,66 @@ def _write_json_atomic(path: Path, payload: dict[str, Any]) -> None:
 
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+@dataclass(frozen=True, slots=True)
+class FinalRunAuthorization:
+    authorized: bool
+    reasons: tuple[str, ...]
+    checked_at: str
+
+
+def authorize_final_full_run(
+    records: list[ClaimIssueRecord],
+    *,
+    gate_dir: Path,
+    code_version: str,
+    data_version: str,
+    explicit_authorization: bool,
+) -> FinalRunAuthorization:
+    """Authorize, but never start, the one final full Registry execution."""
+
+    reasons: list[str] = []
+    if not explicit_authorization:
+        reasons.append("EXPLICIT_FINAL_AUTHORIZATION_REQUIRED")
+    unclassified = sum(
+        record.primary_group is IssueGroup.UNCLASSIFIED for record in records
+    )
+    if unclassified:
+        reasons.append(f"UNCLASSIFIED_CLAIMS_REMAIN:{unclassified}")
+
+    required_groups = sorted(
+        {
+            record.primary_group
+            for record in records
+            if record.primary_group
+            not in {IssueGroup.REGRESSION, IssueGroup.UNCLASSIFIED}
+        },
+        key=lambda group: group.value,
+    )
+    for group in required_groups:
+        path = gate_dir / f"{group.value}.json"
+        if not path.is_file():
+            reasons.append(f"MISSING_GROUP_GATE:{group.value}")
+            continue
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            reasons.append(f"INVALID_GROUP_GATE:{group.value}")
+            continue
+        if not isinstance(payload, dict) or payload.get("group") != group.value:
+            reasons.append(f"INVALID_GROUP_GATE:{group.value}")
+            continue
+        if not payload.get("passed"):
+            reasons.append(f"FAILED_GROUP_GATE:{group.value}")
+        if (
+            payload.get("code_version") != code_version
+            or payload.get("data_version") != data_version
+        ):
+            reasons.append(f"STALE_GROUP_GATE:{group.value}")
+
+    return FinalRunAuthorization(
+        authorized=not reasons,
+        reasons=tuple(reasons),
+        checked_at=_utc_now(),
+    )

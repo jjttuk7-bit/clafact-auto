@@ -322,3 +322,116 @@ def test_group_gate_passes_and_persists_version_bound_completion(tmp_path) -> No
 
     assert gate.passed is True
     assert (tmp_path / "gates" / "CONTEXT.json").is_file()
+
+
+import json
+from core.issue_group_harness import authorize_final_full_run
+
+
+def test_final_full_run_is_denied_without_explicit_authorization_and_all_gates(tmp_path) -> None:
+    records = build_issue_registry(
+        [
+            _row_with_id("C-001", "CONTEXT_REQUIRED"),
+            _row_with_id("C-002", "NO_HARD_GUARD_CANDIDATE"),
+        ]
+    )
+    _write_gate(tmp_path, IssueGroup.CONTEXT, passed=True)
+
+    result = authorize_final_full_run(
+        records,
+        gate_dir=tmp_path,
+        code_version="code-v1",
+        data_version="data-v1",
+        explicit_authorization=False,
+    )
+
+    assert result.authorized is False
+    assert "EXPLICIT_FINAL_AUTHORIZATION_REQUIRED" in result.reasons
+    assert "MISSING_GROUP_GATE:HARD_GUARD" in result.reasons
+
+
+def test_final_full_run_is_denied_for_failed_or_stale_gate(tmp_path) -> None:
+    records = build_issue_registry(
+        [
+            _row_with_id("C-001", "CONTEXT_REQUIRED"),
+            _row_with_id("C-002", "NO_HARD_GUARD_CANDIDATE"),
+        ]
+    )
+    _write_gate(tmp_path, IssueGroup.CONTEXT, passed=False)
+    _write_gate(
+        tmp_path,
+        IssueGroup.HARD_GUARD,
+        passed=True,
+        code_version="old-code",
+    )
+
+    result = authorize_final_full_run(
+        records,
+        gate_dir=tmp_path,
+        code_version="code-v1",
+        data_version="data-v1",
+        explicit_authorization=True,
+    )
+
+    assert "FAILED_GROUP_GATE:CONTEXT" in result.reasons
+    assert "STALE_GROUP_GATE:HARD_GUARD" in result.reasons
+
+
+def test_final_full_run_is_denied_while_unclassified_claims_remain(tmp_path) -> None:
+    records = build_issue_registry([_row_with_id("C-001", "UNKNOWN_NEW_REASON")])
+
+    result = authorize_final_full_run(
+        records,
+        gate_dir=tmp_path,
+        code_version="code-v1",
+        data_version="data-v1",
+        explicit_authorization=True,
+    )
+
+    assert result.authorized is False
+    assert result.reasons == ("UNCLASSIFIED_CLAIMS_REMAIN:1",)
+
+
+def test_final_full_run_is_authorized_only_when_every_required_gate_is_current(tmp_path) -> None:
+    records = build_issue_registry(
+        [
+            _row_with_id("C-001", "CONTEXT_REQUIRED"),
+            _row_with_id("C-002", "NO_HARD_GUARD_CANDIDATE"),
+            _row_with_id("C-003", "WITHIN_TOLERANCE", status="AUTO"),
+        ]
+    )
+    _write_gate(tmp_path, IssueGroup.CONTEXT, passed=True)
+    _write_gate(tmp_path, IssueGroup.HARD_GUARD, passed=True)
+
+    result = authorize_final_full_run(
+        records,
+        gate_dir=tmp_path,
+        code_version="code-v1",
+        data_version="data-v1",
+        explicit_authorization=True,
+    )
+
+    assert result.authorized is True
+    assert result.reasons == ()
+
+
+def _write_gate(
+    gate_dir,
+    group: IssueGroup,
+    *,
+    passed: bool,
+    code_version: str = "code-v1",
+    data_version: str = "data-v1",
+) -> None:
+    gate_dir.mkdir(parents=True, exist_ok=True)
+    (gate_dir / f"{group.value}.json").write_text(
+        json.dumps(
+            {
+                "group": group.value,
+                "passed": passed,
+                "code_version": code_version,
+                "data_version": data_version,
+            }
+        ),
+        encoding="utf-8",
+    )
