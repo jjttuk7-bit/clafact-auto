@@ -1,0 +1,10 @@
+﻿문제코드,전체수,시도수,개선수,공식조회진입수,재분류완료수,남은수,완료여부
+CONTEXT,0,0,0,0,0,0,예
+OFFICIAL_PATH,0,0,0,0,0,0,예
+HARD_GUARD,4,4,4,0,0,0,예
+COORDINATE,2,0,0,0,0,2,아니오
+SEMANTIC,1,0,0,0,0,1,아니오
+CALCULATION,0,0,0,0,0,0,예
+VALUE_PUBLICATION,2,0,0,0,0,2,아니오
+REGRESSION,8,0,0,0,0,8,아니오
+UNCLASSIFIED,0,0,0,0,0,0,예

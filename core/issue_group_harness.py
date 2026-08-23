@@ -567,9 +567,38 @@ def compare_result(
     claim_id = str(after.get("claim_id") or "")
     if claim_id != before.claim_id:
         raise ValueError(f"RESULT_CLAIM_ID_MISMATCH:{before.claim_id}:{claim_id}")
+    resolution = after.get("official_resolution")
+    verdict = resolution.get("verdict") if isinstance(resolution, dict) else None
+    verdict = verdict if isinstance(verdict, dict) else {}
+    trace = verdict.get("execution_trace")
+    trace = trace if isinstance(trace, dict) else {}
+    events = [event for event in trace.get("events") or [] if isinstance(event, dict)]
+    evidence_cells = [
+        cell for cell in verdict.get("evidence_cells") or [] if isinstance(cell, dict)
+    ]
+    provenance = [
+        item
+        for item in verdict.get("official_value_provenance") or []
+        if isinstance(item, dict)
+    ]
     after_status = str(after.get("status") or after.get("terminal_status") or "")
-    after_reason = _text(after.get("reason_code"))
-    after_stage = _text(after.get("stop_stage"))
+    after_reason = _text(after.get("reason_code") or verdict.get("reason_code"))
+    after_stage = _text(
+        after.get("stop_stage") or (events[-1].get("stage") if events else None)
+    )
+    table_ids = sorted(
+        {str(cell.get("tbl_id")) for cell in evidence_cells if cell.get("tbl_id")}
+    )
+    source_urls = list(
+        dict.fromkeys(
+            str(item.get("source_url"))
+            for item in provenance
+            if item.get("source_url")
+        )
+    )
+    derived_official_evidence = bool(provenance) and all(
+        item.get("source") == "API" for item in provenance
+    )
     if not after_status or not after_stage:
         raise ValueError(f"INCOMPLETE_AFTER_RESULT:{claim_id}")
     if after_status == "AUTO":
@@ -596,9 +625,13 @@ def compare_result(
         after_reason=after_reason,
         after_stage=after_stage,
         outcome=outcome,
-        official_evidence=bool(after.get("official_evidence")),
-        table_id=_text(after.get("table_id")),
-        source_url=_text(after.get("source_url")),
+        official_evidence=(
+            bool(after.get("official_evidence"))
+            if "official_evidence" in after
+            else derived_official_evidence
+        ),
+        table_id=_text(after.get("table_id")) or ",".join(table_ids) or None,
+        source_url=_text(after.get("source_url")) or ",".join(source_urls) or None,
         reclassification_result=_text(after.get("reclassification_result")),
         reclassification_reason=_text(after.get("reclassification_reason")),
         next_route=_text(after.get("next_route")),
