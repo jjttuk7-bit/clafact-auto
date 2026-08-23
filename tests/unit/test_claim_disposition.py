@@ -90,3 +90,25 @@ def test_historical_fact_is_not_excluded_only_because_reason_mentions_forecast()
     )
 
     assert result.disposition == "OFFICIAL_VERIFICATION_TARGET"
+
+
+def test_likely_future_expression_is_classified_as_forecast() -> None:
+    result = classify_claim_disposition(
+        _claim("이달 소비자 물가가 2% 오를 듯하다.")
+    )
+
+    assert result.disposition == "FORECAST_OR_POLICY"
+
+
+def test_approximate_percent_claim_is_not_excluded_as_non_numeric() -> None:
+    result = classify_claim_disposition(
+        _claim(
+            "내수 판매가 6%대 급감했다.",
+            value=None,
+            time=None,
+            parse_status="HOLD",
+            parse_reason="MISSING_REQUIRED_SLOTS:value,time",
+        )
+    )
+
+    assert result.disposition == "SOURCE_CONTEXT_INSUFFICIENT"

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 from typing import Literal
 
 from core.slot_audit import audit_claim_slots
@@ -42,12 +43,18 @@ _FORECAST_OR_POLICY_MARKERS = (
     "대응한다",
 )
 
+_LIKELY_FUTURE_PATTERN = re.compile(
+    r"(?:오를|내릴|증가할|감소할|늘어날|줄어들|개선될|악화할)\s*듯"
+)
+_APPROXIMATE_PERCENT_PATTERN = re.compile(r"\d+(?:[.,]\d+)?\s*%\s*대")
 
 def classify_claim_disposition(claim: ClaimSchema) -> ClaimDispositionDecision:
     """Return a pre-verification disposition without inventing official evidence."""
 
     source = claim.source_sentence.strip()
-    if any(marker in source for marker in _FORECAST_OR_POLICY_MARKERS):
+    if any(marker in source for marker in _FORECAST_OR_POLICY_MARKERS) or (
+        _LIKELY_FUTURE_PATTERN.search(source) is not None
+    ):
         return ClaimDispositionDecision(
             "FORECAST_OR_POLICY",
             "EXPLICIT_FORECAST_OR_POLICY_MARKER",
@@ -63,7 +70,9 @@ def classify_claim_disposition(claim: ClaimSchema) -> ClaimDispositionDecision:
         )
 
     targets = build_targeted_claim_inputs(source)
-    if claim.value is None and not targets:
+    if claim.value is None and not targets and (
+        _APPROXIMATE_PERCENT_PATTERN.search(source) is None
+    ):
         return ClaimDispositionDecision(
             "NO_VERIFIABLE_NUMERIC_ASSERTION",
             "NO_STATISTICAL_TARGET_VALUE",
