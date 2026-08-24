@@ -1,0 +1,85 @@
+{
+  "admission_route_counts": {
+    "KOSIS_PIPELINE_ELIGIBLE": 1
+  },
+  "all_claims_terminal": true,
+  "checkpoint_parent_count": 1,
+  "derived_claims": 1,
+  "input_coverage_complete": true,
+  "input_registry_records": 1,
+  "official_api_counts": {
+    "api_provenance_cells": 1,
+    "api_provenance_claims": 1,
+    "catalog_query_attempted": 1,
+    "catalog_query_empty": 0,
+    "catalog_query_failed": 0,
+    "catalog_query_succeeded_nonempty": 1,
+    "metadata_itm_attempted": 44,
+    "metadata_itm_failed": 0,
+    "metadata_itm_succeeded": 44,
+    "metadata_prd_attempted": 44,
+    "metadata_prd_failed": 0,
+    "metadata_prd_succeeded": 44,
+    "official_value_fetch_hold": 1,
+    "official_value_fetch_pass": 0,
+    "verified_publication_claims": 1
+  },
+  "official_resolution_count": 1,
+  "operational_failure_count": 0,
+  "recovery_action_counts": {
+    "DIRECT": 1
+  },
+  "registry_load_errors": [],
+  "resumed_parent_count": 0,
+  "run_signature": {
+    "context_sha256": null,
+    "git_head": "f6d4f91b7015bde903234cafc75d117792984420",
+    "live_budget_seconds": 150.0,
+    "runner_version": "canonical-v5-auditable-live-metadata",
+    "runtime_source_sha256": "266105e14caa472d3b9b32b3b0accf29f721fb4fbaf260a3e8b14f145a369932",
+    "semantic_catalog_sha256": "da509e4cf7399e79878de525462c4d16613f0e7eb9c240cfe6cc137102104ac7",
+    "stored_slots_only": true,
+    "worker_timeout_seconds": 240.0
+  },
+  "stage_status_counts": {
+    "CALCULATION": {
+      "PASS": 1
+    },
+    "CATALOG_SEARCH": {
+      "PASS": 1
+    },
+    "CLAIM_PARSE": {
+      "PASS": 1
+    },
+    "EVIDENCE_CELL": {
+      "PASS": 1
+    },
+    "HARD_GUARD": {
+      "PASS": 1
+    },
+    "OFFICIAL_AUTHOR_FETCH": {
+      "PASS": 1
+    },
+    "OFFICIAL_AUTHOR_SEARCH": {
+      "PASS": 1
+    },
+    "OFFICIAL_VALUE_FETCH": {
+      "HOLD": 1
+    },
+    "SEMANTIC_MAPPING": {
+      "PASS": 1
+    },
+    "SEMANTIC_MATCH": {
+      "PASS": 1
+    },
+    "VERDICT": {
+      "PASS": 1
+    }
+  },
+  "terminal_reason_counts": {
+    "WITHIN_TOLERANCE": 1
+  },
+  "terminal_route_counts": {
+    "AUTO": 1
+  }
+}
