@@ -35,9 +35,25 @@ def _resolution(*, status: str = "AUTO", verdict: str = "MATCH", source: str = "
     )
 
 
-def _entry(*, status: str = "AUTO", verdict: str = "MATCH", resolution=True, admission_route="KOSIS_PIPELINE_ELIGIBLE"):
+def _entry(
+    *,
+    status: str = "AUTO",
+    verdict: str = "MATCH",
+    resolution=True,
+    admission_route="KOSIS_PIPELINE_ELIGIBLE",
+    indicator: str = "고용률",
+    population=None,
+    region=None,
+    dimension=None,
+):
     return SimpleNamespace(
-        claim=SimpleNamespace(claim_id="child-1"),
+        claim=SimpleNamespace(
+            claim_id="child-1",
+            indicator=indicator,
+            population=population,
+            region=region,
+            dimension=dimension,
+        ),
         terminal_status=status,
         reason_code=None if status == "AUTO" else "NO_HARD_GUARD_CANDIDATE",
         admission_route=admission_route,
@@ -130,6 +146,48 @@ def test_acceptance_fails_when_dashboard_verdict_differs_from_ledger() -> None:
 
     assert accepted.acceptance_status == "실패"
     assert accepted.failure_reason == "DASHBOARD_VERDICT_MISMATCH"
+
+
+def test_acceptance_rejects_official_total_when_sentence_target_depends_on_context() -> None:
+    case = AcceptanceCase(
+        parent_claim_id="A02111_13",
+        article_id="A02111",
+        article_published_at=date(2025, 6, 12),
+        article_text="고용률도 2011년 36.8%에서 지난달 48.3%로 불었다.",
+        expected_verdicts=("MISMATCH",),
+    )
+    result = SimpleNamespace(entries=[_entry(population="전체")])
+
+    accepted = evaluate_dashboard_result(case, result, run_id="dashboard-1")
+
+    assert accepted.acceptance_status == "실패"
+    assert accepted.actual_status == "HOLD"
+    assert accepted.failure_stage == "CLAIM_PARSE"
+    assert accepted.failure_reason == "DASHBOARD_CONTEXT_TARGET_UNRESOLVED"
+    assert accepted.official_evidence_verified == "아니오"
+
+
+def test_acceptance_allows_continuation_when_target_is_explicit_in_sentence() -> None:
+    case = AcceptanceCase(
+        parent_claim_id="C1",
+        article_id="A1",
+        article_published_at=date(2025, 6, 12),
+        article_text="고용률도 15~64세는 70.3%였다.",
+        expected_verdicts=("MATCH",),
+    )
+    result = SimpleNamespace(
+        entries=[
+            _entry(
+                population="15~64세",
+                dimension={"age": "15~64세"},
+            )
+        ]
+    )
+
+    accepted = evaluate_dashboard_result(case, result, run_id="dashboard-1")
+
+    assert accepted.acceptance_status == "통과"
+    assert accepted.actual_status == "AUTO"
 
 
 def test_apply_acceptance_removes_false_completion_and_preserves_row_count() -> None:

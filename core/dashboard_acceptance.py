@@ -182,12 +182,21 @@ def evaluate_dashboard_result(
                 all_official = False
             urls.append(str(getattr(item, "source_url", "") or ""))
             hashes.append(str(getattr(item, "content_hash", "") or ""))
-    actual_status = "AUTO" if entries and all(status == "AUTO" for status in statuses) else "HOLD"
+    context_target_unresolved = _context_target_unresolved(case.article_text, entries)
+    actual_status = (
+        "AUTO"
+        if entries
+        and all(status == "AUTO" for status in statuses)
+        and not context_target_unresolved
+        else "HOLD"
+    )
     actual_verdicts = _join(verdicts)
     expected_verdicts = _join(case.expected_verdicts)
     failure_reason = _join(reasons)
     if not entries:
         failure_reason = "NO_NUMERICAL_CLAIM_CANDIDATE"
+    elif context_target_unresolved:
+        failure_reason = "DASHBOARD_CONTEXT_TARGET_UNRESOLVED"
     elif actual_status != "AUTO":
         failure_reason = failure_reason or "DASHBOARD_CHILD_HOLD"
     elif not all_official:
@@ -206,8 +215,14 @@ def evaluate_dashboard_result(
         actual_status=actual_status,
         actual_verdicts=actual_verdicts,
         failure_reason=failure_reason,
-        failure_stage=_join(stages) if failure_reason else "",
-        official_evidence_verified="예" if all_official else "아니오",
+        failure_stage=(
+            "CLAIM_PARSE"
+            if context_target_unresolved
+            else (_join(stages) if failure_reason else "")
+        ),
+        official_evidence_verified=(
+            "예" if all_official and not context_target_unresolved else "아니오"
+        ),
         table_ids=_join(tables),
         coordinates=_join(coordinates),
         official_values=_join(official_values),
@@ -339,6 +354,47 @@ def _issue_group(stage: str, reason: str) -> str:
     if "CALCULATION" in stage:
         return "CALCULATION"
     return "REGRESSION"
+
+
+def _context_target_unresolved(article_text: str, entries: Sequence[Any]) -> bool:
+    """Reject a sentence-initial continuation whose statistical target is absent."""
+    normalized_text = "".join(str(article_text or "").split())
+    generic_targets = {"", "전체", "계", "총계"}
+    for entry in entries:
+        claim = getattr(entry, "claim", None)
+        indicator = "".join(str(getattr(claim, "indicator", "") or "").split())
+        if not indicator or not normalized_text.startswith(f"{indicator}도"):
+            continue
+        target_values = (
+            getattr(claim, "population", None),
+            getattr(claim, "region", None),
+            getattr(claim, "dimension", None),
+        )
+        explicit_targets = {
+            "".join(token.split())
+            for value in target_values
+            for token in _target_tokens(value)
+            if "".join(token.split()) not in generic_targets
+        }
+        if not any(token and token in normalized_text for token in explicit_targets):
+            return True
+    return False
+
+
+def _target_tokens(value: Any) -> tuple[str, ...]:
+    if value is None:
+        return ()
+    if hasattr(value, "model_dump"):
+        value = value.model_dump()
+    if isinstance(value, dict):
+        return tuple(
+            token
+            for nested in value.values()
+            for token in _target_tokens(nested)
+        )
+    if isinstance(value, (list, tuple, set)):
+        return tuple(token for nested in value for token in _target_tokens(nested))
+    return (str(value).strip(),)
 
 
 def _parts(value: object) -> tuple[str, ...]:
