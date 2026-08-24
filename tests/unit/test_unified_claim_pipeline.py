@@ -184,6 +184,39 @@ def test_registry_stored_slots_mode_never_calls_structured_extractor() -> None:
     assert service.claims == [claim]
 
 
+def test_sentence_only_continuation_never_reaches_official_service_without_target() -> None:
+    service = _OfficialService()
+
+    class _ContextlessAutoExtractor:
+        def extract(self, source_sentence: str, **kwargs) -> ClaimSchema:
+            return ClaimSchema(
+                claim_id="temporary",
+                source_sentence="고용률도 2011년 36.8%에서 지난달 48.3%로 불었다.",
+                indicator="고용률",
+                value=48.3,
+                unit="%",
+                time="2025년 5월",
+                frequency="월",
+                population="전체",
+                comparison={"type": "INCREASE", "reference_period": "2011"},
+                calculation="DIRECT_VALUE",
+                parse_status="AUTO_OK",
+            )
+
+    result = pipeline.verify_article(
+        "고용률도 2011년 36.8%에서 지난달 48.3%로 불었다.",
+        article_published_at=date(2025, 6, 12),
+        extractor=_ContextlessAutoExtractor(),
+        official_service=service,
+    )
+
+    assert len(result.entries) == 1
+    assert result.entries[0].terminal_status == "HUMAN_REVIEW"
+    assert result.entries[0].admission_route == "CONTEXT_REQUIRED"
+    assert result.entries[0].reason_code == "CONTEXT_TARGET_UNRESOLVED"
+    assert service.claims == []
+
+
 def test_article_extractor_failure_is_wrapped_as_claim_parse_operational_error() -> None:
     class FailingExtractor:
         def extract(self, source_sentence: str, **kwargs) -> ClaimSchema:

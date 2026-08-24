@@ -9,6 +9,7 @@ from typing import Any
 
 from core.admission_recovery import OfficialEvidenceResolver
 from core.admission_recovery_v3 import recover_registry_record_v3
+from core.claim_context_guard import context_target_unresolved
 from core.claim_admissibility import classify_admissibility
 from core.article_claim_pipeline import parse_article_claims
 from core.claim_lineage import ClaimLineageRecord
@@ -90,6 +91,14 @@ def verify_registry_record(
     allow_structured_recovery: bool = True,
 ) -> list[PipelineEntry]:
     """Verify one Registry record through the same recovery used by articles."""
+    if _sentence_only_context_target_unresolved(record, article_context):
+        held_claim = record.claim.model_copy(update={
+            "parse_status": "HOLD",
+            "parse_reason": "CONTEXT_TARGET_UNRESOLVED",
+        })
+        held_record = record.model_copy(update={"claim": held_claim})
+        return [_verify_stored_claim(held_record, official_service)]
+
     try:
         if allow_structured_recovery:
             recovery = recover_registry_record_v3(
@@ -218,6 +227,19 @@ def _terminal_result(
     if admission_route != "KOSIS_PIPELINE_ELIGIBLE":
         return "HUMAN_REVIEW", claim.parse_reason or admission_route
     return "HUMAN_REVIEW", "OFFICIAL_RESOLUTION_NOT_ATTEMPTED"
+
+
+def _sentence_only_context_target_unresolved(
+    record: ClaimRegistryRecord,
+    article_context: str | None,
+) -> bool:
+    if not article_context:
+        return False
+    source = "".join(record.claim.source_sentence.split())
+    context = "".join(article_context.split())
+    if source != context:
+        return False
+    return context_target_unresolved(record.claim.source_sentence, record.claim)
 
 
 def _article_id(article_text: str) -> str:

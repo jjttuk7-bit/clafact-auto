@@ -8,6 +8,7 @@ from pathlib import Path
 import json
 from typing import Any, Iterable, Sequence
 
+from core.claim_context_guard import context_target_unresolved
 
 DASHBOARD_LEDGER_HEADERS = (
     "대시보드검증상태",
@@ -357,44 +358,10 @@ def _issue_group(stage: str, reason: str) -> str:
 
 
 def _context_target_unresolved(article_text: str, entries: Sequence[Any]) -> bool:
-    """Reject a sentence-initial continuation whose statistical target is absent."""
-    normalized_text = "".join(str(article_text or "").split())
-    generic_targets = {"", "전체", "계", "총계"}
-    for entry in entries:
-        claim = getattr(entry, "claim", None)
-        indicator = "".join(str(getattr(claim, "indicator", "") or "").split())
-        if not indicator or not normalized_text.startswith(f"{indicator}도"):
-            continue
-        target_values = (
-            getattr(claim, "population", None),
-            getattr(claim, "region", None),
-            getattr(claim, "dimension", None),
-        )
-        explicit_targets = {
-            "".join(token.split())
-            for value in target_values
-            for token in _target_tokens(value)
-            if "".join(token.split()) not in generic_targets
-        }
-        if not any(token and token in normalized_text for token in explicit_targets):
-            return True
-    return False
-
-
-def _target_tokens(value: Any) -> tuple[str, ...]:
-    if value is None:
-        return ()
-    if hasattr(value, "model_dump"):
-        value = value.model_dump()
-    if isinstance(value, dict):
-        return tuple(
-            token
-            for nested in value.values()
-            for token in _target_tokens(nested)
-        )
-    if isinstance(value, (list, tuple, set)):
-        return tuple(token for nested in value for token in _target_tokens(nested))
-    return (str(value).strip(),)
+    return any(
+        context_target_unresolved(article_text, getattr(entry, "claim", None))
+        for entry in entries
+    )
 
 
 def _parts(value: object) -> tuple[str, ...]:
