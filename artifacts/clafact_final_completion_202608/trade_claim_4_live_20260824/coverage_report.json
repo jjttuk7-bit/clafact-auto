@@ -1,0 +1,76 @@
+{
+  "admission_route_counts": {
+    "KOSIS_PIPELINE_ELIGIBLE": 6
+  },
+  "all_claims_terminal": true,
+  "derived_claims": 6,
+  "input_coverage_complete": true,
+  "input_registry_records": 4,
+  "official_api_counts": {
+    "api_provenance_cells": 2,
+    "api_provenance_claims": 2,
+    "catalog_query_attempted": 10,
+    "catalog_query_empty": 0,
+    "catalog_query_failed": 2,
+    "catalog_query_succeeded_nonempty": 8,
+    "metadata_itm_attempted": 319,
+    "metadata_itm_failed": 3,
+    "metadata_itm_succeeded": 316,
+    "metadata_prd_attempted": 316,
+    "metadata_prd_failed": 0,
+    "metadata_prd_succeeded": 316,
+    "official_value_fetch_hold": 2,
+    "official_value_fetch_pass": 0,
+    "verified_publication_claims": 0
+  },
+  "official_resolution_count": 6,
+  "operational_failure_count": 0,
+  "recovery_action_counts": {
+    "DIRECT": 3,
+    "MULTI_CLAIM_SPLIT": 3
+  },
+  "registry_load_errors": [],
+  "stage_status_counts": {
+    "CALCULATION": {
+      "PASS": 6
+    },
+    "CATALOG_SEARCH": {
+      "PASS": 6
+    },
+    "CLAIM_PARSE": {
+      "PASS": 6
+    },
+    "EVIDENCE_CELL": {
+      "PASS": 2
+    },
+    "HARD_GUARD": {
+      "HOLD": 4,
+      "PASS": 2
+    },
+    "OFFICIAL_AUTHOR_FETCH": {
+      "PASS": 6
+    },
+    "OFFICIAL_AUTHOR_SEARCH": {
+      "PASS": 6
+    },
+    "OFFICIAL_VALUE_FETCH": {
+      "HOLD": 2
+    },
+    "SEMANTIC_MAPPING": {
+      "PASS": 6
+    },
+    "SEMANTIC_MATCH": {
+      "PASS": 2
+    },
+    "VERDICT": {
+      "PASS": 6
+    }
+  },
+  "terminal_reason_counts": {
+    "OUTSIDE_TOLERANCE": 1,
+    "WITHIN_TOLERANCE": 5
+  },
+  "terminal_route_counts": {
+    "AUTO": 6
+  }
+}

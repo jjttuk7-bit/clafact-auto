@@ -17,6 +17,7 @@ from urllib.request import Request, urlopen
 
 from core.kosis_openapi_transport import create_kosis_tls_context
 from core.verdict_engine import make_verdict
+from core.trade_publication_verifier import TradePublicationVerifier
 from schemas.claim import ClaimSchema
 from schemas.verdict import OfficialValueProvenanceSchema, VerdictSchema
 
@@ -41,6 +42,13 @@ class OfficialPublicationClaimVerifier:
     ) -> None:
         self._opener = opener
         self._timeout_seconds = max(1, timeout_seconds)
+        self._trade_verifier = TradePublicationVerifier(fetch=self._fetch_trade_document, timeout_seconds=timeout_seconds)
+
+    def _fetch_trade_document(self, url: str, timeout: float) -> bytes:
+        request = Request(url, headers={"User-Agent": "CLAFACT-AUTO/0.1"})
+        with self._opener(request, timeout=timeout) as response:
+            return response.read()
+
 
     def recover(
         self,
@@ -49,6 +57,10 @@ class OfficialPublicationClaimVerifier:
         *,
         article_date: date,
     ) -> VerdictSchema:
+        trade_recovered = self._trade_verifier.recover(claim, verdict, article_date=article_date)
+        if trade_recovered is not verdict:
+            return trade_recovered
+
         if not _eligible(claim, verdict):
             return verdict
         publication_provenance = _select_publication(claim, verdict, article_date)

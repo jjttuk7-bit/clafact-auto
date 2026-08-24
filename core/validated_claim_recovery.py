@@ -6,6 +6,7 @@ import re
 from core.claim_contract import assess_claim_contract
 from core.claim_time_resolver import resolve_relative_time
 from core.deterministic_slot_enricher import infer_explicit_slots
+from core.trade_claim_recovery import recover_trade_period
 from schemas.claim import ClaimSchema
 
 
@@ -23,6 +24,7 @@ def recover_validated_claim(
     """Re-admit only source-backed Claims that satisfy the executable contract."""
     was_auto = claim.parse_status == "AUTO_OK"
     recovered = resolve_relative_time(claim, article_date)
+    recovered = recover_trade_period(recovered, article_date)
     recovered = _remove_redundant_period_dimensions(recovered)
     comparison_type = str((recovered.comparison or {}).get("type", "")).upper()
     if (

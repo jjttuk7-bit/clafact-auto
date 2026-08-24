@@ -23,6 +23,7 @@ from core.targeted_claim_splitter import (
     build_targeted_claim_inputs,
     discover_numeric_mentions,
 )
+from core.trade_claim_recovery import split_trade_composite_claim
 from core.validated_claim_recovery import recover_validated_claim
 from schemas.claim import ClaimSchema
 from schemas.claim_registry import ClaimRegistryRecord
@@ -36,6 +37,9 @@ class _StaticExtractor:
 
 def recover_registry_record_v3(record: ClaimRegistryRecord, *, extractor: StructuredClaimExtractor, official_service: OfficialEvidenceResolver, article_context: str | None = None) -> RecoveryResult:
     """Split targets, then use article context only as a controlled second pass."""
+    trade_children = split_trade_composite_claim(record.claim, record.article_published_at)
+    if len(trade_children) > 1:
+        return _recover_trade_children(record, trade_children, official_service)
     record_children = split_record_comparison_claim(record.claim)
     if len(record_children) > 1:
         return _recover_record_children(record, record_children, official_service)
@@ -139,6 +143,35 @@ def recover_registry_record_v3(record: ClaimRegistryRecord, *, extractor: Struct
         }})
         resolution = official_service.resolve(parsed, article_date=record.article_published_at) if route == "KOSIS_PIPELINE_ELIGIBLE" and record.article_published_at is not None else None
         entries.append(RecoveryEntry(record.claim.claim_id, derived, route, resolution))
+    return RecoveryResult(cast(RecoveryAction, "MULTI_CLAIM_SPLIT"), entries)
+
+
+def _recover_trade_children(
+    parent: ClaimRegistryRecord,
+    children: list[ClaimSchema],
+    official_service: OfficialEvidenceResolver,
+) -> RecoveryResult:
+    entries: list[RecoveryEntry] = []
+    for child in children:
+        child = recover_validated_claim(child, parent.article_published_at)
+        route = _admission_route(child)
+        derived = parent.model_copy(update={
+            "claim": child,
+            "source_ref": "admission_recovery_v3",
+            "slot_enrichment": {
+                "stage": "TRADE_TOTAL_COUNTRY_SHARE_SPLIT",
+                "parent_claim_id": parent.claim.claim_id,
+                "trade_child_role": (child.condition or {}).get("trade_claim_role"),
+                "admission_route": route,
+                "source_ref": parent.source_ref,
+            },
+        })
+        resolution = (
+            official_service.resolve(child, article_date=parent.article_published_at)
+            if route == "KOSIS_PIPELINE_ELIGIBLE" and parent.article_published_at is not None
+            else None
+        )
+        entries.append(RecoveryEntry(parent.claim.claim_id, derived, route, resolution))
     return RecoveryResult(cast(RecoveryAction, "MULTI_CLAIM_SPLIT"), entries)
 
 

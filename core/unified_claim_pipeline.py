@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 from hashlib import sha256
 from typing import Any
@@ -16,6 +16,8 @@ from core.claim_lineage import ClaimLineageRecord
 from core.claim_parser import StructuredClaimExtractor
 from core.operational_error import OperationalStageError, run_operational_stage
 from core.recovery_stage_audit import build_recovery_stage_audit
+from core.trade_claim_recovery import split_trade_composite_claim
+from core.validated_claim_recovery import recover_validated_claim
 from core.slot_audit import audit_claim_slots
 from schemas.claim import ClaimSchema
 from schemas.claim_registry import ClaimRegistryRecord
@@ -108,7 +110,7 @@ def verify_registry_record(
                 article_context=article_context,
             )
         else:
-            return [_verify_stored_claim(record, official_service)]
+            return _verify_deterministic_stored_claims(record, official_service)
     except OperationalStageError as error:
         return [
             PipelineEntry(
@@ -165,6 +167,26 @@ def verify_registry_record(
                 slot_audit=slot_audit,
             )
         )
+    return entries
+
+
+def _verify_deterministic_stored_claims(
+    record: ClaimRegistryRecord,
+    official_service: OfficialEvidenceResolver,
+) -> list[PipelineEntry]:
+    children = split_trade_composite_claim(record.claim, record.article_published_at)
+    split = len(children) > 1
+    entries: list[PipelineEntry] = []
+    for child in children:
+        recovered = recover_validated_claim(child, record.article_published_at)
+        entry = _verify_stored_claim(record.model_copy(update={"claim": recovered}), official_service)
+        if split:
+            entry = replace(
+                entry,
+                parent_claim_id=record.claim.claim_id,
+                recovery_action="MULTI_CLAIM_SPLIT",
+            )
+        entries.append(entry)
     return entries
 
 
