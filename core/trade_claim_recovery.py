@@ -6,6 +6,7 @@ from datetime import date, timedelta
 from hashlib import sha256
 import re
 
+from core.trade_money_normalizer import normalize_trade_money
 from schemas.claim import ClaimSchema
 
 
@@ -29,6 +30,7 @@ def recover_trade_period(claim: ClaimSchema, article_date: date | None) -> Claim
     """Recover exact trade publication ranges only from explicit source signals."""
     if not _is_trade_claim(claim):
         return claim
+    claim = normalize_trade_money(claim)
     source = claim.source_sentence
     partial = _PARTIAL_PERIOD.search(source)
     if partial is not None and article_date is not None:
