@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from core.hard_guard_diagnostics import format_hard_guard_rejections
 from schemas.claim_registry import ClaimRegistryRecord
 
 
@@ -30,7 +31,7 @@ _STATUS_NAMES = {"PASS": "통과", "HOLD": "중단", "FAIL": "실패"}
 _HEADERS = (
     "기사번호", "문장번호", "부모Claim번호", "자식Claim번호", "원문",
     "지표", "기사수치", "단위", "시점", "계산방식", "12개항목상태",
-    "의미표준", "후보통계표", "공식좌표", "단계별결과",
+    "의미표준", "후보통계표", "조건검사탈락사유", "공식좌표", "단계별결과",
     "공식API조회여부", "통계표검색시도", "항목메타조회시도", "기간메타조회시도",
     "공식값조회성공", "공식값", "공표확인", "공식값URL", "공표URL",
     "응답해시", "공표해시", "계산값", "판정", "최종상태", "중단단계",
@@ -119,6 +120,7 @@ def _csv_row(
         "12개항목상태": _slot_summary(result.get("slot_audit")),
         "의미표준": concept.get("canonical_name") or concept.get("standard_key") or "",
         "후보통계표": " | ".join(_unique(str(item.get("tbl_id") or "") for item in candidates)),
+        "조건검사탈락사유": format_hard_guard_rejections(diagnostics),
         "공식좌표": _json(verdict.get("evidence_cells") or []),
         "단계별결과": " | ".join(_event_text(event) for event in events),
         "공식API조회여부": "예" if (

@@ -8,6 +8,7 @@ from datetime import date
 
 from core import dynamic_kosis_verifier
 from core.dynamic_kosis_verifier import OfficialValueFetcher
+from core.hard_guard_diagnostics import summarize_hard_guard_rejections
 from core.operational_error import run_operational_stage
 from core.verdict_engine import make_verdict
 from schemas.pipeline_trace import PipelineTraceSchema
@@ -106,6 +107,9 @@ class OfficialEvidenceService:
         # metadata hydration. They therefore narrow verified candidates; they
         # never replace either official lookup.
         candidates = self._candidate_selector(claim, concept, candidates)
+        catalog_diagnostics.update(
+            summarize_hard_guard_rejections(claim, candidates)
+        )
         verdict = run_operational_stage(
             "VERIFICATION",
             lambda: dynamic_kosis_verifier.verify_claim_against_kosis(

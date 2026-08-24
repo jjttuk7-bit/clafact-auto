@@ -80,7 +80,12 @@ def test_official_evidence_service_preserves_safe_catalog_diagnostics() -> None:
     result = service.resolve(claim, article_date=date(2025, 1, 1))
 
     assert result.catalog_diagnostics == {
-        "attempted_queries": 3, "failed_queries": 1, "empty_queries": 2, "candidate_count": 0,
+        "attempted_queries": 3,
+        "failed_queries": 1,
+        "empty_queries": 2,
+        "candidate_count": 0,
+        "hard_guard_candidate_count": 0,
+        "hard_guard_passed_count": 0,
     }
 
 def test_official_evidence_service_routes_total_metadata_failure_to_named_hold() -> None:
@@ -112,3 +117,54 @@ def test_official_evidence_service_routes_total_metadata_failure_to_named_hold()
         trace.events[-1].status,
         trace.events[-1].reason_code,
     ) == ("KOSIS_METADATA", "HOLD", "KOSIS_METADATA_UNAVAILABLE")
+
+
+def test_official_evidence_service_preserves_hard_guard_reject_counts() -> None:
+    from core.official_evidence_service import CatalogResolution, OfficialEvidenceService
+
+    claim = ClaimSchema(
+        claim_id="c",
+        source_sentence="2024년 고용률은 70%였다.",
+        indicator="고용률",
+        value=70,
+        unit="%",
+        time="2024",
+        frequency="년",
+        calculation="DIRECT_VALUE",
+        parse_status="AUTO_OK",
+    )
+    concept = StandardConceptSchema(
+        concept_id="C",
+        canonical_name="고용률",
+        standard_key="employment_rate",
+        status="MATCHED",
+    )
+    candidate = KosisCandidateSchema(
+        org_id="101",
+        tbl_id="MONTHLY",
+        tbl_name="월별 고용률",
+        core_item_ids=["T1"],
+        core_item_names=["고용률"],
+        unit_names=["%"],
+        frequency="월",
+        start_period="2020-01",
+        end_period="2025-12",
+        metadata_status="OFFICIAL_METADATA_READY",
+    )
+    service = OfficialEvidenceService(
+        concept_mapper=lambda _: concept,
+        catalog_resolver=lambda *_: CatalogResolution(
+            candidates=[candidate], diagnostics={"attempted_queries": 1}
+        ),
+        official_fetcher=object(),
+    )
+
+    result = service.resolve(claim, article_date=date(2025, 1, 1))
+
+    assert result.verdict.reason_code == "NO_HARD_GUARD_CANDIDATE"
+    assert result.catalog_diagnostics == {
+        "attempted_queries": 1,
+        "hard_guard_candidate_count": 1,
+        "hard_guard_passed_count": 0,
+        "hard_guard_reject_FREQUENCY_CONFLICT": 1,
+    }

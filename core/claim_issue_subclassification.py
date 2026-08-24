@@ -231,7 +231,9 @@ def classify_issue_subclass(row: Mapping[str, str]) -> IssueSubclass:
             return _ISSUES["OFFICIAL_METADATA_LOOKUP"]
         return _ISSUES["OFFICIAL_CATALOG_SEARCH"]
     if group == "HARD_GUARD":
-        return _slot_specific("HARD_GUARD", missing)
+        observed = _observed_hard_guard_subclass(str(row.get("최신조건탈락사유") or ""))
+        return observed or _slot_specific("HARD_GUARD", missing)
+
     if group == "COORDINATE":
         return _slot_specific("COORDINATE", missing)
     if group == "SEMANTIC":
@@ -340,6 +342,28 @@ def _effective_group(group: str, reason: str, stage: str) -> str:
     if stage == "KOSIS_METADATA":
         return "OFFICIAL_PATH"
     return group
+
+
+def _observed_hard_guard_subclass(summary: str) -> IssueSubclass | None:
+    codes = {
+        part.split(":", 1)[0].strip()
+        for part in summary.split("|")
+        if part.strip()
+    }
+    if "METADATA_INCOMPLETE" in codes:
+        return _ISSUES["OFFICIAL_METADATA_LOOKUP"]
+    if codes & {"FREQUENCY_CONFLICT", "TIME_NOT_AVAILABLE"}:
+        return _ISSUES["HARD_GUARD_PERIOD"]
+    if "UNIT_CONFLICT" in codes:
+        return _ISSUES["HARD_GUARD_UNIT_VALUE"]
+    if codes & {
+        "AGE_DIMENSION_REQUIRED",
+        "SEX_DIMENSION_REQUIRED",
+        "REGION_GRANULARITY_CONFLICT",
+        "DIMENSION_MEMBER_CONFLICT",
+    }:
+        return _ISSUES["HARD_GUARD_DIMENSION"]
+    return None
 
 
 def _slot_specific(prefix: str, missing: set[str]) -> IssueSubclass:

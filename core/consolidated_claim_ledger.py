@@ -9,6 +9,8 @@ import json
 from pathlib import Path
 from typing import Iterable, Sequence
 
+from core.hard_guard_diagnostics import format_hard_guard_rejections
+
 from core.claim_issue_subclassification import annotate_issue_subclasses
 
 
@@ -19,6 +21,7 @@ EXTRA_HEADERS = (
     "최신개선판정",
     "최신자식Claim번호",
     "최신공식조회여부",
+    "최신조건탈락사유",
     "최신공식통계표",
     "최신공식좌표",
     "최신공식값",
@@ -59,6 +62,7 @@ class LedgerUpdate:
     source_path: str
     run_id: str
     recorded_at: str
+    hard_guard_rejections: str = ""
 
 
 def consolidate_rows(
@@ -109,6 +113,7 @@ def consolidate_rows(
             "verdict": _current_detail(current, "verdict"),
             "publication": _current_detail(current, "publication"),
             "source_url": _current_detail(current, "source_url"),
+            "hard_guard_rejections": _current_detail(current, "hard_guard_rejections"),
         }
         child_ids = _join(item.child_claim_id for item in current)
         source_paths = _join(item.source_path for item in current)
@@ -126,6 +131,7 @@ def consolidate_rows(
             "최신개선판정": outcome,
             "최신자식Claim번호": child_ids,
             "최신공식조회여부": official_api,
+            "최신조건탈락사유": details["hard_guard_rejections"],
             "최신공식통계표": details["table_id"],
             "최신공식좌표": details["coordinate"],
             "최신공식값": details["official_value"],
@@ -334,6 +340,9 @@ def _canonical_update(payload: dict[str, object], **context: object) -> LedgerUp
     parent = _canonical_parent(payload, child, context)
     resolution = payload.get("official_resolution")
     resolution = resolution if isinstance(resolution, dict) else {}
+    diagnostics = resolution.get("catalog_diagnostics")
+    diagnostics = diagnostics if isinstance(diagnostics, dict) else {}
+    hard_guard_rejections = format_hard_guard_rejections(diagnostics)
     verdict = resolution.get("verdict")
     verdict = verdict if isinstance(verdict, dict) else {}
     evidence = [item for item in verdict.get("evidence_cells") or [] if isinstance(item, dict)]
@@ -368,6 +377,7 @@ def _canonical_update(payload: dict[str, object], **context: object) -> LedgerUp
         verdict=verdict.get("verdict"),
         publication=f"{publication_count}/{len(provenance)}" if provenance else "",
         source_url=urls,
+        hard_guard_rejections=hard_guard_rejections,
         recorded_at=_payload_finished_at(payload),
         **context,
     )
@@ -378,7 +388,7 @@ def _make_update(
     reason: object = "", outcome: object = "", official: object = "",
     table: object = "", coordinate: object = "", official_value: object = "",
     calculated: object = "", verdict: object = "", publication: object = "",
-    source_url: object = "", run_id: object = "", recorded_at: object = "",
+    source_url: object = "", hard_guard_rejections: object = "", run_id: object = "", recorded_at: object = "",
     source_path: object, fallback_time: object, **_: object,
 ) -> LedgerUpdate:
     return LedgerUpdate(
@@ -397,6 +407,7 @@ def _make_update(
         publication=str(publication or ""),
         source_url=str(source_url or ""),
         source_path=str(source_path),
+        hard_guard_rejections=str(hard_guard_rejections or ""),
         run_id=str(run_id or ""),
         recorded_at=str(recorded_at or fallback_time),
     )
