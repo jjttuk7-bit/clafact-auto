@@ -6,19 +6,18 @@ from core.targeted_claim_splitter import discover_numeric_mentions
 
 
 GOLDSET = Path("tests/goldset/multi_claim_representative_20.csv")
-LEDGER = Path(
-    "artifacts/clafact_final_completion_202608/CLAFACT_1542_통합진행원장.csv"
+FINAL_RESULT = Path(
+    "artifacts/clafact_final_completion_202608/"
+    "multi_claim_representative_20_final_merged_20260824/"
+    "CLAFACT_대표20건_최종결과.csv"
 )
-BATCH_ID = "CONTEXT_MULTI_NUMERIC-001"
 
 
-def test_representative_goldset_matches_the_frozen_ledger_batch() -> None:
+def test_representative_goldset_matches_the_frozen_final_result() -> None:
     cases = load_gold_cases(GOLDSET)
-    with LEDGER.open(encoding="utf-8-sig", newline="") as handle:
+    with FINAL_RESULT.open(encoding="utf-8-sig", newline="") as handle:
         rows = list(csv.DictReader(handle))
-    expected_ids = {
-        row["Claim번호"] for row in rows if row["대표실행묶음"] == BATCH_ID
-    }
+    expected_ids = {row["부모Claim번호"] for row in rows}
 
     assert len(cases) == 20
     assert {case.parent_claim_id for case in cases} == expected_ids

@@ -91,7 +91,11 @@ def consolidate_rows(
         if not history:
             continue
         latest_key = _event_key(history[-1])
-        current = [item for item in history if _event_key(item) == latest_key]
+        latest_by_child: dict[str, LedgerUpdate] = {}
+        for item in history:
+            if _event_key(item) == latest_key:
+                latest_by_child[item.child_claim_id] = item
+        current = list(latest_by_child.values())
         status = _aggregate_status(item.status for item in current)
         reason = _join(item.reason for item in current)
         outcome = _join(item.outcome for item in current)
@@ -462,8 +466,8 @@ def _update_order(update: LedgerUpdate) -> tuple[datetime, str, str, str]:
     return (_parse_time(update.recorded_at), update.source_path, update.run_id, update.child_claim_id)
 
 
-def _event_key(update: LedgerUpdate) -> tuple[datetime, str, str]:
-    return (_parse_time(update.recorded_at), update.source_path, update.run_id)
+def _event_key(update: LedgerUpdate) -> tuple[str, str]:
+    return (update.source_path, update.run_id)
 
 
 def _parse_time(value: str) -> datetime:

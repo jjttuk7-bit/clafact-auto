@@ -86,6 +86,32 @@ def test_consolidation_aggregates_children_without_adding_rows() -> None:
     assert rows[0]["최신결과사유"] == "OUTSIDE_TOLERANCE|WITHIN_TOLERANCE"
 
 
+def test_consolidation_aggregates_sibling_children_from_same_run_with_different_times() -> None:
+    first = _update(
+        "C1",
+        child="child-1",
+        recorded_at="2026-08-23T10:00:01+09:00",
+        status="HOLD",
+        reason="KOSIS_METADATA_UNAVAILABLE",
+        source="official_run/claim_verification_results.jsonl",
+    )
+    second = _update(
+        "C1",
+        child="child-2",
+        recorded_at="2026-08-23T10:00:03+09:00",
+        status="HOLD",
+        reason="NO_EVIDENCE_COORDINATE_CANDIDATE",
+        source="official_run/claim_verification_results.jsonl",
+    )
+
+    row = consolidate_rows([_master("C1")], [first, second])[0]
+
+    assert row["최신자식Claim번호"] == "child-1|child-2"
+    assert row["최신결과사유"] == (
+        "KOSIS_METADATA_UNAVAILABLE|NO_EVIDENCE_COORDINATE_CANDIDATE"
+    )
+
+
 def test_consolidation_rejects_unknown_claim() -> None:
     with pytest.raises(ValueError, match="RESULT_PARENT_NOT_IN_MASTER:C9"):
         consolidate_rows([_master("C1")], [_update("C9")])
