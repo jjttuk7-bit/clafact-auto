@@ -16,6 +16,7 @@ import streamlit as st
 from core.batch_verifier import export_batch_xlsx, load_articles, verify_articles
 from core.canonical_batch_verifier import verify_articles_with_pipeline
 from core.canonical_pipeline import build_canonical_pipeline
+from core.dashboard_acceptance import verify_dashboard_article
 from core.article_claim_pipeline import parse_article_claims
 from core.claim_parser import parse_claim
 from core.claim_result_export import export_verdict_json_bytes, export_verdict_xlsx_bytes
@@ -202,7 +203,8 @@ def _parse_article_date(value: str) -> date | None:
 
 def _verify_batch_claim(sentence: str, article_date: date, settings: Settings) -> VerdictSchema:
     runtime = build_canonical_pipeline(settings)
-    result = runtime.verify_article(
+    result = verify_dashboard_article(
+        runtime,
         sentence,
         article_published_at=article_date,
     )
@@ -264,7 +266,8 @@ if run_article_verification and sentence.strip():
         )
         pipeline_result = run_operational_stage(
             "PIPELINE",
-            lambda: runtime.verify_article(
+            lambda: verify_dashboard_article(
+                runtime,
                 sentence,
                 article_published_at=article_date,
             ),
