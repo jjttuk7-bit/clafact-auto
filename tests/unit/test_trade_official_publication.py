@@ -102,3 +102,16 @@ def test_fails_closed_when_two_different_official_values_match() -> None:
     )
     text = "미국(△0.6%) 감소, 미국(△0.7%) 감소"
     assert extract_trade_official_value(claim, text) is None
+
+
+def test_preserves_negative_sign_when_parser_encodes_deficit_as_negative() -> None:
+    claim = _claim(
+        source_sentence="연간 누계 무역 수지는 10억5600만달러 적자다.",
+        indicator="무역수지",
+        value=-1_056_000_000,
+        time="2025-01-01/2025-02-20",
+        frequency="CUMULATIVE_PERIOD",
+        condition={"polarity": "DEFICIT"},
+    )
+    text = "2025년 2월 1일~20일 연간누계 무역수지 -1,056 백만달러"
+    assert extract_trade_official_value(claim, text) == -1_056_000_000

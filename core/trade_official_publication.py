@@ -34,7 +34,8 @@ def extract_trade_official_value(claim: ClaimSchema, document_text: str) -> floa
             return None
         if polarity == "SURPLUS" and value < 0:
             return None
-        return abs(value) * 1_000_000.0
+        scaled = value * 1_000_000.0
+        return scaled if float(claim.value or 0.0) < 0 else abs(scaled)
 
     if claim.calculation == "GROWTH_RATE" and (claim.unit or "") in {"%", "％", "퍼센트"}:
         direction = str((claim.condition or {}).get("direction") or "").upper()

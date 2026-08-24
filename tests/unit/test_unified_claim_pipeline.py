@@ -232,3 +232,36 @@ def test_article_extractor_failure_is_wrapped_as_claim_parse_operational_error()
 
     assert caught.value.stage == "CLAIM_PARSE"
     assert caught.value.diagnostic_id
+
+class _TradeMissingTimeExtractor:
+    def extract(self, source_sentence: str, **kwargs) -> ClaimSchema:
+        return ClaimSchema(
+            claim_id="trade-cumulative",
+            source_sentence="연간 누계 무역 수지는 10억5600만달러 적자다.",
+            indicator="무역 수지",
+            value=1_056_000_000,
+            unit="달러",
+            time=None,
+            frequency=None,
+            calculation="DIRECT_VALUE",
+            parse_status="HOLD",
+            parse_reason="MISSING_REQUIRED_SLOTS:time",
+        )
+
+
+def test_dashboard_trade_cumulative_recovers_period_before_admission_hold() -> None:
+    service = _OfficialService()
+
+    result = pipeline.verify_article(
+        "연간 누계 무역 수지는 10억5600만달러 적자다.",
+        article_published_at=date(2025, 2, 21),
+        extractor=_TradeMissingTimeExtractor(),
+        official_service=service,
+    )
+
+    assert result.entries[0].claim.time == "2025-01-01/2025-02-20"
+    assert result.entries[0].claim.frequency == "CUMULATIVE_PERIOD"
+    assert result.entries[0].claim.parse_status == "AUTO_OK"
+    assert result.entries[0].claim.parse_reason is None
+    assert len(service.claims) == 1
+    assert service.claims[0].time == "2025-01-01/2025-02-20"

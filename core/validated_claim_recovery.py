@@ -207,7 +207,7 @@ _NUMBER_EXPRESSION = re.compile(r"\d+(?:[,.]\d+)*(?:(?:\uc870|\uc5b5|\ub9cc|\ucc
 _SCALES = {"\uc870": 1e12, "\uc5b5": 1e8, "\ub9cc": 1e4, "\ucc9c": 1e3}
 _UNIT_BOUNDARY_PREFIXES = (
     "\uc774\uc5c8\ub2e4", "\uc600\ub2e4", "\uc774\uba70", "\uc774\uace0", "\uc73c\ub85c", "\uc5d0\uc11c", "\ubcf4\ub2e4", "\uac00\ub7c9", "\uc815\ub3c4",
-    "\uc99d\uac00", "\uac10\uc18c", "\uc0c1\uc2b9", "\ud558\ub77d", "\ub298", "\uc904", "\uae30\ub85d",
+    "\uc99d\uac00", "\uac10\uc18c", "\uc0c1\uc2b9", "\ud558\ub77d", "\ub298", "\uc904", "\uae30\ub85d", "\uc801\uc790", "\ud751\uc790",
     "\ub85c", "\uc740", "\ub294", "\uc774", "\uac00", "\uc744", "\ub97c", "\uc758", "\uc5d0", "\uc640", "\uacfc", "\ub9cc", "\ub354", "\uc529",
 )
 _INDEX_BASIS = re.compile(r"(?P<year>\d{4})(?:\ub144)?[=\uff1d]100", re.IGNORECASE)

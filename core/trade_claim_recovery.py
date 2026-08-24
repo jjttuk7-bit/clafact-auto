@@ -150,8 +150,8 @@ def split_trade_composite_claim(
 
 
 def _is_trade_claim(claim: ClaimSchema) -> bool:
-    text = f"{claim.indicator or ''} {claim.source_sentence}"
-    return "수출" in text or "수입" in text or "무역수지" in text
+    text = re.sub(r"\s+", "", f"{claim.indicator or ''} {claim.source_sentence}")
+    return any(term in text for term in ("수출", "수입", "무역수지"))
 
 
 def _claim_year(value: str | None) -> int | None:

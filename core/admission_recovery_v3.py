@@ -23,7 +23,7 @@ from core.targeted_claim_splitter import (
     build_targeted_claim_inputs,
     discover_numeric_mentions,
 )
-from core.trade_claim_recovery import split_trade_composite_claim
+from core.trade_claim_recovery import recover_trade_period, split_trade_composite_claim
 from core.validated_claim_recovery import recover_validated_claim
 from schemas.claim import ClaimSchema
 from schemas.claim_registry import ClaimRegistryRecord
@@ -37,6 +37,13 @@ class _StaticExtractor:
 
 def recover_registry_record_v3(record: ClaimRegistryRecord, *, extractor: StructuredClaimExtractor, official_service: OfficialEvidenceResolver, article_context: str | None = None) -> RecoveryResult:
     """Split targets, then use article context only as a controlled second pass."""
+    trade_recovered = recover_trade_period(record.claim, record.article_published_at)
+    if trade_recovered != record.claim:
+        trade_recovered = recover_validated_claim(
+            trade_recovered, record.article_published_at,
+            source_value_text=record.claim.source_sentence,
+        )
+        record = record.model_copy(update={"claim": trade_recovered})
     trade_children = split_trade_composite_claim(record.claim, record.article_published_at)
     if len(trade_children) > 1:
         return _recover_trade_children(record, trade_children, official_service)
