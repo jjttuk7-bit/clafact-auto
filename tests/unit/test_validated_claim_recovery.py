@@ -180,6 +180,72 @@ def test_does_not_reclassify_direct_level_followed_by_separate_comparison() -> N
     assert recovered.calculation == "DIRECT_VALUE"
 
 
+def test_reclassifies_non_percent_growth_output_as_source_grounded_difference() -> None:
+    claim = ClaimSchema(
+        claim_id="employment-change-growth",
+        source_sentence="제조업 취업자는 전년 동월 대비 8만3000명 줄었다.",
+        indicator="취업자 수", value=83000, unit="명", time="2025년 9월", frequency="월",
+        comparison={"type": "YEAR_OVER_YEAR"}, calculation="GROWTH_RATE",
+        condition={"direction": "DECREASE"}, parse_status="HOLD",
+        parse_reason="CLAIM_UNIT_INCOMPATIBLE",
+    )
+
+    recovered = recover_validated_claim(
+        claim, date(2025, 10, 17), source_value_text="8만3000명",
+    )
+
+    assert recovered.calculation == "DIFFERENCE"
+    assert recovered.comparison == {
+        "type": "YEAR_OVER_YEAR",
+        "operand_source": "OFFICIAL_EVIDENCE",
+    }
+    assert recovered.parse_status == "AUTO_OK"
+    assert recovered.parse_reason is None
+
+
+def test_reclassifies_non_percent_growth_output_as_source_grounded_level() -> None:
+    claim = ClaimSchema(
+        claim_id="employment-level-growth",
+        source_sentence=(
+            "지난달 20대 취업자는 343만5000명으로 "
+            "지난해 9월 356만9000명보다 13만4000명 줄었다."
+        ),
+        indicator="취업자 수", value=3435000, unit="명", time="2025년 9월", frequency="월",
+        comparison={"type": "YEAR_OVER_YEAR", "reference_value": "3569000"},
+        calculation="GROWTH_RATE", condition={"direction": "DECREASE"},
+        parse_status="HOLD", parse_reason="CLAIM_UNIT_INCOMPATIBLE",
+    )
+
+    recovered = recover_validated_claim(
+        claim, date(2025, 10, 17), source_value_text="343만5000명",
+    )
+
+    assert recovered.calculation == "DIRECT_VALUE"
+    assert recovered.parse_status == "AUTO_OK"
+    assert recovered.parse_reason is None
+
+
+def test_removes_period_dimension_after_first_month_is_resolved() -> None:
+    claim = ClaimSchema(
+        claim_id="birth-first-month",
+        source_sentence="올해 첫 달 출생아 수가 전년 동월 대비 11.6% 증가했다.",
+        indicator="출생아 수", value=11.6, unit="%", time="올해 첫 달",
+        frequency="MONTHLY", dimension={"month": "1월"},
+        comparison={"type": "YEAR_OVER_YEAR", "reference_period": "전년 동월"},
+        calculation="GROWTH_RATE", condition={"direction": "INCREASE"},
+        parse_status="AUTO_OK",
+    )
+
+    recovered = recover_validated_claim(
+        claim, date(2025, 2, 26), source_value_text="11.6%",
+    )
+
+    assert recovered.time == "2025년 1월"
+    assert recovered.frequency == "월"
+    assert recovered.dimension is None
+    assert recovered.parse_status == "AUTO_OK"
+
+
 def test_missing_comparison_basis_is_not_reclassified_without_context() -> None:
     claim = ClaimSchema(
         claim_id="context-change",

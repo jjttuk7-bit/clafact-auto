@@ -86,6 +86,8 @@ def test_official_evidence_service_preserves_safe_catalog_diagnostics() -> None:
         "candidate_count": 0,
         "hard_guard_candidate_count": 0,
         "hard_guard_passed_count": 0,
+        "hard_guard_best_candidate_count": 0,
+        "hard_guard_min_reject_count": 0,
     }
 
 def test_official_evidence_service_routes_total_metadata_failure_to_named_hold() -> None:
@@ -166,5 +168,8 @@ def test_official_evidence_service_preserves_hard_guard_reject_counts() -> None:
         "attempted_queries": 1,
         "hard_guard_candidate_count": 1,
         "hard_guard_passed_count": 0,
+        "hard_guard_best_candidate_count": 1,
+        "hard_guard_min_reject_count": 1,
         "hard_guard_reject_FREQUENCY_CONFLICT": 1,
+        "hard_guard_best_reject_FREQUENCY_CONFLICT": 1,
     }

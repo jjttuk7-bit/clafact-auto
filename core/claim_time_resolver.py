@@ -5,6 +5,7 @@ import re
 
 
 def resolve_relative_time(c, article_date: date | None):
+    c = _normalize_explicit_frequency(c)
     v = (c.time or "").strip()
     reporting_month = _resolve_source_reporting_month(c, article_date)
     if reporting_month is not c:
@@ -12,6 +13,12 @@ def resolve_relative_time(c, article_date: date | None):
     if not v:
         return _resolve_source_previous_month(c, article_date)
     v = re.sub(r"\s*\(\s*1\s*[~～-]\s*3\s*월\s*\)\s*$", "", v)
+    first_month = re.fullmatch(r"(?P<year>올해|금년|지난해|작년|전년)\s*첫\s*달", v)
+    if first_month:
+        if article_date is None:
+            return _hold(c)
+        year = article_date.year - int(first_month["year"] in {"지난해", "작년", "전년"})
+        return c.model_copy(update={"time": f"{year}년 1월", "frequency": "월"})
     if v in {"올해", "금년"}:
         return _hold(c) if article_date is None else c.model_copy(update={"time": f"{article_date.year}년", "frequency": "년"})
     last_month = re.fullmatch(r"지난\s*(?P<month>\d{1,2})월", v)
@@ -62,6 +69,27 @@ def resolve_relative_time(c, article_date: date | None):
     if month == 0:
         year, month = year - 1, 12
     return c.model_copy(update={"time": f"{year}년 {month}월", "frequency": "월"})
+
+
+def _normalize_explicit_frequency(c):
+    """Trust an exact period written in the time slot over a conflicting label."""
+    value = re.sub(r"\s+", "", (c.time or ""))
+    if not value:
+        return c
+    if (
+        re.fullmatch(r"(?:19|20)\d{2}년?\d{1,2}월", value)
+        or re.fullmatch(r"(?:19|20)\d{2}[-.]\d{1,2}", value)
+    ):
+        frequency = "월"
+    elif re.fullmatch(r"(?:19|20)\d{2}년?[1-4]분기", value):
+        frequency = "분기"
+    elif re.fullmatch(r"(?:19|20)\d{2}년?(?:상|하)반기", value):
+        frequency = "반기"
+    else:
+        return c
+    if c.frequency == frequency:
+        return c
+    return c.model_copy(update={"frequency": frequency})
 
 
 _BARE_MONTH = re.compile(

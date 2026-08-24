@@ -11,6 +11,7 @@ from schemas.claim import ClaimSchema
 
 _REVALIDATABLE_REASONS = {"AMBIGUOUS_COMPARISON"}
 _UNRESOLVED_TIME_MARKERS = ("\uac19\uc740 \uae30\uac04", "\uc774 \uae30\uac04", "\ucd5c\uadfc", "\uc774\ubc88")
+_PERIOD_DIMENSION_KEYS = {"month", "월", "period", "기간", "시점"}
 
 
 def recover_validated_claim(
@@ -22,6 +23,7 @@ def recover_validated_claim(
     """Re-admit only source-backed Claims that satisfy the executable contract."""
     was_auto = claim.parse_status == "AUTO_OK"
     recovered = resolve_relative_time(claim, article_date)
+    recovered = _remove_redundant_period_dimensions(recovered)
     comparison_type = str((recovered.comparison or {}).get("type", "")).upper()
     if (
         comparison_type in {"RECORD_HIGH", "RECORD_LOW"}
@@ -46,7 +48,12 @@ def recover_validated_claim(
             recovered = recovered.model_copy(update={
                 "comparison": {"type": context_type},
             })
+        calculation_before_repair = recovered.calculation
         recovered = _repair_source_grounded_change_amount(recovered, source_value_text)
+        recovered = _repair_source_grounded_level(recovered, source_value_text)
+        calculation_repaired = recovered.calculation != calculation_before_repair
+    else:
+        calculation_repaired = False
     if recovered.parse_status == "AUTO_OK":
         decision = assess_claim_contract(recovered)
         if decision.status == "PASS":
@@ -54,6 +61,16 @@ def recover_validated_claim(
         return recovered.model_copy(update={"parse_status": "HOLD", "parse_reason": decision.reason_code})
 
     reason = (recovered.parse_reason or "").strip()
+    if calculation_repaired:
+        candidate = recovered.model_copy(
+            update={"parse_status": "AUTO_OK", "parse_reason": None}
+        )
+        decision = assess_claim_contract(candidate)
+        if decision.status == "PASS":
+            return candidate
+        return candidate.model_copy(
+            update={"parse_status": "HOLD", "parse_reason": decision.reason_code}
+        )
     if reason == "MISSING_REQUIRED_SLOTS:time" and recovered.time:
         candidate = recovered.model_copy(
             update={"parse_status": "AUTO_OK", "parse_reason": None}
@@ -81,6 +98,26 @@ def recover_validated_claim(
         return candidate.model_copy(update={"parse_status": "HOLD", "parse_reason": decision.reason_code})
     return candidate
 
+def _remove_redundant_period_dimensions(claim: ClaimSchema) -> ClaimSchema:
+    """KOSIS periods are PRD coordinates, not duplicate table dimensions."""
+    if not claim.dimension or not claim.time:
+        return claim
+    frequency = re.sub(r"\s+", "", claim.frequency or "").casefold()
+    if frequency not in {"m", "month", "monthly", "월"}:
+        return claim
+    if not re.search(r"(?:19|20)\d{2}년?\s*\d{1,2}월", claim.time):
+        return claim
+    retained = {
+        key: value
+        for key, value in claim.dimension.items()
+        if re.sub(r"\s+", "", key).casefold() not in _PERIOD_DIMENSION_KEYS
+    }
+    if retained == claim.dimension:
+        return claim
+    return claim.model_copy(update={"dimension": retained or None})
+
+
+
 
 _CHANGE_COMPARISONS = {
     "YEAR_OVER_YEAR",
@@ -104,7 +141,7 @@ def _repair_source_grounded_change_amount(
     comparison_type = str(comparison.get("type", "")).strip().upper()
     direction = str((claim.condition or {}).get("direction", "")).strip().upper()
     if (
-        claim.calculation != "DIRECT_VALUE"
+        claim.calculation not in {"DIRECT_VALUE", "GROWTH_RATE"}
         or comparison_type not in _CHANGE_COMPARISONS
         or direction not in _DIRECTION_TERMS
         or "%" in (claim.unit or "")
@@ -118,6 +155,30 @@ def _repair_source_grounded_change_amount(
         "calculation": "DIFFERENCE",
         "comparison": comparison,
     })
+
+
+def _repair_source_grounded_level(
+    claim: ClaimSchema, source_value_text: str,
+) -> ClaimSchema:
+    """Repair a non-percent rate label when the target is grammatically a level."""
+    if (
+        claim.calculation != "GROWTH_RATE"
+        or "%" in (claim.unit or "")
+        or not _target_has_level_predicate(claim.source_sentence, source_value_text)
+    ):
+        return claim
+    return claim.model_copy(update={"calculation": "DIRECT_VALUE"})
+
+
+def _target_has_level_predicate(
+    source_sentence: str, source_value_text: str,
+) -> bool:
+    source = re.sub(r"[\s,]", "", source_sentence)
+    target = re.sub(r"[\s,]", "", source_value_text)
+    if not target or target not in source:
+        return False
+    tail = source.split(target, 1)[1]
+    return tail.startswith(_LEVEL_SUFFIXES)
 
 
 def _target_has_change_predicate(

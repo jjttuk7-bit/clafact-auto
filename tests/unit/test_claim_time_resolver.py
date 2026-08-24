@@ -21,6 +21,28 @@ def test_last_named_month():
  r=resolve_relative_time(claim('지난 8월'),date(2025,10,29));assert r.time=='2025년 8월'
 
 
+def test_explicit_month_corrects_conflicting_annual_frequency() -> None:
+    stored = claim("2025년 1월").model_copy(update={"frequency": "연"})
+
+    result = resolve_relative_time(stored, date(2025, 2, 26))
+
+    assert (result.time, result.frequency) == ("2025년 1월", "월")
+
+
+def test_explicit_quarter_corrects_conflicting_monthly_frequency() -> None:
+    stored = claim("2025년 1분기").model_copy(update={"frequency": "월"})
+
+    result = resolve_relative_time(stored, date(2025, 4, 30))
+
+    assert (result.time, result.frequency) == ("2025년 1분기", "분기")
+
+
+def test_this_year_first_month_resolves_to_january() -> None:
+    result = resolve_relative_time(claim("올해 첫 달"), date(2025, 2, 26))
+
+    assert (result.time, result.frequency) == ("2025년 1월", "월")
+
+
 def _missing_time(source: str) -> ClaimSchema:
     return ClaimSchema(
         claim_id="missing-month",

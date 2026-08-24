@@ -62,7 +62,28 @@ def test_summarizes_candidate_passes_and_every_reject_code() -> None:
     assert result == {
         "hard_guard_candidate_count": 4,
         "hard_guard_passed_count": 1,
+        "hard_guard_best_candidate_count": 1,
+        "hard_guard_min_reject_count": 0,
         "hard_guard_reject_DIMENSION_MEMBER_CONFLICT": 1,
         "hard_guard_reject_FREQUENCY_CONFLICT": 1,
         "hard_guard_reject_UNIT_CONFLICT": 1,
+    }
+
+
+def test_identifies_reject_codes_on_the_closest_official_candidate() -> None:
+    candidates = [
+        _candidate("UNIT_ONLY", unit_names=["명"]),
+        _candidate("FREQUENCY_AND_UNIT", frequency="월", unit_names=["명"]),
+    ]
+
+    result = summarize_hard_guard_rejections(_claim(), candidates)
+
+    assert result == {
+        "hard_guard_candidate_count": 2,
+        "hard_guard_passed_count": 0,
+        "hard_guard_best_candidate_count": 1,
+        "hard_guard_min_reject_count": 1,
+        "hard_guard_reject_FREQUENCY_CONFLICT": 1,
+        "hard_guard_reject_UNIT_CONFLICT": 2,
+        "hard_guard_best_reject_UNIT_CONFLICT": 1,
     }

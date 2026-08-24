@@ -16,20 +16,37 @@ def summarize_hard_guard_rejections(
 ) -> dict[str, int]:
     """Count candidate passes and stable reject codes without changing selection."""
     materialized = list(candidates)
-    rejected: Counter[str] = Counter()
-    passed = 0
-    for candidate in materialized:
-        result = apply_hard_guard(claim, candidate)
-        if result.passed:
-            passed += 1
-        for code in set(result.reject_codes):
-            rejected[code] += 1
+    results = [apply_hard_guard(claim, candidate) for candidate in materialized]
+    rejected: Counter[str] = Counter(
+        code
+        for result in results
+        for code in set(result.reject_codes)
+    )
+    passed = sum(result.passed for result in results)
+    reject_sizes = [len(set(result.reject_codes)) for result in results]
+    minimum = min(reject_sizes, default=0)
+    best_results = [
+        result
+        for result, size in zip(results, reject_sizes, strict=True)
+        if size == minimum
+    ]
+    best_rejected: Counter[str] = Counter(
+        code
+        for result in best_results
+        for code in set(result.reject_codes)
+    )
     return {
         "hard_guard_candidate_count": len(materialized),
         "hard_guard_passed_count": passed,
+        "hard_guard_best_candidate_count": len(best_results),
+        "hard_guard_min_reject_count": minimum,
         **{
             f"hard_guard_reject_{code}": count
             for code, count in sorted(rejected.items())
+        },
+        **{
+            f"hard_guard_best_reject_{code}": count
+            for code, count in sorted(best_rejected.items())
         },
     }
 
