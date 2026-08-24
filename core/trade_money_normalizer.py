@@ -30,14 +30,16 @@ def normalize_trade_money(claim: ClaimSchema) -> ClaimSchema:
         return claim
     claim_amount = abs(float(claim.value)) * claim_scale
     matching = [
-        amount
-        for amount in _source_dollar_amounts(claim.source_sentence)
+        (expression, amount)
+        for expression, amount in _source_dollar_amounts(claim.source_sentence)
         if _amounts_equal(amount, claim_amount)
     ]
     if len(matching) != 1:
         return claim
 
-    normalized_value = matching[0]
+    source_expression, normalized_value = matching[0]
+    if _claim_matches_source_expression(claim, source_expression):
+        return claim
     condition = dict(claim.condition or {})
     compact_source = re.sub(r"\s+", "", claim.source_sentence)
     if "적자" in compact_source:
@@ -66,9 +68,12 @@ def _dollar_unit_scale(unit: str) -> float | None:
     return None
 
 
-def _source_dollar_amounts(source_sentence: str) -> list[float]:
+def _source_dollar_amounts(source_sentence: str) -> list[tuple[str, float]]:
     return [
-        _parse_scaled_number(match.group("amount"))
+        (
+            match.group("amount"),
+            _parse_scaled_number(match.group("amount")),
+        )
         for match in _SOURCE_DOLLAR_AMOUNT.finditer(source_sentence)
     ]
 
@@ -90,3 +95,20 @@ def _parse_scaled_number(raw: str) -> float:
 
 def _amounts_equal(actual: float, expected: float) -> bool:
     return abs(actual - expected) <= max(1e-6, abs(expected) * 1e-9)
+
+
+def _claim_matches_source_expression(
+    claim: ClaimSchema, source_expression: str,
+) -> bool:
+    compact_expression = source_expression.replace(",", "")
+    direct = re.fullmatch(
+        r"(?P<number>[+-]?\d+(?:\.\d+)?)(?P<scale>조|억|만|천)?",
+        compact_expression,
+    )
+    if direct is None:
+        return False
+    compact_unit = re.sub(r"\s+", "", claim.unit or "").casefold()
+    source_unit = f"{direct.group('scale') or ''}달러"
+    return compact_unit == source_unit and _amounts_equal(
+        abs(float(claim.value or 0)), abs(float(direct.group("number")))
+    )
