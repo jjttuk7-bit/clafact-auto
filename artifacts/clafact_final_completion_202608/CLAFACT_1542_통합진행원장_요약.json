@@ -1,6 +1,6 @@
 {
   "child_parent_mapping_count": 38,
-  "completed_claim_count": 24,
+  "completed_claim_count": 25,
   "first_execution_batch": {
     "batch_id": "CONTEXT_MULTI_NUMERIC-001",
     "claim_ids": [
@@ -29,24 +29,24 @@
     "subtype": "CONTEXT_MULTI_NUMERIC"
   },
   "master_count": 1542,
-  "output_sha256": "f019125043f2c6ed2fd6d76d57122e62dccd476599c1882527dc28d6b88382a8",
+  "output_sha256": "8199f4ccb4271bfb09375d20df8c9704f9dc91b8d9ee416101f4a08db5569cac",
   "remaining_by_current_group": {
     "CALCULATION": 47,
     "CONTEXT": 667,
     "COORDINATE": 200,
     "HARD_GUARD": 227,
-    "OFFICIAL_PATH": 212,
+    "OFFICIAL_PATH": 210,
     "SEMANTIC": 101,
-    "VALUE_PUBLICATION": 64
+    "VALUE_PUBLICATION": 65
   },
   "remaining_by_primary_group": {
     "CALCULATION": 47,
     "CONTEXT": 667,
     "COORDINATE": 200,
     "HARD_GUARD": 227,
-    "OFFICIAL_PATH": 212,
+    "OFFICIAL_PATH": 210,
     "SEMANTIC": 101,
-    "VALUE_PUBLICATION": 64
+    "VALUE_PUBLICATION": 65
   },
   "remaining_by_subtype": {
     "CALCULATION_CHANGE_RATE": 33,
@@ -65,21 +65,21 @@
     "HARD_GUARD_ALIAS": 193,
     "HARD_GUARD_DIMENSION": 29,
     "HARD_GUARD_PERIOD": 4,
-    "OFFICIAL_CATALOG_SEARCH": 11,
+    "OFFICIAL_CATALOG_SEARCH": 9,
     "OFFICIAL_METADATA_LOOKUP": 201,
     "SEMANTIC_AMBIGUOUS": 41,
     "SEMANTIC_LOW_SCORE": 60,
-    "VALUE_ARTICLE_TIME_UNAVAILABLE": 22,
+    "VALUE_ARTICLE_TIME_UNAVAILABLE": 23,
     "VALUE_FETCH_FAILED": 32,
     "VALUE_PUBLICATION_LOOKUP": 10
   },
-  "remaining_claim_count": 1518,
+  "remaining_claim_count": 1517,
   "results_roots": [
     "D:\\projects\\services\\archived\\clafact-auto\\.worktrees\\final-completion-execution\\artifacts\\clafact_final_completion_202608"
   ],
-  "subclassified_remaining_count": 1518,
+  "subclassified_remaining_count": 1517,
   "unique_claim_count": 1542,
   "unmapped_result_count": 0,
-  "update_record_count": 1988,
+  "update_record_count": 1971,
   "updated_claim_count": 1542
 }

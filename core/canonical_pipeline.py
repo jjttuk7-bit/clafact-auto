@@ -24,6 +24,7 @@ from schemas.claim_registry import ClaimRegistryRecord
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 STANDARD_PATH = PROJECT_ROOT / "data" / "semantic_standard" / "concept_seed_v1.json"
+OFFICIAL_AUTHOR_PROFILES_PATH = PROJECT_ROOT / "data" / "official_author" / "official_author_profiles_v1.json"
 CATALOG_PATH = PROJECT_ROOT / "data" / "kosis_catalog" / "catalog_350.json"
 SEMANTIC_OVERLAY_PATH = PROJECT_ROOT / "data" / "semantic_standard" / "concept_overlay_v3.json"
 CATALOG_OVERLAY_PATH = PROJECT_ROOT / "data" / "kosis_catalog" / "catalog_overlay_v2.json"
@@ -102,6 +103,7 @@ def build_canonical_pipeline(
     service = build_official_evidence_service_v3(
         paths,
         semantic_overlay_path=SEMANTIC_OVERLAY_PATH,
+        official_author_profiles_path=OFFICIAL_AUTHOR_PROFILES_PATH,
         catalog_overlay_path=CATALOG_OVERLAY_PATH,
         kosis_api_key=api_key,
         live_time_budget_seconds=live_time_budget_seconds,

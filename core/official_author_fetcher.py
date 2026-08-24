@@ -11,6 +11,7 @@ from typing import Any, Callable
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
+from core.kosis_openapi_transport import create_kosis_tls_context
 from schemas.claim import ClaimSchema
 from schemas.official_author import (
     OfficialAuthorDocumentProfile,
@@ -21,6 +22,11 @@ from schemas.official_author import (
 
 _TAGS = re.compile(r"<[^>]+>")
 
+def _default_official_opener(request: object, *, timeout: float):
+    """Open official Korean public sites with the project's compatible TLS context."""
+    return urlopen(request, timeout=timeout, context=create_kosis_tls_context())
+
+
 
 class OfficialAuthorDocumentFetcher:
     """Fetch one period-specific official document without search-engine evidence."""
@@ -28,7 +34,7 @@ class OfficialAuthorDocumentFetcher:
     def __init__(
         self,
         *,
-        opener: Callable[..., Any] = urlopen,
+        opener: Callable[..., Any] = _default_official_opener,
         retries: int = 2,
         timeout_seconds: int = 15,
     ) -> None:

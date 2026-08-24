@@ -14,6 +14,7 @@ from schemas.pipeline_trace import PipelineTraceSchema
 from schemas.candidate import KosisCandidateSchema
 from schemas.claim import ClaimSchema
 from schemas.concept import StandardConceptSchema
+from schemas.official_author import OfficialAuthorEvidence
 from schemas.verdict import VerdictSchema
 
 
@@ -41,6 +42,7 @@ class OfficialEvidenceResolution:
     candidates: list[KosisCandidateSchema]
     verdict: VerdictSchema
     catalog_diagnostics: dict[str, int] = field(default_factory=dict)
+    official_author_evidence: OfficialAuthorEvidence | None = None
 
 
 class OfficialEvidenceService:

@@ -76,6 +76,7 @@ def test_factory_constructs_only_the_v3_official_engine(monkeypatch) -> None:
     assert captured["live_time_budget_seconds"] == 12.0
     assert captured["semantic_overlay_path"].name == "concept_overlay_v3.json"
     assert captured["require_live_metadata"] is True
+    assert captured["official_author_profiles_path"].name == "official_author_profiles_v1.json"
     assert captured["catalog_overlay_path"].name == "catalog_overlay_v2.json"
 
 

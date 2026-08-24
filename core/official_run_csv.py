@@ -18,6 +18,8 @@ _STAGE_NAMES = {
     "KOSIS_METADATA": "공식구조조회",
     "HARD_GUARD": "기본조건검사",
     "SEMANTIC_MATCH": "후보정밀비교",
+    "OFFICIAL_AUTHOR_SEARCH": "작성기관검색",
+    "OFFICIAL_AUTHOR_FETCH": "공식문서조회",
     "EVIDENCE_CELL": "공식좌표확정",
     "OFFICIAL_VALUE_FETCH": "공식값조회",
     "CALCULATION": "계산",
@@ -33,6 +35,7 @@ _HEADERS = (
     "공식값조회성공", "공식값", "공표확인", "공식값URL", "공표URL",
     "응답해시", "공표해시", "계산값", "판정", "최종상태", "중단단계",
     "중단사유", "코드버전", "자료버전", "실행시각",
+    "작성기관보조경로", "공식작성기관", "공식문서상태", "공식문서URL", "공식문서조회시각", "공식문서해시",
 )
 
 
@@ -81,6 +84,7 @@ def _csv_row(
     verdict = _dict(resolution.get("verdict"))
     concept = _dict(resolution.get("concept"))
     diagnostics = _dict(resolution.get("catalog_diagnostics"))
+    author_evidence = _dict(resolution.get("official_author_evidence"))
     trace = _dict(verdict.get("execution_trace"))
     events = [event for event in trace.get("events") or [] if isinstance(event, dict)]
     provenance = [
@@ -94,9 +98,11 @@ def _csv_row(
     candidates = [
         item for item in resolution.get("candidates") or [] if isinstance(item, dict)
     ]
-    stop_event = next(
-        (event for event in events if event.get("status") in {"HOLD", "FAIL"}),
-        None,
+    terminal_status = str(result.get("terminal_status") or verdict.get("route_status") or "")
+    stop_event = (
+        next((event for event in reversed(events) if event.get("status") in {"HOLD", "FAIL"}), None)
+        if terminal_status != "AUTO"
+        else None
     )
     api_rows = [item for item in provenance if item.get("source") == "API"]
     return {
@@ -115,7 +121,10 @@ def _csv_row(
         "후보통계표": " | ".join(_unique(str(item.get("tbl_id") or "") for item in candidates)),
         "공식좌표": _json(verdict.get("evidence_cells") or []),
         "단계별결과": " | ".join(_event_text(event) for event in events),
-        "공식API조회여부": "예" if int(diagnostics.get("attempted_queries") or 0) > 0 else "아니오",
+        "공식API조회여부": "예" if (
+            int(diagnostics.get("attempted_queries") or 0) > 0
+            or int(diagnostics.get("kosis_catalog_unavailable") or 0) > 0
+        ) else "아니오",
         "통계표검색시도": int(diagnostics.get("attempted_queries") or 0),
         "항목메타조회시도": int(diagnostics.get("metadata_itm_attempted") or 0),
         "기간메타조회시도": int(diagnostics.get("metadata_prd_attempted") or 0),
@@ -126,6 +135,12 @@ def _csv_row(
         "공표URL": " | ".join(_unique(str(item.get("source_url") or "") for item in publications)),
         "응답해시": " | ".join(_unique(str(item.get("content_hash") or "") for item in api_rows)),
         "공표해시": " | ".join(_unique(str(item.get("content_hash") or "") for item in publications)),
+        "작성기관보조경로": "예" if int(diagnostics.get("official_author_fallback_attempted") or 0) > 0 else "아니오",
+        "공식작성기관": author_evidence.get("author_name") or "",
+        "공식문서상태": author_evidence.get("status") or "",
+        "공식문서URL": author_evidence.get("source_url") or "",
+        "공식문서조회시각": author_evidence.get("retrieved_at") or "",
+        "공식문서해시": author_evidence.get("content_hash") or "",
         "계산값": verdict.get("calculated_value") if verdict.get("calculated_value") is not None else "",
         "판정": verdict.get("verdict") or "",
         "최종상태": result.get("terminal_status") or verdict.get("route_status") or "",

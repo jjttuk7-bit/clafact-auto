@@ -33,7 +33,7 @@ class OfficialValueProvenanceSchema(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     evidence_key: str
-    source: Literal["SNAPSHOT", "API", "NONE"]
+    source: Literal["SNAPSHOT", "API", "OFFICIAL_DOCUMENT", "NONE"]
     source_url: str = ""
     retrieved_at: str = ""
     content_hash: str

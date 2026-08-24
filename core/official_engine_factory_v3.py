@@ -5,6 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from core.catalog_binding import apply_catalog_binding
+from core.official_author_fallback_service import OfficialAuthorFallbackService
+from core.official_author_fetcher import OfficialAuthorDocumentFetcher
+from core.official_author_profiles import load_official_author_profiles
 from core.evidence_resolver_v2 import install as install_coordinate_resolver
 from core.kosis_publication_profiles_v2 import install_publication_profiles_v2
 from core.official_engine_factory import (
@@ -26,9 +29,10 @@ def build_official_evidence_service_v3(
     semantic_overlay_path: Path,
     catalog_overlay_path: Path,
     kosis_api_key: str | None,
+    official_author_profiles_path: Path | None = None,
     live_time_budget_seconds: float = 45.0,
     require_live_metadata: bool = False,
-) -> OfficialEvidenceService:
+) -> OfficialEvidenceService | OfficialAuthorFallbackService:
     """Build the one official engine and isolate either catalog path's transient failure."""
     install_coordinate_resolver()
     install_publication_profiles_v2()
@@ -78,12 +82,21 @@ def build_official_evidence_service_v3(
             raise RuntimeError("KOSIS_CATALOG_UNAVAILABLE")
         return merge_catalog_resolutions(primary, fallback)
 
-    return OfficialEvidenceService(
+    canonical_service = OfficialEvidenceService(
         concept_mapper=lambda claim: normalize_concept_v3(claim, concepts),
         catalog_resolver=resolve_catalog,
         official_fetcher=base._official_fetcher,
         candidate_selector=apply_catalog_binding,
     )
+    if official_author_profiles_path is None:
+        return canonical_service
+    return OfficialAuthorFallbackService(
+        canonical_service=canonical_service,
+        concept_mapper=lambda claim: normalize_concept_v3(claim, concepts),
+        profiles=load_official_author_profiles(official_author_profiles_path),
+        document_fetcher=OfficialAuthorDocumentFetcher(),
+    )
+
 
 
 def merge_catalog_resolutions(base: CatalogResolution, overlay: CatalogResolution) -> CatalogResolution:

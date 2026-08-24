@@ -57,3 +57,27 @@ def test_rejects_ambiguous_profile_match(tmp_path: Path) -> None:
     matched = match_official_author_profile(_claim("전체 수출"), load_official_author_profiles(path))
 
     assert matched is None
+
+
+def test_generic_article_source_hint_does_not_block_unique_semantic_profile(tmp_path: Path) -> None:
+    path = tmp_path / "profiles.json"
+    path.write_text(json.dumps({"profiles": [{
+        "profile_id": "donation",
+        "author_name": "현대자동차그룹",
+        "indicator_terms": ["현대차", "취임식", "기금", "기부"],
+        "source_hint_terms": ["현대자동차그룹", "현대차"],
+        "trusted_hosts": ["hyundaimotorgroup.com"],
+        "documents": [],
+    }]}), encoding="utf-8")
+
+    matched = match_official_author_profile(
+        _claim(
+            "현대차그룹의 취임식 기금 기부액",
+            source_hint="기사 본문",
+            population="현대차그룹",
+        ),
+        load_official_author_profiles(path),
+    )
+
+    assert matched is not None
+    assert matched.profile_id == "donation"

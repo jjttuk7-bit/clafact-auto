@@ -295,7 +295,8 @@ def _official_update(row: dict[str, str], **context: object) -> LedgerUpdate:
         reason=row.get("중단사유"), outcome="RESOLVED" if status == "AUTO" else "UNCHANGED",
         official=official, table=row.get("후보통계표"), coordinate=row.get("공식좌표"),
         official_value=row.get("공식값"), calculated=row.get("계산값"), verdict=row.get("판정"),
-        publication=row.get("공표확인"), source_url=row.get("공식값URL"), recorded_at=row.get("실행시각"),
+        publication=row.get("공표확인"), source_url=row.get("공식값URL") or row.get("공식문서URL"),
+        recorded_at=row.get("실행시각"),
         **context,
     )
 
@@ -561,6 +562,12 @@ _REASON_ISSUE_GROUP = {
     "KOSIS_METADATA_UNAVAILABLE": "OFFICIAL_PATH",
     "NO_HARD_GUARD_CANDIDATE": "HARD_GUARD",
     "NO_EVIDENCE_COORDINATE_CANDIDATE": "COORDINATE",
+    "OFFICIAL_AUTHOR_PROFILE_UNAVAILABLE": "OFFICIAL_PATH",
+    "OFFICIAL_AUTHOR_DOCUMENT_NOT_REGISTERED": "OFFICIAL_PATH",
+    "OFFICIAL_AUTHOR_FETCH_FAILED": "OFFICIAL_PATH",
+    "OFFICIAL_AUTHOR_HOST_NOT_TRUSTED": "OFFICIAL_PATH",
+    "OFFICIAL_AUTHOR_DOCUMENT_MISMATCH": "OFFICIAL_PATH",
+    "OFFICIAL_AUTHOR_EVIDENCE_UNAVAILABLE": "OFFICIAL_PATH",
     "LOW_SEMANTIC_SCORE": "SEMANTIC",
     "AMBIGUOUS_MARGIN": "SEMANTIC",
     "CONCEPT_NOT_FOUND": "SEMANTIC",

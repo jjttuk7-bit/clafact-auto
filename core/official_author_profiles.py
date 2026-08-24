@@ -35,17 +35,22 @@ def match_official_author_profile(
     )
     normalized = _normalize(fields)
     source_hint = _normalize(claim.source_hint or "")
-    matches = [
+    semantic_matches = [
         profile
         for profile in profiles
         if all(_normalize(term) in normalized for term in profile.indicator_terms)
-        and (
-            not profile.source_hint_terms
-            or not source_hint
-            or any(_normalize(term) in source_hint for term in profile.source_hint_terms)
-        )
     ]
-    return matches[0] if len(matches) == 1 else None
+    if len(semantic_matches) == 1:
+        return semantic_matches[0]
+    if not source_hint:
+        return None
+    hint_matches = [
+        profile
+        for profile in semantic_matches
+        if profile.source_hint_terms
+        and any(_normalize(term) in source_hint for term in profile.source_hint_terms)
+    ]
+    return hint_matches[0] if len(hint_matches) == 1 else None
 
 
 def _normalize(value: str) -> str:
