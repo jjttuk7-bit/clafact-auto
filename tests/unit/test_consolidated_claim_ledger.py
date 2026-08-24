@@ -308,3 +308,8 @@ def test_latest_failure_moves_claim_to_current_issue_group() -> None:
 
     assert row["대표문제"] == "CONTEXT"
     assert row["현재문제묶음"] == "COORDINATE"
+    assert row["세부문제유형"] == "COORDINATE_GENERAL"
+    assert row["세부문제설명"]
+    assert row["해결방법"]
+    assert row["처리우선순위"] == "1"
+    assert row["대표실행묶음"] == "COORDINATE_GENERAL-001"

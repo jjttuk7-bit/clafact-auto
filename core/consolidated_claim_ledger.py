@@ -9,6 +9,8 @@ import json
 from pathlib import Path
 from typing import Iterable, Sequence
 
+from core.claim_issue_subclassification import annotate_issue_subclasses
+
 
 EXTRA_HEADERS = (
     "최신결과상태",
@@ -30,6 +32,11 @@ EXTRA_HEADERS = (
     "반영된결과수",
     "남은작업",
     "현재문제묶음",
+    "세부문제유형",
+    "세부문제설명",
+    "해결방법",
+    "처리우선순위",
+    "대표실행묶음",
 )
 
 
@@ -130,7 +137,7 @@ def consolidate_rows(
             "현재문제묶음": _current_issue_group(row, reason, stage),
         })
         row["실행횟수"] = str(max(int(row.get("실행횟수") or 0), len(history)))
-    return copied
+    return annotate_issue_subclasses(copied)
 
 
 def build_child_parent_index(

@@ -48,6 +48,15 @@ def test_cli_builds_one_row_and_summary(tmp_path: Path) -> None:
     assert payload["updated_claim_count"] == 1
     assert payload["unmapped_result_count"] == 0
     assert payload["remaining_by_current_group"] == {"CONTEXT": 1}
+    assert payload["subclassified_remaining_count"] == 1
+    assert payload["remaining_by_subtype"] == {"CONTEXT_GENERAL_REPARSE": 1}
+    assert payload["first_execution_batch"] == {
+        "batch_id": "CONTEXT_GENERAL_REPARSE-001",
+        "subtype": "CONTEXT_GENERAL_REPARSE",
+        "count": 1,
+        "claim_ids": ["C1"],
+    }
+    assert rows[0]["세부문제유형"] == "CONTEXT_GENERAL_REPARSE"
 
 
 def test_cli_refuses_existing_output_without_replace(tmp_path: Path) -> None:

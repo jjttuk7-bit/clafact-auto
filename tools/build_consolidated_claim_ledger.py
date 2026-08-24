@@ -16,6 +16,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from core.claim_issue_subclassification import summarize_issue_subclasses
 from core.consolidated_claim_ledger import (
     build_child_parent_index,
     consolidate_rows,
@@ -62,6 +63,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         for row in rows
         if row.get("남은작업") != "완료"
     )
+    subclass_summary = summarize_issue_subclasses(rows)
     summary = {
         "master_count": len(master_rows),
         "unique_claim_count": len(master_ids),
@@ -75,6 +77,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "unmapped_result_count": 0,
         "output_sha256": digest,
         "results_roots": [str(root) for root in roots],
+        **subclass_summary,
     }
     _write_json(args.summary_json, summary)
     print(json.dumps(summary, ensure_ascii=False, sort_keys=True))
