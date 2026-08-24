@@ -19,7 +19,7 @@ class GroupingAssignmentPayload(BaseModel):
 
     mention_id: str
     role: NumericRole
-    group_id: str
+    group_id: str | None
 
 
 class GroupingGroupPayload(BaseModel):
@@ -48,7 +48,11 @@ class ClaimGroupingOutputPayload(BaseModel):
                 NumericAssignment(
                     mention_id=assignment.mention_id,
                     role=assignment.role,
-                    group_id=assignment.group_id.strip() or None,
+                    group_id=(
+                        assignment.group_id.strip() or None
+                        if isinstance(assignment.group_id, str)
+                        else None
+                    ),
                 )
                 for assignment in self.assignments
             ],

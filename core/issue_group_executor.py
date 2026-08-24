@@ -75,6 +75,29 @@ class ContextGroupExecutor:
             official_service=_AdmissionOnlyResolver(),
             article_context=self._contexts.get(record.article_id),
         )
+        grouping_holds = [
+            entry
+            for entry in recovery.entries
+            if entry.record.slot_enrichment.get("stage")
+            == "ROLE_GROUPED_MULTI_CLAIM_SPLIT"
+            and entry.record.slot_enrichment.get("grouping_reason")
+        ]
+        if grouping_holds:
+            reason = str(
+                grouping_holds[0].record.slot_enrichment["grouping_reason"]
+            )
+            return normalize_context_result({
+                "claim_id": issue.claim_id,
+                "status": "HUMAN_REVIEW",
+                "reason_code": reason,
+                "stop_stage": "CLAIM_SPLIT",
+                "executed_stages": ["CLAIM_SPLIT"],
+                "official_lookup_attempted": False,
+                "official_evidence": False,
+                "recovery_action": recovery.recovery_action,
+                "child_count": 0,
+                "children": [],
+            })
         children = []
         for entry in recovery.entries:
             audit = audit_claim_slots(entry.record.claim)

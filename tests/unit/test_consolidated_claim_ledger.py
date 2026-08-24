@@ -168,7 +168,7 @@ def test_discovery_reads_multi_claim_parent_result(tmp_path: Path) -> None:
     _write_csv(tmp_path / "multi_claim_result.csv", [
         "부모Claim번호", "자식Claim번호", "분리판정", "재입장결과", "중단사유", "실행시각",
     ], [{
-        "부모Claim번호": "C1", "자식Claim번호": "child-1", "분리판정": "PASS",
+        "부모Claim번호": "C1", "자식Claim번호": "child-1", "분리판정": "일치",
         "재입장결과": "KOSIS_PIPELINE_ELIGIBLE", "중단사유": "",
         "실행시각": "2026-08-23T09:00:00+09:00",
     }])

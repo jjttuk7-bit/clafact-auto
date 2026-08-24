@@ -316,7 +316,7 @@ def _multi_update(row: dict[str, str], **context: object) -> LedgerUpdate:
     child = str(row.get("자식Claim번호") or "").strip()
     parent = _parent(str(row.get("부모Claim번호") or ""), context, child=child)
     route = str(row.get("재입장결과") or "")
-    passed = str(row.get("분리판정") or "").upper() in {"PASS", "MATCH"} and route == "KOSIS_PIPELINE_ELIGIBLE"
+    passed = str(row.get("분리판정") or "").upper() in {"PASS", "MATCH", "일치"} and route == "KOSIS_PIPELINE_ELIGIBLE"
     return _make_update(
         parent=parent, child=child, status="PASS" if passed else "HOLD", stage="CLAIM_PARSE",
         reason=row.get("중단사유") or route, outcome="IMPROVED" if passed else "UNCHANGED",

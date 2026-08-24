@@ -60,6 +60,33 @@ def test_openai_group_response_is_validated_to_plan() -> None:
     assert plan.groups[0].main_mention_id == "n1"
 
 
+def test_openai_group_response_accepts_ungrouped_context_value() -> None:
+    payload = {
+        "output": [{
+            "type": "function_call",
+            "name": EMIT_CLAIM_GROUPS_FUNCTION_NAME,
+            "arguments": json.dumps({
+                "status": "READY",
+                "reason": "",
+                "assignments": [
+                    {"mention_id": "n1", "role": "CONTEXT_VALUE", "group_id": None},
+                    {"mention_id": "n2", "role": "MAIN_VALUE", "group_id": "g1"},
+                ],
+                "groups": [{
+                    "group_id": "g1",
+                    "main_mention_id": "n2",
+                    "indicator_hint": "고용률",
+                }],
+            }, ensure_ascii=False),
+        }]
+    }
+
+    plan = parse_openai_grouping_response(payload)
+
+    assert plan.assignments[0].role == "CONTEXT_VALUE"
+    assert plan.assignments[0].group_id is None
+
+
 def test_openai_group_response_rejects_free_text_or_unknown_role() -> None:
     with pytest.raises(OpenAIContractError):
         parse_openai_grouping_response({"output": [{"type": "message", "content": "free"}]})

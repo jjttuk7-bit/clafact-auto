@@ -149,3 +149,59 @@ def test_ambiguous_grouping_never_calls_official_service() -> None:
     assert result.entries[0].admission_route == "STRUCTURAL_HOLD"
     assert result.entries[0].record.claim.parse_reason == "GROUPING_AMBIGUOUS"
     assert service.claims == []
+
+
+class _FailingGroupExtractor:
+    def group_claims(self, source_sentence, mentions):
+        raise RuntimeError("provider output invalid")
+
+    def extract(self, source_sentence: str, *, article_published_at=None) -> ClaimSchema:
+        payload = json.loads(source_sentence)
+        expression = payload["target_numeric_expression"]
+        if expression == "9%p":
+            indicator, value, unit = "중국·홍콩 수출 비율 감소폭", 9.0, "%포인트"
+        else:
+            indicator, value, unit = "반도체 수출 비중", 20.0, "%"
+        return ClaimSchema(
+            claim_id="temporary",
+            source_sentence=source_sentence,
+            indicator=indicator,
+            value=value,
+            unit=unit,
+            time="2025년",
+            frequency="연",
+            calculation="DIRECT_VALUE",
+            comparison={"type": "NONE"},
+            parse_status="AUTO_OK",
+        )
+
+
+def test_provider_grouping_failure_uses_only_source_anchored_fallback() -> None:
+    source = (
+        "반도체 수출의 중국 비율이 9%p 이상 줄어 "
+        "우리나라 수출의 20%가량을 맡고 있는 핵심 품목의 지형이 변했다."
+    )
+    service = _Service()
+
+    result = recover_registry_record_v3(
+        _record(source), extractor=_FailingGroupExtractor(), official_service=service
+    )
+
+    assert len(result.entries) == 2
+    assert [
+        entry.record.slot_enrichment["target_numeric_expression"]
+        for entry in result.entries
+    ] == ["9%p", "20%"]
+
+
+def test_provider_grouping_failure_without_source_cues_still_fails_closed() -> None:
+    source = "관련 비율은 9%와 20%로 알려졌다."
+
+    try:
+        recover_registry_record_v3(
+            _record(source), extractor=_FailingGroupExtractor(), official_service=_Service()
+        )
+    except Exception as error:
+        assert error.__class__.__name__ == "OperationalStageError"
+    else:
+        raise AssertionError("ambiguous provider failure must not be recovered")

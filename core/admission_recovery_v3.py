@@ -10,10 +10,13 @@ from core.admission_recovery import AdmissionRoute, OfficialEvidenceResolver, Re
 from core.admission_recovery_v2 import recover_registry_record_v2
 from core.claim_admissibility import classify_admissibility
 from core.claim_group_recovery import build_grouping_hold
-from core.claim_group_normalizer import normalize_grouping_plan
+from core.claim_group_normalizer import (
+    build_source_anchored_grouping_plan,
+    normalize_grouping_plan,
+)
 from core.claim_group_validator import validate_grouping_plan
 from core.claim_parser import StructuredClaimExtractor, parse_claim
-from core.operational_error import run_operational_stage
+from core.operational_error import OperationalStageError, run_operational_stage
 from core.record_comparison_splitter import split_record_comparison_claim
 from core.targeted_claim_splitter import (
     TargetedClaimInput,
@@ -40,11 +43,20 @@ def recover_registry_record_v3(record: ClaimRegistryRecord, *, extractor: Struct
     grouper = getattr(extractor, "group_claims", None)
     target_roles: list[dict[str, str]]
     target_role_assignments: list[list[dict[str, str]]]
+    grouping_source_fallback = False
     if len(mentions) >= 2 and callable(grouper):
-        plan = run_operational_stage(
-            "CLAIM_SPLIT",
-            lambda: grouper(record.claim.source_sentence, mentions),
-        )
+        try:
+            plan = run_operational_stage(
+                "CLAIM_SPLIT",
+                lambda: grouper(record.claim.source_sentence, mentions),
+            )
+        except OperationalStageError:
+            plan = build_source_anchored_grouping_plan(
+                record.claim.source_sentence, mentions
+            )
+            if plan is None:
+                raise
+            grouping_source_fallback = True
         if not isinstance(plan, ClaimGroupingPlan):
             raise TypeError("Structured grouper must return ClaimGroupingPlan")
         plan = normalize_grouping_plan(record.claim.source_sentence, mentions, plan)
@@ -123,6 +135,7 @@ def recover_registry_record_v3(record: ClaimRegistryRecord, *, extractor: Struct
             "numeric_role_assignments": numeric_role_assignments,
             "source_ref": record.source_ref, "article_context_used": context_used,
             "context_enriched_slots": context_enriched_slots,
+            "grouping_source_fallback": grouping_source_fallback,
         }})
         resolution = official_service.resolve(parsed, article_date=record.article_published_at) if route == "KOSIS_PIPELINE_ELIGIBLE" and record.article_published_at is not None else None
         entries.append(RecoveryEntry(record.claim.claim_id, derived, route, resolution))
