@@ -1,0 +1,54 @@
+{
+  "profiles": [
+    {
+      "profile_id": "kca_daily_necessities_price",
+      "author_name": "한국소비자원 참가격",
+      "indicator_terms": ["평균", "물가", "상승"],
+      "source_hint_terms": ["한국소비자원", "참가격"],
+      "trusted_hosts": ["price.go.kr", "kca.go.kr"],
+      "documents": []
+    },
+    {
+      "profile_id": "molit_overseas_construction_orders",
+      "author_name": "국토교통부",
+      "indicator_terms": ["해외", "건설", "누적", "수주"],
+      "source_hint_terms": ["국토교통부"],
+      "trusted_hosts": ["molit.go.kr"],
+      "documents": []
+    },
+    {
+      "profile_id": "mafra_food_exports",
+      "author_name": "농림축산식품부",
+      "indicator_terms": ["라면", "수출"],
+      "source_hint_terms": ["농림축산식품부", "농식품부"],
+      "trusted_hosts": ["mafra.go.kr"],
+      "documents": [
+        {
+          "reference_period": "2024",
+          "source_url": "https://www.mafra.go.kr/home/5109/subview.do?enc=Zm5jdDF8QEB8JTJGYmJzJTJGaG9tZSUyRjc5MiUyRjU3Mjg0OSUyRmFydGNsVmlldy5kbyUzRmJic0NsU2VxJTNEJTI2cmdzRW5kZGVTdHIlM0QlMjZiYnNPcGVuV3JkU2VxJTNEJTI2cGFzc3dvcmQlM0QlMjZzcmNoQ29sdW1uJTNEJTI2cGFnZSUzRDElMjZyZ3NCZ25kZVN0ciUzRCUyNnJvdyUzRDEwJTI2aXNWaWV3TWluZSUzRGZhbHNlJTI2c3JjaFdyZCUzRCUyNg%3D%3D",
+          "value_pattern": "미국\\s*215\\.6[^%]{0,40}70\\.3",
+          "period_patterns": ["2024년", "’24"],
+          "unit": "%",
+          "scale": 1.0,
+          "publication_date_pattern": "2025\\.\\s*1\\.\\s*7"
+        }
+      ]
+    },
+    {
+      "profile_id": "hyundai_kia_vehicle_exports",
+      "author_name": "현대자동차그룹",
+      "indicator_terms": ["현대차", "기아", "수출", "대수"],
+      "source_hint_terms": ["현대자동차그룹", "현대차", "기아"],
+      "trusted_hosts": ["hyundaimotorgroup.com"],
+      "documents": []
+    },
+    {
+      "profile_id": "hyundai_inauguration_donation",
+      "author_name": "현대자동차그룹",
+      "indicator_terms": ["현대차", "취임식", "기금", "기부"],
+      "source_hint_terms": ["현대자동차그룹", "현대차"],
+      "trusted_hosts": ["hyundaimotorgroup.com"],
+      "documents": []
+    }
+  ]
+}
