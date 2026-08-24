@@ -303,7 +303,9 @@ def test_terminal_verdicts_are_marked_complete(verdict: str) -> None:
     update = _update("C1", status="AUTO", reason=verdict)
     update = replace(update, verdict=verdict)
 
-    assert consolidate_rows([_master("C1")], [update])[0]["남은작업"] == "완료"
+    row = consolidate_rows([_master("C1")], [update])[0]
+    assert row["남은작업"] == "완료"
+    assert row["현재문제묶음"] == "DONE"
 
 
 def test_multiple_children_are_complete_when_every_verdict_is_terminal() -> None:
@@ -339,3 +341,34 @@ def test_latest_failure_moves_claim_to_current_issue_group() -> None:
     assert row["해결방법"]
     assert row["처리우선순위"] == "1"
     assert row["대표실행묶음"] == "COORDINATE_GENERAL-001"
+
+
+def test_mixed_kosis_and_official_document_evidence_is_marked_partial_api(tmp_path: Path) -> None:
+    result = tmp_path / "run" / "claim_verification_results.jsonl"
+    result.parent.mkdir()
+    result.write_text(json.dumps({
+        "claim_id": "C1", "article_id": "A1", "sentence_id": "1",
+        "terminal_status": "AUTO", "reason_code": "WITHIN_TOLERANCE",
+        "official_resolution": {"verdict": {
+            "verdict": "MATCH", "calculated_value": 11.6, "evidence_values": [11.6],
+            "evidence_cells": [{"tbl_id": "T1", "canonical_key": "T1/2025-01"}],
+            "official_value_provenance": [
+                {
+                    "source": "API", "source_url": "https://kosis.test/value",
+                    "publication": {"status": "VERIFIED"},
+                },
+                {
+                    "source": "OFFICIAL_DOCUMENT", "source_url": "https://kostat.test/release",
+                    "publication": {"status": "VERIFIED"},
+                },
+            ],
+            "execution_trace": {"events": [{"stage": "VERDICT", "status": "PASS"}]},
+        }},
+    }, ensure_ascii=False) + "\n", encoding="utf-8")
+
+    update = discover_updates([tmp_path], {"C1"}, {})[0]
+    row = consolidate_rows([_master("C1")], [update])[0]
+
+    assert update.official_api == "부분"
+    assert row["최신공식조회여부"] == "부분"
+    assert row["남은작업"] == "완료"

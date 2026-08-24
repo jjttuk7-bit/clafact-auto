@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date
+from typing import Protocol
 
 from core import dynamic_kosis_verifier
 from core.dynamic_kosis_verifier import OfficialValueFetcher
@@ -34,6 +35,12 @@ CandidateSelector = Callable[
     list[KosisCandidateSchema],
 ]
 
+class PublicationClaimVerifier(Protocol):
+    def recover(
+        self, claim: ClaimSchema, verdict: VerdictSchema, *, article_date: date
+    ) -> VerdictSchema: ...
+
+
 
 @dataclass(frozen=True, slots=True)
 class OfficialEvidenceResolution:
@@ -56,6 +63,7 @@ class OfficialEvidenceService:
         catalog_resolver: CatalogResolver,
         official_fetcher: OfficialValueFetcher,
         candidate_selector: CandidateSelector | None = None,
+        publication_claim_verifier: PublicationClaimVerifier | None = None,
     ) -> None:
         self._concept_mapper = concept_mapper
         self._catalog_resolver = catalog_resolver
@@ -63,6 +71,7 @@ class OfficialEvidenceService:
         self._candidate_selector = candidate_selector or (
             lambda _claim, _concept, candidates: candidates
         )
+        self._publication_claim_verifier = publication_claim_verifier
 
     def resolve(self, claim: ClaimSchema, *, article_date: date) -> OfficialEvidenceResolution:
         concept = self._concept_mapper(claim)
@@ -120,6 +129,10 @@ class OfficialEvidenceService:
                 official_fetcher=self._official_fetcher,
             ),
         )
+        if self._publication_claim_verifier is not None:
+            verdict = self._publication_claim_verifier.recover(
+                claim, verdict, article_date=article_date
+            )
         return OfficialEvidenceResolution(
             concept=concept,
             candidates=candidates,

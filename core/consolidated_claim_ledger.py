@@ -119,6 +119,12 @@ def consolidate_rows(
         source_paths = _join(item.source_path for item in current)
         run_ids = _join(item.run_id for item in current)
         stage = _join(item.stage for item in current)
+        remaining_work = _remaining_work(
+            row, status, reason, details["verdict"]
+        )
+        current_issue_group = (
+            "DONE" if remaining_work == "완료" else _current_issue_group(row, reason, stage)
+        )
         row.update({
             "개선후상태": status,
             "개선후사유": reason,
@@ -143,8 +149,8 @@ def consolidate_rows(
             "최신실행번호": run_ids,
             "최신기록시각": current[0].recorded_at,
             "반영된결과수": str(len(history)),
-            "남은작업": _remaining_work(row, status, reason, details["verdict"]),
-            "현재문제묶음": _current_issue_group(row, reason, stage),
+            "남은작업": remaining_work,
+            "현재문제묶음": current_issue_group,
         })
         row["실행횟수"] = str(max(int(row.get("실행횟수") or 0), len(history)))
     return annotate_issue_subclasses(copied)
@@ -354,13 +360,20 @@ def _canonical_update(payload: dict[str, object], **context: object) -> LedgerUp
     tables = _join(str(item.get("tbl_id") or "") for item in evidence)
     coordinates = _join(str(item.get("canonical_key") or "") for item in evidence)
     values = "|".join(str(value) for value in verdict.get("evidence_values") or [])
-    api_count = sum(item.get("source") == "API" for item in provenance)
     publication_count = sum(
         isinstance(item.get("publication"), dict)
         and item["publication"].get("status") == "VERIFIED"
         for item in provenance
     )
     urls = _join(str(item.get("source_url") or "") for item in provenance)
+    provenance_sources = {str(item.get("source") or "") for item in provenance}
+    official_api = (
+        "예" if provenance and provenance_sources == {"API"}
+        else "부분" if (
+            {"API", "OFFICIAL_DOCUMENT"} <= provenance_sources
+            and publication_count == len(provenance)
+        ) else "아니오"
+    )
     status = str(payload.get("terminal_status") or verdict.get("route_status") or "")
     return _make_update(
         parent=parent,
@@ -369,7 +382,7 @@ def _canonical_update(payload: dict[str, object], **context: object) -> LedgerUp
         stage=stage,
         reason=payload.get("reason_code") or verdict.get("reason_code"),
         outcome="RESOLVED" if status == "AUTO" else "UNCHANGED",
-        official="예" if provenance and api_count == len(provenance) else "아니오",
+        official=official_api,
         table=tables,
         coordinate=coordinates,
         official_value=values,
@@ -503,6 +516,8 @@ def _aggregate_official(values: Iterable[str]) -> str:
     normalized = [value for value in values if value]
     if normalized and all(value == "예" for value in normalized):
         return "예"
+    if any(value == "부분" for value in normalized):
+        return "부분"
     if any(value == "예" for value in normalized):
         return "부분"
     return "아니오"

@@ -16,6 +16,7 @@ from core.official_engine_factory import (
     build_official_evidence_service,
 )
 from core.official_evidence_service import CatalogResolution, OfficialEvidenceService
+from core.official_publication_claim_verifier import OfficialPublicationClaimVerifier
 from core.kosis_metadata_repository import KosisMetadataRepository
 from core.semantic_normalizer_v3 import normalize_concept_v3
 from core.semantic_standard_v2 import load_semantic_standard_v2
@@ -87,6 +88,7 @@ def build_official_evidence_service_v3(
         catalog_resolver=resolve_catalog,
         official_fetcher=base._official_fetcher,
         candidate_selector=apply_catalog_binding,
+        publication_claim_verifier=OfficialPublicationClaimVerifier(),
     )
     if official_author_profiles_path is None:
         return canonical_service

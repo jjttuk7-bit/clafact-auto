@@ -173,3 +173,51 @@ def test_official_evidence_service_preserves_hard_guard_reject_counts() -> None:
         "hard_guard_reject_FREQUENCY_CONFLICT": 1,
         "hard_guard_best_reject_FREQUENCY_CONFLICT": 1,
     }
+
+
+def test_official_evidence_service_applies_publication_recovery_after_kosis_attempt(monkeypatch) -> None:
+    from core import dynamic_kosis_verifier
+    from core.official_evidence_service import OfficialEvidenceService
+    from core.verdict_engine import make_verdict
+
+    claim = ClaimSchema(
+        claim_id="birth", source_sentence="출생아 수가 11.6% 증가했다.",
+        indicator="출생아 수", value=11.6, unit="%", time="2025년 1월",
+        comparison={"type": "YEAR_OVER_YEAR"}, calculation="GROWTH_RATE",
+        parse_status="AUTO_OK",
+    )
+    concept = StandardConceptSchema(
+        concept_id="BIRTH", canonical_name="출생아 수", standard_key="birth", status="MATCHED"
+    )
+    held = make_verdict("birth", 11.6, [], None).model_copy(
+        update={"reason_code": "AS_OF_UNAVAILABLE"}
+    )
+    calls: list[str] = []
+
+    def canonical(*_args, **_kwargs):
+        calls.append("kosis")
+        return held
+
+    class PublicationRecovery:
+        def recover(self, input_claim, verdict, *, article_date):
+            calls.append("publication")
+            assert input_claim is claim
+            assert verdict is held
+            assert article_date == date(2025, 6, 25)
+            return verdict.model_copy(update={
+                "route_status": "AUTO", "verdict": "MATCH",
+                "reason_code": "WITHIN_TOLERANCE", "calculated_value": 11.6,
+            })
+
+    monkeypatch.setattr(dynamic_kosis_verifier, "verify_claim_against_kosis", canonical)
+    service = OfficialEvidenceService(
+        concept_mapper=lambda _: concept,
+        catalog_resolver=lambda *_: [],
+        official_fetcher=object(),
+        publication_claim_verifier=PublicationRecovery(),
+    )
+
+    result = service.resolve(claim, article_date=date(2025, 6, 25))
+
+    assert calls == ["kosis", "publication"]
+    assert result.verdict.route_status == "AUTO"
