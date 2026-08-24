@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import re
 
 from schemas.claim import ClaimSchema
@@ -29,16 +30,18 @@ def normalize_trade_money(claim: ClaimSchema) -> ClaimSchema:
     if claim_scale is None:
         return claim
     claim_amount = abs(float(claim.value)) * claim_scale
-    matching = [
-        (expression, amount)
-        for expression, amount in _source_dollar_amounts(claim.source_sentence)
-        if _amounts_equal(amount, claim_amount)
-    ]
-    if len(matching) != 1:
+    source_amounts = _source_dollar_amounts(claim.source_sentence)
+    if len(source_amounts) != 1:
         return claim
 
-    source_expression, normalized_value = matching[0]
-    if _claim_matches_source_expression(claim, source_expression):
+    source_expression, normalized_value = source_amounts[0]
+    amounts_match = _amounts_equal(normalized_value, claim_amount)
+    if not amounts_match and (
+        claim.calculation != "DIRECT_VALUE"
+        or not _is_power_of_ten_scale_mismatch(claim_amount, normalized_value)
+    ):
+        return claim
+    if amounts_match and _claim_matches_source_expression(claim, source_expression):
         return claim
     condition = dict(claim.condition or {})
     compact_source = re.sub(r"\s+", "", claim.source_sentence)
@@ -95,6 +98,17 @@ def _parse_scaled_number(raw: str) -> float:
 
 def _amounts_equal(actual: float, expected: float) -> bool:
     return abs(actual - expected) <= max(1e-6, abs(expected) * 1e-9)
+
+
+def _is_power_of_ten_scale_mismatch(first: float, second: float) -> bool:
+    """Return true only for an unambiguous 10x-or-larger scale error."""
+    smaller = min(abs(first), abs(second))
+    larger = max(abs(first), abs(second))
+    if smaller == 0 or larger == 0:
+        return False
+    ratio = larger / smaller
+    exponent = round(math.log10(ratio))
+    return 1 <= exponent <= 12 and math.isclose(ratio, 10 ** exponent, rel_tol=1e-9)
 
 
 def _claim_matches_source_expression(
