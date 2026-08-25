@@ -103,3 +103,47 @@ def test_get_meta_retries_empty_period_metadata_response(monkeypatch) -> None:
     result = transport.get_meta("secret", "101", "DT_TEST", meta_type="PRD", retries=2)
 
     assert result == [{"PRD_SE": "월", "STRT_PRD_DE": "2024.01"}]
+
+def test_get_meta_retries_kosis_call_count_limit(monkeypatch) -> None:
+    payloads = iter([
+        b'{err:"40",errMsg:"call limit"}',
+        b'[{"ITM_ID":"T1","TBL_ID":"DT_TEST"}]',
+    ])
+    sleeps: list[float] = []
+    monkeypatch.setattr(
+        transport, "urlopen", lambda *_args, **_kwargs: Response(next(payloads))
+    )
+    monkeypatch.setattr(transport, "sleep", sleeps.append)
+
+    result = transport.get_meta(
+        "secret", "101", "DT_TEST", meta_type="ITM", retries=2
+    )
+
+    assert result == [{"ITM_ID": "T1", "TBL_ID": "DT_TEST"}]
+    assert sleeps == [1]
+
+
+def test_get_meta_reuses_successful_metadata_within_one_shared_run(
+    monkeypatch, tmp_path
+) -> None:
+    calls = 0
+
+    def fake_urlopen(*_args, **_kwargs):
+        nonlocal calls
+        calls += 1
+        return Response(b'[{"ITM_ID":"T1","TBL_ID":"DT_TEST"}]')
+
+    monkeypatch.setenv(
+        "CLAFACT_KOSIS_METADATA_RUN_CACHE_DIR", str(tmp_path / "metadata-cache")
+    )
+    monkeypatch.setattr(transport, "urlopen", fake_urlopen)
+
+    first = transport.get_meta(
+        "secret", "101", "DT_TEST", meta_type="ITM", retries=1
+    )
+    second = transport.get_meta(
+        "secret", "101", "DT_TEST", meta_type="ITM", retries=1
+    )
+
+    assert first == second
+    assert calls == 1

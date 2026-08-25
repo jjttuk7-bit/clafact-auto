@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+from contextlib import contextmanager
+from hashlib import sha256
 import json
+import os
+from pathlib import Path
 import re
 import ssl
-from time import sleep
+from time import sleep, time
 from typing import Any
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -26,14 +30,39 @@ def create_kosis_tls_context() -> ssl.SSLContext:
     return context
 
 def get_meta(api_key: str, org_id: str, table_id: str, *, meta_type: str = "SOURCE", obj_id: str | None = None, itm_id: str | None = None, retries: int = 3, timeout_seconds: float = 20) -> dict[str, Any] | list[dict[str, Any]]:
-    """Fetch KOSIS metadata without exposing API keys or raw failure responses."""
+    """Fetch metadata once per run coordinate and retry KOSIS call-limit responses."""
     params = {"method": "getMeta", "apiKey": api_key, "format": "json", "orgId": org_id, "tblId": table_id, "type": meta_type}
     if obj_id:
         params["objId"] = obj_id
     if itm_id:
         params["itmId"] = itm_id
-    url = "https://kosis.kr/openapi/statisticsData.do?" + urlencode(params)
-    request = Request(url, headers={"Accept": "application/json", "User-Agent": "CLAFACT-AUTO/0.1"})
+    request = Request(
+        "https://kosis.kr/openapi/statisticsData.do?" + urlencode(params),
+        headers={"Accept": "application/json", "User-Agent": "CLAFACT-AUTO/0.1"},
+    )
+    cache_paths = _run_cache_paths(
+        org_id=org_id, table_id=table_id, meta_type=meta_type, obj_id=obj_id, itm_id=itm_id,
+    )
+    if cache_paths is None:
+        return _fetch_metadata(
+            request, meta_type=meta_type, retries=retries, timeout_seconds=timeout_seconds
+        )
+    cache_path, lock_path = cache_paths
+    if cached := _read_run_cache(cache_path):
+        return cached
+    with _coordinate_cache_lock(lock_path):
+        if cached := _read_run_cache(cache_path):
+            return cached
+        result = _fetch_metadata(
+            request, meta_type=meta_type, retries=retries, timeout_seconds=timeout_seconds
+        )
+        _write_run_cache(cache_path, result)
+        return result
+
+
+def _fetch_metadata(
+    request: Request, *, meta_type: str, retries: int, timeout_seconds: float,
+) -> dict[str, Any] | list[dict[str, Any]]:
     last: Exception | None = None
     for attempt in range(retries):
         try:
@@ -51,13 +80,77 @@ def get_meta(api_key: str, org_id: str, table_id: str, *, meta_type: str = "SOUR
             last = error
             if attempt + 1 < retries:
                 sleep(2**attempt)
-        except RuntimeError:
+        except RuntimeError as error:
+            last = error
+            if str(error) == "KOSIS_METADATA_API_ERROR_40" and attempt + 1 < retries:
+                sleep(2**attempt)
+                continue
             raise
         except Exception as error:
             last = error
             if attempt + 1 < retries:
                 sleep(2**attempt)
     raise RuntimeError("KOSIS_METADATA_FETCH_FAILED") from last
+
+
+def _run_cache_paths(
+    *, org_id: str, table_id: str, meta_type: str, obj_id: str | None, itm_id: str | None,
+) -> tuple[Path, Path] | None:
+    root_value = os.getenv("CLAFACT_KOSIS_METADATA_RUN_CACHE_DIR", "").strip()
+    if not root_value:
+        return None
+    coordinate = json.dumps(
+        [org_id.strip(), table_id.strip(), meta_type.strip().upper(), obj_id or "", itm_id or ""],
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    digest = sha256(coordinate.encode("utf-8")).hexdigest()
+    root = Path(root_value)
+    return root / f"{digest}.json", root / f"{digest}.lock"
+
+
+def _read_run_cache(path: Path) -> dict[str, Any] | list[dict[str, Any]] | None:
+    try:
+        cached = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return cached if isinstance(cached, (dict, list)) else None
+
+
+def _write_run_cache(path: Path, result: dict[str, Any] | list[dict[str, Any]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f"{path.name}.{os.getpid()}.tmp")
+    temporary.write_text(
+        json.dumps(result, ensure_ascii=False, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    temporary.replace(path)
+
+
+@contextmanager
+def _coordinate_cache_lock(lock_path: Path):
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    deadline = time() + 30.0
+    while True:
+        try:
+            lock_path.mkdir()
+            break
+        except FileExistsError:
+            try:
+                if time() - lock_path.stat().st_mtime > 60.0:
+                    lock_path.rmdir()
+                    continue
+            except (FileNotFoundError, OSError):
+                pass
+            if time() >= deadline:
+                raise RuntimeError("KOSIS_METADATA_CACHE_LOCK_TIMEOUT")
+            sleep(0.05)
+    try:
+        yield
+    finally:
+        try:
+            lock_path.rmdir()
+        except FileNotFoundError:
+            pass
 
 def _repair_kosis_mojibake(value: Any) -> Any:
     """Repair KOSIS metadata that arrives as CP949 bytes re-encoded as UTF-8 text."""

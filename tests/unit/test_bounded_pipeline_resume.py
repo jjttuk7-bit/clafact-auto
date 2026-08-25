@@ -83,4 +83,10 @@ def test_run_signature_records_code_and_semantic_catalog_inputs() -> None:
     assert signature["git_head"] != "UNAVAILABLE"
     assert len(signature["runtime_source_sha256"]) == 64
     assert len(signature["semantic_catalog_sha256"]) == 64
-    assert signature["runner_version"] == "canonical-v5-auditable-live-metadata"
+    assert signature["runner_version"] == "canonical-v6-shared-live-metadata"
+
+def test_bounded_workers_share_one_metadata_cache_for_the_run() -> None:
+    source = BOUNDED_CLI.read_text(encoding="utf-8")
+
+    assert '"CLAFACT_KOSIS_METADATA_RUN_CACHE_DIR"' in source
+    assert "env=worker_environment" in source

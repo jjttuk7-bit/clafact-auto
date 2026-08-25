@@ -24,7 +24,7 @@ from core.pipeline_run_reporting import build_run_report
 
 WORKER_CLI = PROJECT_ROOT / "tools" / "run_clafact_pipeline.py"
 CHECKPOINT_VERSION = 2
-RUNNER_VERSION = "canonical-v5-auditable-live-metadata"
+RUNNER_VERSION = "canonical-v6-shared-live-metadata"
 RUNTIME_SIGNATURE_PATHS = (
     WORKER_CLI,
     Path(__file__),
@@ -33,6 +33,7 @@ RUNTIME_SIGNATURE_PATHS = (
     PROJECT_ROOT / "core" / "official_engine_factory.py",
     PROJECT_ROOT / "core" / "official_engine_factory_v3.py",
     PROJECT_ROOT / "core" / "kosis_metadata_repository.py",
+    PROJECT_ROOT / "core" / "kosis_openapi_transport.py",
     PROJECT_ROOT / "core" / "unified_claim_pipeline.py",
 )
 SEMANTIC_CATALOG_PATHS = (
@@ -80,6 +81,7 @@ def main() -> None:
     pending_indices = [index for index in range(len(source_rows)) if index not in rows_by_index]
     with tempfile.TemporaryDirectory(prefix="clafact-bounded-") as temporary:
         temporary_root = Path(temporary)
+        worker_environment = _worker_environment(os.environ, temporary_root)
         with ThreadPoolExecutor(max_workers=args.max_workers) as executor:
             pending = {
                 executor.submit(
@@ -91,6 +93,7 @@ def main() -> None:
                     args.worker_timeout_seconds,
                     args.live_budget_seconds,
                     args.stored_slots_only,
+                    worker_environment,
                 ): index
                 for index in pending_indices
             }
@@ -211,6 +214,13 @@ def _git_head() -> str:
 
 
 
+def _worker_environment(base_environment: Any, temporary_root: Path) -> dict[str, str]:
+    environment = dict(base_environment)
+    cache_dir = (temporary_root / "kosis-metadata-cache").resolve()
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    environment["CLAFACT_KOSIS_METADATA_RUN_CACHE_DIR"] = str(cache_dir)
+    return environment
+
 def _run_one(
     index: int,
     source_row: dict[str, Any],
@@ -219,6 +229,7 @@ def _run_one(
     timeout_seconds: float,
     live_budget_seconds: float,
     stored_slots_only: bool,
+    worker_environment: dict[str, str],
 ) -> list[dict[str, Any]]:
     worker_root = temporary_root / f"worker-{index:05d}"
     worker_root.mkdir()
@@ -241,7 +252,7 @@ def _run_one(
         command,
         timeout_seconds=timeout_seconds,
         cwd=str(PROJECT_ROOT),
-        env=os.environ,
+        env=worker_environment,
     )
     if result.timed_out:
         return [_failure_row(source_row, "EXTERNAL_PIPELINE_TIMEOUT", result.stderr)]
