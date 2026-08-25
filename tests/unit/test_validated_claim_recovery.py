@@ -350,3 +350,22 @@ def test_non_previous_month_remains_held() -> None:
     assert recovered.time is None
     assert recovered.parse_status == "HOLD"
     assert recovered.parse_reason == "MISSING_REQUIRED_SLOTS:time"
+
+
+def test_recovery_rejects_auto_claim_whose_target_is_an_age_group() -> None:
+    claim = ClaimSchema(
+        claim_id="age-target",
+        source_sentence="20대 인구는 2020년 703만명을 기록했다.",
+        indicator="총인구",
+        value=20,
+        unit="대",
+        time="2020년",
+        frequency="년",
+        calculation="DIRECT_VALUE",
+        parse_status="AUTO_OK",
+    )
+
+    recovered = recover_validated_claim(claim, date(2025, 1, 1))
+
+    assert recovered.parse_status == "HOLD"
+    assert recovered.parse_reason == "TARGET_NUMERIC_ROLE_CONFLICT:AGE_GROUP"

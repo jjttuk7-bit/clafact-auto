@@ -10,6 +10,7 @@ from typing import Protocol
 from core.claim_contract import assess_claim_contract
 from core.claim_time_resolver import resolve_relative_time
 from core.deterministic_slot_enricher import apply_explicit_slots
+from core.numeric_role_guard import target_numeric_role_conflict
 from schemas.claim import ClaimSchema
 
 
@@ -74,6 +75,12 @@ def parse_claim(
                 "parse_reason": f"MISSING_REQUIRED_SLOTS:{','.join(missing_slots)}",
             }
         )
+    role_conflict = target_numeric_role_conflict(claim)
+    if role_conflict is not None:
+        return claim.model_copy(update={
+            "parse_status": "HOLD",
+            "parse_reason": role_conflict,
+        })
     claim = apply_explicit_slots(claim)
     decision = assess_claim_contract(claim)
     if decision.status == "HOLD":

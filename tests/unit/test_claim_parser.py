@@ -397,3 +397,40 @@ def test_parse_claim_normalizes_explicit_share_type_from_structured_output() -> 
     assert result.parse_status == "AUTO_OK"
     assert result.comparison is not None
     assert result.comparison["type"] == "SHARE_OF_TOTAL"
+
+
+def test_parse_claim_rejects_age_group_as_target_statistic() -> None:
+    result = parse_claim(
+        "20대 인구는 2020년 703만명을 기록했다.",
+        FakeStructuredExtractor(auto_claim(
+            indicator="총인구", value=20, unit="대", time="2020년",
+        )),
+    )
+
+    assert result.parse_status == "HOLD"
+    assert result.parse_reason == "TARGET_NUMERIC_ROLE_CONFLICT:AGE_GROUP"
+
+
+def test_parse_claim_rejects_duration_as_target_statistic() -> None:
+    result = parse_claim(
+        "5개월 연속 출생아 수가 늘었다.",
+        FakeStructuredExtractor(auto_claim(
+            indicator="출생아 수", value=5, unit="개", time="2015년",
+        )),
+    )
+
+    assert result.parse_status == "HOLD"
+    assert result.parse_reason == "TARGET_NUMERIC_ROLE_CONFLICT:DURATION"
+
+
+def test_parse_claim_allows_vehicle_count_as_target_statistic() -> None:
+    result = parse_claim(
+        "2024년 자동차 판매량은 100대였다.",
+        FakeStructuredExtractor(auto_claim(
+            indicator="자동차 판매량", value=100, unit="대", time="2024년",
+        )),
+    )
+
+    assert result.parse_status == "AUTO_OK"
+    assert result.value == 100
+    assert result.unit == "대"

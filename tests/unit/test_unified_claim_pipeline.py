@@ -265,3 +265,45 @@ def test_dashboard_trade_cumulative_recovers_period_before_admission_hold() -> N
     assert result.entries[0].claim.parse_reason is None
     assert len(service.claims) == 1
     assert service.claims[0].time == "2025-01-01/2025-02-20"
+
+
+class _AgeRoleMistakeExtractor:
+    def extract(
+        self,
+        source_sentence: str,
+        *,
+        article_published_at: date | None = None,
+    ) -> ClaimSchema:
+        return ClaimSchema(
+            claim_id="temporary",
+            source_sentence=source_sentence,
+            indicator="총인구",
+            value=20,
+            unit="대",
+            time="2020년",
+            frequency="년",
+            calculation="DIRECT_VALUE",
+            parse_status="AUTO_OK",
+        )
+
+
+def test_dashboard_shared_pipeline_blocks_age_role_before_official_lookup() -> None:
+    from core.canonical_pipeline import CanonicalPipeline
+    from core.dashboard_acceptance import verify_dashboard_article
+
+    service = _OfficialService()
+    runtime = CanonicalPipeline(
+        extractor=_AgeRoleMistakeExtractor(),
+        official_service=service,
+    )
+
+    result = verify_dashboard_article(
+        runtime,
+        "20대 인구는 2020년 703만명을 기록했다.",
+        article_published_at=date(2025, 1, 1),
+    )
+
+    assert len(result.entries) == 1
+    assert result.entries[0].claim.parse_status == "HOLD"
+    assert result.entries[0].reason_code == "TARGET_NUMERIC_ROLE_CONFLICT:AGE_GROUP"
+    assert service.claims == []

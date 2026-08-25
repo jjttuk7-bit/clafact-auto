@@ -6,6 +6,7 @@ import re
 from core.claim_contract import assess_claim_contract
 from core.claim_time_resolver import resolve_relative_time
 from core.deterministic_slot_enricher import infer_explicit_slots
+from core.numeric_role_guard import target_numeric_role_conflict
 from core.trade_claim_recovery import recover_trade_period
 from schemas.claim import ClaimSchema
 
@@ -36,6 +37,12 @@ def recover_validated_claim(
         return recovered.model_copy(update={"parse_status": "HOLD", "parse_reason": "RELATIVE_TIME_UNRESOLVED"})
     if recovered.value is None or not recovered.unit:
         return recovered
+    role_conflict = target_numeric_role_conflict(recovered)
+    if role_conflict is not None:
+        return recovered.model_copy(update={
+            "parse_status": "HOLD",
+            "parse_reason": role_conflict,
+        })
     grounding_text = source_value_text if source_value_text is not None else (None if was_auto else recovered.source_sentence)
     if grounding_text is not None and not _source_supports_claim_value(recovered, grounding_text):
         return recovered.model_copy(update={"parse_status": "HOLD", "parse_reason": "TARGET_VALUE_NOT_IN_SOURCE_SENTENCE"})
