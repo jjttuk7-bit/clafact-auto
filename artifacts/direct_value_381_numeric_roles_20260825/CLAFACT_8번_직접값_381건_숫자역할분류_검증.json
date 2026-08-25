@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "verified_at": "2026-08-25T17:35:05+09:00",
+  "status": "PASS",
+  "input_count": 381,
+  "output_count": 381,
+  "unique_claim_id_count": 381,
+  "assignment_count": 1456,
+  "role_counts": {
+    "제외": 11,
+    "대상값": 298,
+    "기간": 597,
+    "맥락값": 264,
+    "환산값": 19,
+    "비교값": 153,
+    "증감값": 101,
+    "순위": 3,
+    "연령": 6,
+    "기준연도": 2,
+    "기준값": 2
+  },
+  "target_status_counts": {
+    "TARGET_SELECTED": 365,
+    "TARGET_BLOCKED_BY_CONTEXT_ROLE": 7,
+    "NO_TARGET_MATCH": 6,
+    "AMBIGUOUS_TARGET_MATCH": 3
+  },
+  "missing_role_count": 0,
+  "missing_exclusion_reason_count": 0,
+  "protected_role_auto_target_conflict_count": 0,
+  "issues": [],
+  "source": {
+    "path": "D:\\projects\\services\\archived\\clafact-auto\\.worktrees\\direct-value-execution\\deliverables\\CLAFACT_AUTO_8번_1단계_원문수치목록화_20260825.csv",
+    "bytes": 767527,
+    "sha256": "90960D3D6CCE21FAAB7759F215C776647D822D579CEF364CE362EB847A1F09A7"
+  },
+  "outputs": {
+    "csv": {
+      "path": "D:\\projects\\services\\archived\\clafact-auto\\.worktrees\\direct-value-execution\\artifacts\\direct_value_381_numeric_roles_20260825\\CLAFACT_8번_직접값_381건_숫자역할분류.csv",
+      "bytes": 1339369,
+      "sha256": "D77AFCB72CD968B26B2484923D4FDD313C8741C89F1E8E82C059755A71404BED"
+    },
+    "jsonl": {
+      "path": "D:\\projects\\services\\archived\\clafact-auto\\.worktrees\\direct-value-execution\\artifacts\\direct_value_381_numeric_roles_20260825\\CLAFACT_8번_직접값_381건_숫자역할분류.jsonl",
+      "bytes": 1684734,
+      "sha256": "76F85FE4CD7560D29E0D286486CBC20061AE755FBE7B83AFD3B8F033643982C5"
+    }
+  }
+}
