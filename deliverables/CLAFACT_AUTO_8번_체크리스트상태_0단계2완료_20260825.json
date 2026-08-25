@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "updatedAt": "2026-08-25T16:02:21+09:00",
+  "tasks": {
+    "phase-0-task-1": {
+      "completionSummary": "필수 기능 5개의 원격 main 반영 여부를 확인했다. 4개는 반영 완료이고 KOSIS 구조정보 반복조회 개선 1개는 별도 작업폴더에만 있음을 확인했다.",
+      "evidenceReference": "CLAFACT_AUTO_8번_0단계_main기준기능점검_20260825.csv; origin/main=28c9ec10197d; 시험 130개 통과",
+      "verificationResult": "PASS",
+      "criteriaConfirmed": true,
+      "completed": true,
+      "completedAt": "2026-08-25T15:52:29+09:00",
+      "reversalReason": ""
+    },
+    "phase-0-task-2": {
+      "completionSummary": "KOSIS 구조정보 반복조회 개선 4개 파일과 증거형 체크리스트를 origin/main 기반 codex/direct-value-execution 브랜치 하나에 통합했다.",
+      "evidenceReference": "deliverables/CLAFACT_AUTO_8번_0단계_분산변경통합_20260825.csv; branch=codex/direct-value-execution; commits=ba6c2b0,62d63ed; 통합 전 147개·통합 후 150개·체크리스트 6개 시험 통과",
+      "verificationResult": "PASS",
+      "criteriaConfirmed": true,
+      "completed": true,
+      "completedAt": "2026-08-25T16:02:21+09:00",
+      "reversalReason": ""
+    }
+  }
+}
