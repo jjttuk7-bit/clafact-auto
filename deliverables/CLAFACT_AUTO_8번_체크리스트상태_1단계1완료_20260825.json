@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "updatedAt": "2026-08-25T17:17:09+09:00",
+  "tasks": {
+    "phase-0-task-1": {"completed": true, "criteriaConfirmed": true, "verificationResult": "PASS", "completedAt": "2026-08-25T15:52:29+09:00", "completionSummary": "main 기준 기능과 누락을 확인했다.", "evidenceReference": "CLAFACT_AUTO_8번_0단계_main기준기능점검_20260825.csv", "reversalReason": ""},
+    "phase-0-task-2": {"completed": true, "criteriaConfirmed": true, "verificationResult": "PASS", "completedAt": "2026-08-25T16:02:21+09:00", "completionSummary": "분산 변경을 실행 브랜치에 통합했다.", "evidenceReference": "CLAFACT_AUTO_8번_0단계_분산변경통합_20260825.csv", "reversalReason": ""},
+    "phase-0-task-3": {"completed": true, "criteriaConfirmed": true, "verificationResult": "PASS", "completedAt": "2026-08-25T16:11:51+09:00", "completionSummary": "전체 회귀시험을 실행했다.", "evidenceReference": "CLAFACT_AUTO_8번_0단계_전체회귀시험결과_20260825.csv", "reversalReason": ""},
+    "phase-0-task-4": {"completed": true, "criteriaConfirmed": true, "verificationResult": "PASS", "completedAt": "2026-08-25T16:26:25+09:00", "completionSummary": "Render 배포 버전을 확인했다.", "evidenceReference": "CLAFACT_AUTO_8번_0단계_Render배포버전확인_최종_20260825.csv", "reversalReason": ""},
+    "phase-0-task-5": {"completed": true, "criteriaConfirmed": true, "verificationResult": "PASS", "completedAt": "2026-08-25T16:55:02+09:00", "completionSummary": "직접값 381건 입력을 동결했다.", "evidenceReference": "CLAFACT_AUTO_8번_0단계_381건입력동결_20260825.csv", "reversalReason": ""},
+    "phase-0-task-6": {"completed": true, "criteriaConfirmed": true, "verificationResult": "PASS: 입력 381, 고유 381, 누락 0, 중복 0", "completedAt": "2026-08-25T17:05:19+09:00", "completionSummary": "동결 입력 계수를 독립 검증했다.", "evidenceReference": "CLAFACT_AUTO_8번_0단계_입력계수검증_20260825.csv", "reversalReason": ""},
+    "phase-1-task-1": {
+      "completed": true,
+      "criteriaConfirmed": true,
+      "verificationResult": "PASS: Claim 381, 수치 목록 보유 381, 수치 표현 1456, 미포함 숫자 0, 위치 불일치 0",
+      "completedAt": "2026-08-25T17:17:09+09:00",
+      "completionSummary": "381건 모든 원문의 숫자 표현을 위치·문맥과 함께 목록화했다.",
+      "evidenceReference": "CLAFACT_AUTO_8번_1단계_원문수치목록화_20260825.csv; CSV SHA256=90960D3D6CCE21FAAB7759F215C776647D822D579CEF364CE362EB847A1F09A7; 검증 JSON SHA256=0384FB190BE418E93FE789D0B41C61374A8EC768971968950D61E2B69BFAC3C4",
+      "reversalReason": ""
+    }
+  }
+}

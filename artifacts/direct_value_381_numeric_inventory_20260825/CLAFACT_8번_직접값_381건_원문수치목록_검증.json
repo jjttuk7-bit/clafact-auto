@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "verified_at": "2026-08-25T17:17:09+09:00",
+  "status": "PASS",
+  "expected_count": 381,
+  "input_count": 381,
+  "output_count": 381,
+  "unique_claim_id_count": 381,
+  "claim_with_inventory_count": 381,
+  "claim_with_numeric_mentions_count": 381,
+  "claims_without_numeric_mentions": [],
+  "total_numeric_mention_count": 1456,
+  "uncovered_digit_count": 0,
+  "position_mismatch_count": 0,
+  "issues": [],
+  "source": {
+    "path": "D:\\projects\\services\\archived\\clafact-auto\\.worktrees\\direct-value-execution\\artifacts\\direct_value_381_frozen_20260825\\CLAFACT_8번_직접값_381건_동결입력.csv",
+    "bytes": 436758,
+    "sha256": "885860F06F6B18533703DAE6FFA01E4B2985F4DFB61642C69D4A5247A7FA1A22"
+  },
+  "outputs": {
+    "csv": {
+      "path": "D:\\projects\\services\\archived\\clafact-auto\\.worktrees\\direct-value-execution\\artifacts\\direct_value_381_numeric_inventory_20260825\\CLAFACT_8번_직접값_381건_원문수치목록.csv",
+      "bytes": 767527,
+      "sha256": "90960D3D6CCE21FAAB7759F215C776647D822D579CEF364CE362EB847A1F09A7"
+    },
+    "jsonl": {
+      "path": "D:\\projects\\services\\archived\\clafact-auto\\.worktrees\\direct-value-execution\\artifacts\\direct_value_381_numeric_inventory_20260825\\CLAFACT_8번_직접값_381건_원문수치목록.jsonl",
+      "bytes": 1103305,
+      "sha256": "A2D320616DB6FC77425F1A1CF412AFFC84DF75867D950D6A00423E1B1A1D6625"
+    }
+  }
+}
