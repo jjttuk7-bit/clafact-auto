@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "updatedAt": "2026-08-25T16:55:02+09:00",
+  "tasks": {
+    "phase-0-task-1": {
+      "completionSummary": "필수 기능의 원격 main 반영 여부와 누락 기능을 기록했다.",
+      "evidenceReference": "CLAFACT_AUTO_8번_0단계_main기준기능점검_20260825.csv",
+      "verificationResult": "PASS",
+      "criteriaConfirmed": true,
+      "completed": true,
+      "completedAt": "2026-08-25T15:52:29+09:00",
+      "reversalReason": ""
+    },
+    "phase-0-task-2": {
+      "completionSummary": "필요한 분산 변경을 origin/main 기반 실행 브랜치 하나에 통합했다.",
+      "evidenceReference": "CLAFACT_AUTO_8번_0단계_분산변경통합_20260825.csv",
+      "verificationResult": "PASS",
+      "criteriaConfirmed": true,
+      "completed": true,
+      "completedAt": "2026-08-25T16:02:21+09:00",
+      "reversalReason": ""
+    },
+    "phase-0-task-3": {
+      "completionSummary": "전체 시험 1,297개를 실행하고 기존 실패 3개와 신규 실패 0개를 구분했다.",
+      "evidenceReference": "CLAFACT_AUTO_8번_0단계_전체회귀시험결과_20260825.csv",
+      "verificationResult": "PASS",
+      "criteriaConfirmed": true,
+      "completed": true,
+      "completedAt": "2026-08-25T16:11:51+09:00",
+      "reversalReason": ""
+    },
+    "phase-0-task-4": {
+      "completionSummary": "Render Events 화면에서 main 브랜치의 배포 상태를 확인했다.",
+      "evidenceReference": "CLAFACT_AUTO_8번_0단계_Render배포버전확인_최종_20260825.csv",
+      "verificationResult": "PASS",
+      "criteriaConfirmed": true,
+      "completed": true,
+      "completedAt": "2026-08-25T16:26:25+09:00",
+      "reversalReason": ""
+    },
+    "phase-0-task-5": {
+      "completionSummary": "08_직접값 탭 381건을 54개 열과 원본 순서 그대로 CSV·JSONL로 동결하고 전체 셀 일치를 확인했다.",
+      "evidenceReference": "CLAFACT_AUTO_8번_0단계_381건입력동결_20260825.csv; 원본 SHA256=5DB387F1F4B28D498D570FF135AE7BEA76A3A52AEAD74B2F9B28698E47A1FDC7; CSV SHA256=885860F06F6B18533703DAE6FFA01E4B2985F4DFB61642C69D4A5247A7FA1A22; JSONL SHA256=6E00150C60E574A2173E07D5526C41234272D542FE4AC508BEFB65FD3D50FAAC",
+      "verificationResult": "PASS",
+      "criteriaConfirmed": true,
+      "completed": true,
+      "completedAt": "2026-08-25T16:55:02+09:00",
+      "reversalReason": ""
+    }
+  }
+}
