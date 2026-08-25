@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "updatedAt": "2026-08-25T16:11:51+09:00",
+  "tasks": {
+    "phase-0-task-1": {
+      "completionSummary": "필수 기능 5개의 원격 main 반영 여부를 확인하고 누락 기능을 기록했다.",
+      "evidenceReference": "CLAFACT_AUTO_8번_0단계_main기준기능점검_20260825.csv; origin/main=28c9ec10197d",
+      "verificationResult": "PASS",
+      "criteriaConfirmed": true,
+      "completed": true,
+      "completedAt": "2026-08-25T15:52:29+09:00",
+      "reversalReason": ""
+    },
+    "phase-0-task-2": {
+      "completionSummary": "KOSIS 구조정보 반복조회 개선과 증거형 체크리스트를 origin/main 기반 실행 브랜치 하나에 통합했다.",
+      "evidenceReference": "CLAFACT_AUTO_8번_0단계_분산변경통합_20260825.csv; commits=ba6c2b0,62d63ed",
+      "verificationResult": "PASS",
+      "criteriaConfirmed": true,
+      "completed": true,
+      "completedAt": "2026-08-25T16:02:21+09:00",
+      "reversalReason": ""
+    },
+    "phase-0-task-3": {
+      "completionSummary": "통합 브랜치 전체 시험 1,297개를 실행해 1,294개 통과와 기존 산출물 누락 실패 3개를 확인했다. 같은 실패를 origin/main에서 재현하여 신규 실패가 0개임을 확인했다.",
+      "evidenceReference": "CLAFACT_AUTO_8번_0단계_전체회귀시험결과_20260825.csv; full XML SHA256=66F4F34EF687A81CBC6F3B57DCCB9794C6074D20BF19DD2072CE89F6E051ADFA; origin/main 재현 XML SHA256=5922BF21CF01163B83E1298A7417256302CAC1C81ECE5F3D2EB0578237688FE8",
+      "verificationResult": "PASS",
+      "criteriaConfirmed": true,
+      "completed": true,
+      "completedAt": "2026-08-25T16:11:51+09:00",
+      "reversalReason": ""
+    }
+  }
+}

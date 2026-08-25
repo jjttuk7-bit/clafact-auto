@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="3" skipped="0" tests="3" time="1.962" timestamp="2026-08-25T16:11:02.214538+09:00" hostname="BC-1"><testcase classname="tests.integration.test_final_baseline" name="test_current_registry_builds_complete_1542_record_baseline" time="0.002"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'artifacts\\gold_openai_reparse_v1_20260813\\claim_registry.jsonl'">def test_current_registry_builds_complete_1542_record_baseline() -&gt; None:
+        path = Path("artifacts/gold_openai_reparse_v1_20260813/claim_registry.jsonl")
+&gt;       registry = load_claim_registry(path)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\integration\test_final_baseline.py:57: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+core\claim_registry_loader.py:33: in load_claim_registry
+    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\USER\AppData\Roaming\uv\python\cpython-3.11-windows-x86_64-none\Lib\pathlib.py:1058: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = WindowsPath('artifacts/gold_openai_reparse_v1_20260813/claim_registry.jsonl')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+&gt;       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'artifacts\\gold_openai_reparse_v1_20260813\\claim_registry.jsonl'
+
+C:\Users\USER\AppData\Roaming\uv\python\cpython-3.11-windows-x86_64-none\Lib\pathlib.py:1044: FileNotFoundError</failure></testcase><testcase classname="tests.integration.test_multi_claim_registry_join" name="test_canonical_slots_are_joined_to_preserved_korean_source_for_all_gold_cases" time="0.119"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'D:\\projects\\services\\archived\\clafact-auto\\.worktrees\\numeric-role-guard\\artifacts\\clafact_final_completion_202608\\01_source_registry.jsonl'">def test_canonical_slots_are_joined_to_preserved_korean_source_for_all_gold_cases() -&gt; None:
+        loaded = load_claim_registry(CANONICAL)
+        assert loaded.errors == []
+        joined = _join_source_sentences(
+            loaded.records,
+&gt;           _load_source_sentences(SOURCE),
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        )
+
+tests\integration\test_multi_claim_registry_join.py:22: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tools\run_multi_claim_group.py:131: in _load_source_sentences
+    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\USER\AppData\Roaming\uv\python\cpython-3.11-windows-x86_64-none\Lib\pathlib.py:1058: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = WindowsPath('D:/projects/services/archived/clafact-auto/.worktrees/numeric-role-guard/artifacts/clafact_final_completion_202608/01_source_registry.jsonl')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+&gt;       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'D:\\projects\\services\\archived\\clafact-auto\\.worktrees\\numeric-role-guard\\artifacts\\clafact_final_completion_202608\\01_source_registry.jsonl'
+
+C:\Users\USER\AppData\Roaming\uv\python\cpython-3.11-windows-x86_64-none\Lib\pathlib.py:1044: FileNotFoundError</failure></testcase><testcase classname="tests.unit.test_goal_completion_audit" name="test_goal_audit_reports_all_five_acceptance_thresholds" time="0.002"><failure message="FileNotFoundError: [Errno 2] No such file or directory: 'artifacts\\gold_openai_reparse_v1_20260813\\claim_registry.jsonl'">def test_goal_audit_reports_all_five_acceptance_thresholds() -&gt; None:
+&gt;       report = build_goal_audit()
+                 ^^^^^^^^^^^^^^^^^^
+
+tests\unit\test_goal_completion_audit.py:5: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tools\audit_goal_completion.py:29: in build_goal_audit
+    registry = load_claim_registry(REGISTRY_PATH).records
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+core\claim_registry_loader.py:33: in load_claim_registry
+    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\USER\AppData\Roaming\uv\python\cpython-3.11-windows-x86_64-none\Lib\pathlib.py:1058: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = WindowsPath('artifacts/gold_openai_reparse_v1_20260813/claim_registry.jsonl')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+&gt;       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'artifacts\\gold_openai_reparse_v1_20260813\\claim_registry.jsonl'
+
+C:\Users\USER\AppData\Roaming\uv\python\cpython-3.11-windows-x86_64-none\Lib\pathlib.py:1044: FileNotFoundError</failure></testcase></testsuite></testsuites>

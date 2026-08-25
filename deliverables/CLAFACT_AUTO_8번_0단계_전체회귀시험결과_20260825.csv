@@ -1,0 +1,6 @@
+"번호","시험 구분","시험 대상","통과","실패","신규 실패","결과 분류","실패 원인 또는 근거","근거 파일"
+"1","통합 브랜치 전체 시험","codex/direct-value-execution 80a9dc4e45dc","1294","3","0","기존 산출물 누락 3건 외 회귀 없음","python -m pytest -q; 총 1297개; 99.81초","CLAFACT_AUTO_8번_0단계_전체회귀시험_20260825.xml; SHA256=66F4F34EF687A81CBC6F3B57DCCB9794C6074D20BF19DD2072CE89F6E051ADFA"
+"2","실패 재현","tests/integration/test_final_baseline.py::test_current_registry_builds_complete_1542_record_baseline","0","1","0","원격 main에도 존재","artifacts/gold_openai_reparse_v1_20260813/claim_registry.jsonl 파일이 Git 작업폴더에 없음","origin_main 재현 XML"
+"3","실패 재현","tests/integration/test_multi_claim_registry_join.py::test_canonical_slots_are_joined_to_preserved_korean_source_for_all_gold_cases","0","1","0","원격 main에도 존재","artifacts/clafact_final_completion_202608/01_source_registry.jsonl 파일이 Git 작업폴더에 없음","origin_main 재현 XML"
+"4","실패 재현","tests/unit/test_goal_completion_audit.py::test_goal_audit_reports_all_five_acceptance_thresholds","0","1","0","원격 main에도 존재","artifacts/gold_openai_reparse_v1_20260813/claim_registry.jsonl 파일이 Git 작업폴더에 없음","origin_main 재현 XML"
+"5","원격 main 비교","위 실패 3개만 origin/main 28c9ec10197d에서 재실행","0","3","0","동일 실패 전부 재현","통합 코드가 없는 원격 main에서도 같은 FileNotFoundError 3개 발생","CLAFACT_AUTO_8번_0단계_origin_main_기존실패재현_20260825.xml; SHA256=5922BF21CF01163B83E1298A7417256302CAC1C81ECE5F3D2EB0578237688FE8"
