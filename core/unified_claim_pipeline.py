@@ -13,6 +13,7 @@ from core.claim_context_guard import context_target_unresolved
 from core.claim_admissibility import classify_admissibility
 from core.article_claim_pipeline import parse_article_claims
 from core.claim_lineage import ClaimLineageRecord
+from core.indicator_unit_compatibility import indicator_unit_preverification_reason
 from core.claim_parser import StructuredClaimExtractor
 from core.operational_error import OperationalStageError, run_operational_stage
 from core.recovery_stage_audit import build_recovery_stage_audit
@@ -102,6 +103,17 @@ def verify_registry_record(
         held_claim = record.claim.model_copy(update={
             "parse_status": "HUMAN_REVIEW",
             "parse_reason": target_link_reason,
+        })
+        return [
+            _verify_stored_claim(
+                record.model_copy(update={"claim": held_claim}), official_service
+            )
+        ]
+    indicator_unit_reason = indicator_unit_preverification_reason(record)
+    if indicator_unit_reason is not None:
+        held_claim = record.claim.model_copy(update={
+            "parse_status": "HUMAN_REVIEW",
+            "parse_reason": indicator_unit_reason,
         })
         return [
             _verify_stored_claim(
