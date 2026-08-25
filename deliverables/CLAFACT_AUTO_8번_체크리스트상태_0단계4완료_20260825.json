@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "updatedAt": "2026-08-25T16:26:25+09:00",
+  "tasks": {
+    "phase-0-task-1": {
+      "completionSummary": "필수 기능의 원격 main 반영 여부와 누락 기능을 기록했다.",
+      "evidenceReference": "CLAFACT_AUTO_8번_0단계_main기준기능점검_20260825.csv",
+      "verificationResult": "PASS",
+      "criteriaConfirmed": true,
+      "completed": true,
+      "completedAt": "2026-08-25T15:52:29+09:00",
+      "reversalReason": ""
+    },
+    "phase-0-task-2": {
+      "completionSummary": "필요한 분산 변경을 origin/main 기반 실행 브랜치 하나에 통합했다.",
+      "evidenceReference": "CLAFACT_AUTO_8번_0단계_분산변경통합_20260825.csv",
+      "verificationResult": "PASS",
+      "criteriaConfirmed": true,
+      "completed": true,
+      "completedAt": "2026-08-25T16:02:21+09:00",
+      "reversalReason": ""
+    },
+    "phase-0-task-3": {
+      "completionSummary": "전체 시험 1,297개를 실행하고 기존 실패 3개와 신규 실패 0개를 구분했다.",
+      "evidenceReference": "CLAFACT_AUTO_8번_0단계_전체회귀시험결과_20260825.csv",
+      "verificationResult": "PASS",
+      "criteriaConfirmed": true,
+      "completed": true,
+      "completedAt": "2026-08-25T16:11:51+09:00",
+      "reversalReason": ""
+    },
+    "phase-0-task-4": {
+      "completionSummary": "Render Events 화면에서 main 브랜치의 28c9ec1 커밋이 2026-08-25 오후 2:19에 Deploy live가 된 사실을 확인했다.",
+      "evidenceReference": "CLAFACT_AUTO_8번_0단계_Render배포버전확인_최종_20260825.csv; screenshot SHA256=35EA08760603E6DF1AF47D8ADAA17CA3D914647D0ACF1598862AF5929AA42C60; public health=200 ok",
+      "verificationResult": "PASS",
+      "criteriaConfirmed": true,
+      "completed": true,
+      "completedAt": "2026-08-25T16:26:25+09:00",
+      "reversalReason": ""
+    }
+  }
+}
