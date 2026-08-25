@@ -24,6 +24,10 @@ from core.source_target_grounding import (
     target_link_preverification_reason,
     trusted_target_expression,
 )
+from core.source_sign_direction import (
+    apply_source_sign_direction_enrichment,
+    sign_direction_preverification_reason,
+)
 from schemas.claim import ClaimSchema
 from schemas.claim_registry import ClaimRegistryRecord
 from schemas.slot_audit import SlotAuditSchema
@@ -120,6 +124,18 @@ def verify_registry_record(
                 record.model_copy(update={"claim": held_claim}), official_service
             )
         ]
+    sign_direction_reason = sign_direction_preverification_reason(record)
+    if sign_direction_reason is not None:
+        held_claim = record.claim.model_copy(update={
+            "parse_status": "HUMAN_REVIEW",
+            "parse_reason": sign_direction_reason,
+        })
+        return [
+            _verify_stored_claim(
+                record.model_copy(update={"claim": held_claim}), official_service
+            )
+        ]
+    record = apply_source_sign_direction_enrichment(record)
     if _sentence_only_context_target_unresolved(record, article_context):
         held_claim = record.claim.model_copy(update={
             "parse_status": "HOLD",
