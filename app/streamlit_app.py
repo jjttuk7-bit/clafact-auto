@@ -38,6 +38,7 @@ from core.catalog_metadata_refresh import refresh_item_metadata
 from core.kosis_metadata_repository import KosisMetadataRepository
 from core.kosis_api_adapter import build_kosis_api_lookup
 from config.settings import Settings
+from core.official_source_presentation import build_official_source_presentation
 from core.review_handoff import build_review_payload
 from core.trace_presentation import build_trace_summary
 from core.semantic_matcher import semantic_match
@@ -224,7 +225,7 @@ def _verify_batch_claim(sentence: str, article_date: date, settings: Settings) -
 
 st.set_page_config(page_title="CLAFACT-AUTO", layout="wide")
 st.title("CLAFACT-AUTO")
-st.caption("KOSIS 공식값만 사용하며, 좌표·기사시점·후보가 불확실하면 자동 판정하지 않습니다.")
+st.caption("KOSIS와 공식 작성기관에서 직접 조회한 공식값만 사용하며, 출처·기사시점·후보가 불확실하면 자동 판정하지 않습니다.")
 
 settings = Settings()
 st.subheader("운영 연결 상태")
@@ -408,6 +409,7 @@ if article_verification_run:
                     ],
                 }
             )
+    source_presentation = build_official_source_presentation(verdict)
     official_value = None
     evidence_cells = []
     if not article_date and not requires_parse_review:
@@ -420,7 +422,7 @@ if article_verification_run:
         if verdict.route_status != "AUTO":
             st.warning(f"보류: {verdict.reason_code}")
         else:
-            st.success(f"{translate_status(verdict.verdict)}: KOSIS 공식값 {verdict.evidence_values[0]}")
+            st.success(f"{translate_status(verdict.verdict)}: {source_presentation.value_label} {verdict.evidence_values[0]}")
     if verdict.execution_trace is None:
         verdict = attach_trace(verdict, ui_trace.build())
     st.subheader("최종 판정")
@@ -428,7 +430,7 @@ if article_verification_run:
     verdict_columns[0].metric("판정", translate_status(verdict.verdict))
     verdict_columns[1].metric("경로", translate_status(verdict.route_status))
     verdict_columns[2].metric("기사값", verdict.claim_value if verdict.claim_value is not None else "-")
-    verdict_columns[3].metric("KOSIS 공식값", verdict.calculated_value if verdict.calculated_value is not None else "-")
+    verdict_columns[3].metric(source_presentation.value_label, verdict.calculated_value if verdict.calculated_value is not None else "-")
     try:
         verdict_explanation = run_operational_stage(
             "VERDICT_EXPLANATION",
@@ -458,7 +460,7 @@ if article_verification_run:
         if verdict.route_status != "AUTO":
             st.warning(f"보류 사유: {verdict.reason_code} — {verdict.explanation}")
         if verdict.evidence_cells:
-            st.subheader("KOSIS 공식 근거")
+            st.subheader(source_presentation.evidence_label)
             st.dataframe(
                 build_evidence_rows(verdict.evidence_cells, verdict.evidence_values)
             )
@@ -472,6 +474,19 @@ if article_verification_run:
                     f"KOSIS 표 원문 열기: {evidence_cell.tbl_id}",
                     build_kosis_table_url(evidence_cell),
                 )
+        if source_presentation.provenance_rows:
+            provenance_label = (
+                "공식 작성기관 문서 근거"
+                if verdict.evidence_cells
+                else source_presentation.evidence_label
+            )
+            st.subheader(provenance_label)
+            st.dataframe(source_presentation.provenance_rows)
+            for index, row in enumerate(source_presentation.provenance_rows, start=1):
+                if row["출처 URL"]:
+                    st.link_button(
+                        f"공식 문서 원문 열기 {index}", row["출처 URL"]
+                    )
         with st.expander("판정 상세 JSON"):
             st.json(verdict.model_dump())
         payload = build_review_payload(verdict)

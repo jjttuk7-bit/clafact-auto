@@ -7,6 +7,7 @@ from typing import Any
 from urllib.request import Request, urlopen
 
 from core.openai_function_claim_extractor import OPENAI_RESPONSES_URL, OPENAI_TIMEOUT_SECONDS
+from core.official_source_presentation import build_official_source_presentation
 from schemas.verdict import VerdictSchema
 from schemas.verdict_explanation import VerdictExplanationSchema
 
@@ -20,14 +21,15 @@ _KOREAN_CONCLUSIONS = {
 
 def build_template_explanation(verdict: VerdictSchema) -> VerdictExplanationSchema:
     """Return a deterministic Korean explanation from the immutable verdict."""
+    presentation = build_official_source_presentation(verdict)
     conclusion = _KOREAN_CONCLUSIONS[verdict.verdict]
     if verdict.verdict == "MATCH":
-        summary = "기사 주장과 KOSIS 공식값 계산 결과가 허용 오차 안에서 일치합니다."
-        detail = "기사값과 KOSIS 공식 근거로 Python이 계산한 값의 차이가 허용 오차 이내입니다."
+        summary = f"기사 주장과 {presentation.value_label} 계산 결과가 허용 오차 안에서 일치합니다."
+        detail = f"기사값과 {presentation.evidence_label}로 Python이 계산한 값의 차이가 허용 오차 이내입니다."
         next_action = None
     elif verdict.verdict == "MISMATCH":
-        summary = "기사 주장과 KOSIS 공식값 계산 결과가 허용 오차를 벗어나 불일치합니다."
-        detail = "기사값과 KOSIS 공식 근거로 Python이 계산한 값의 차이가 허용 오차를 초과했습니다."
+        summary = f"기사 주장과 {presentation.value_label} 계산 결과가 허용 오차를 벗어나 불일치합니다."
+        detail = f"기사값과 {presentation.evidence_label}로 Python이 계산한 값의 차이가 허용 오차를 초과했습니다."
         next_action = "기사의 수치, 기준시점, 비교 기준을 다시 확인하세요."
     else:
         summary = "공식 근거 또는 필수 검증 조건이 충분하지 않아 판정할 수 없습니다."
