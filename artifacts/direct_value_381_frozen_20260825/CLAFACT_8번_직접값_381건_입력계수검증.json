@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "verified_at": "2026-08-25T17:05:19+09:00",
+  "status": "PASS",
+  "expected_count": 381,
+  "input_count": 381,
+  "jsonl_count": 381,
+  "column_count": 54,
+  "unique_claim_id_count": 381,
+  "missing_claim_id_count": 0,
+  "duplicate_claim_id_count": 0,
+  "duplicate_claim_ids": [],
+  "csv_jsonl_rows_equal": true,
+  "csv_hash_matches_manifest": true,
+  "jsonl_hash_matches_manifest": true,
+  "checks": {
+    "expected_input_count": true,
+    "manifest_input_count": true,
+    "jsonl_input_count": true,
+    "manifest_column_count": true,
+    "csv_headers_match_manifest": true,
+    "jsonl_headers_match_manifest": true,
+    "csv_hash_matches_manifest": true,
+    "jsonl_hash_matches_manifest": true,
+    "csv_jsonl_rows_equal": true,
+    "claim_id_column_present": true,
+    "missing_claim_id_zero": true,
+    "duplicate_claim_id_zero": true,
+    "unique_claim_id_count_matches_input": true
+  },
+  "issues": [],
+  "inputs": {
+    "manifest": "D:\\projects\\services\\archived\\clafact-auto\\.worktrees\\direct-value-execution\\artifacts\\direct_value_381_frozen_20260825\\CLAFACT_8번_직접값_381건_동결_manifest.json",
+    "csv": "D:\\projects\\services\\archived\\clafact-auto\\.worktrees\\direct-value-execution\\artifacts\\direct_value_381_frozen_20260825\\CLAFACT_8번_직접값_381건_동결입력.csv",
+    "jsonl": "D:\\projects\\services\\archived\\clafact-auto\\.worktrees\\direct-value-execution\\artifacts\\direct_value_381_frozen_20260825\\CLAFACT_8번_직접값_381건_동결입력.jsonl"
+  }
+}
