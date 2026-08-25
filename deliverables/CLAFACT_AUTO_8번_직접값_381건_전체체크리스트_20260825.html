@@ -1,0 +1,1035 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="CLAFACT-AUTO 8번 직접값 381건의 증거 확인형 전체 작업 체크리스트">
+  <title>CLAFACT-AUTO | 직접값 381건 완료 통제표</title>
+  <style>
+    :root {
+      --ink: #17232d;
+      --ink-soft: #4a5963;
+      --paper: #f3efe5;
+      --paper-deep: #e8e0d0;
+      --panel: #fffdf7;
+      --line: #c9c0af;
+      --teal: #006f68;
+      --teal-bright: #10a294;
+      --red: #bd3f33;
+      --amber: #b37a12;
+      --navy: #0b2d3a;
+      --shadow: 0 16px 42px rgba(23, 35, 45, .12);
+      --radius: 3px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(rgba(11, 45, 58, .035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(11, 45, 58, .035) 1px, transparent 1px),
+        var(--paper);
+      background-size: 28px 28px;
+      font-family: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+      line-height: 1.58;
+    }
+
+    button, input, textarea, select { font: inherit; }
+    button { cursor: pointer; }
+    button:disabled { cursor: not-allowed; }
+
+    .skip-link {
+      position: fixed;
+      left: 16px;
+      top: -80px;
+      z-index: 100;
+      padding: 10px 16px;
+      color: white;
+      background: var(--navy);
+    }
+    .skip-link:focus { top: 16px; }
+
+    .masthead {
+      position: relative;
+      overflow: hidden;
+      color: #f7f2e8;
+      background: var(--navy);
+      border-bottom: 7px solid var(--teal-bright);
+    }
+
+    .masthead::after {
+      content: "381";
+      position: absolute;
+      right: -18px;
+      bottom: -94px;
+      color: rgba(255, 255, 255, .045);
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(190px, 29vw, 430px);
+      font-weight: 700;
+      line-height: 1;
+      pointer-events: none;
+    }
+
+    .masthead-inner,
+    .layout {
+      width: min(1280px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    .masthead-inner {
+      position: relative;
+      z-index: 1;
+      padding: 48px 0 42px;
+    }
+
+    .kicker {
+      display: inline-flex;
+      gap: 9px;
+      align-items: center;
+      margin-bottom: 20px;
+      color: #99d6ce;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+    }
+
+    .kicker::before {
+      width: 34px;
+      height: 2px;
+      content: "";
+      background: var(--teal-bright);
+    }
+
+    h1 {
+      max-width: 870px;
+      margin: 0;
+      font-family: Georgia, "Batang", serif;
+      font-size: clamp(35px, 5.2vw, 72px);
+      line-height: 1.07;
+      letter-spacing: -.045em;
+    }
+
+    .masthead-copy {
+      max-width: 760px;
+      margin: 22px 0 0;
+      color: #cbd8d8;
+      font-size: 16px;
+    }
+
+    .masthead-copy strong { color: white; }
+
+    .layout { padding: 30px 0 80px; }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: minmax(260px, .8fr) minmax(0, 2fr);
+      gap: 18px;
+      margin-top: -58px;
+      position: relative;
+      z-index: 3;
+    }
+
+    .progress-panel,
+    .control-panel,
+    .guide-panel,
+    .phase-card,
+    .backup-panel {
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 247, .97);
+      box-shadow: var(--shadow);
+    }
+
+    .progress-panel {
+      display: grid;
+      place-items: center;
+      min-height: 280px;
+      padding: 28px;
+      text-align: center;
+    }
+
+    .progress-ring {
+      --progress: 0deg;
+      display: grid;
+      width: 152px;
+      height: 152px;
+      place-items: center;
+      border-radius: 50%;
+      background: conic-gradient(var(--teal) var(--progress), var(--paper-deep) 0);
+      position: relative;
+    }
+
+    .progress-ring::after {
+      position: absolute;
+      width: 118px;
+      height: 118px;
+      content: "";
+      border-radius: 50%;
+      background: var(--panel);
+    }
+
+    .progress-ring strong,
+    .progress-ring span { position: relative; z-index: 1; }
+    .progress-ring strong { font-family: Georgia, serif; font-size: 36px; line-height: 1; }
+    .progress-ring span { display: block; color: var(--ink-soft); font-size: 11px; letter-spacing: .12em; }
+
+    .progress-caption { margin: 18px 0 0; font-size: 14px; }
+    .progress-caption strong { color: var(--teal); }
+
+    .control-panel { padding: 30px 32px; }
+    .control-panel h2,
+    .guide-panel h2,
+    .backup-panel h2 { margin: 0; font-family: Georgia, "Batang", serif; font-size: 25px; }
+
+    .scope-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1px;
+      margin: 24px 0;
+      background: var(--line);
+      border: 1px solid var(--line);
+    }
+
+    .scope-stat { min-height: 88px; padding: 14px 16px; background: var(--panel); }
+    .scope-stat span { display: block; color: var(--ink-soft); font-size: 11px; font-weight: 700; letter-spacing: .08em; }
+    .scope-stat strong { display: block; margin-top: 2px; font-family: Georgia, serif; font-size: 28px; }
+
+    .next-action {
+      padding: 18px 20px;
+      color: white;
+      background: var(--ink);
+      border-left: 5px solid var(--teal-bright);
+    }
+    .next-action span { color: #9bb1b6; font-size: 11px; font-weight: 800; letter-spacing: .12em; }
+    .next-action strong { display: block; margin-top: 5px; font-size: 16px; }
+
+    .guide-panel {
+      display: grid;
+      grid-template-columns: minmax(220px, .7fr) minmax(0, 2fr);
+      gap: 28px;
+      margin: 22px 0 30px;
+      padding: 25px 30px;
+      border-left: 7px solid var(--red);
+      box-shadow: none;
+    }
+
+    .guide-list { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; counter-reset: guide; }
+    .guide-step { position: relative; padding: 33px 12px 12px; border-top: 1px solid var(--line); font-size: 13px; }
+    .guide-step::before {
+      position: absolute;
+      top: 5px;
+      left: 0;
+      counter-increment: guide;
+      content: "0" counter(guide);
+      color: var(--red);
+      font-family: Georgia, serif;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .phase-nav {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      gap: 7px;
+      overflow-x: auto;
+      margin: 0 -16px 24px;
+      padding: 10px 16px;
+      background: rgba(243, 239, 229, .94);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .phase-nav a {
+      flex: 0 0 auto;
+      padding: 8px 12px;
+      color: var(--ink-soft);
+      text-decoration: none;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .phase-nav a.done { color: white; background: var(--teal); border-color: var(--teal); }
+    .phase-nav a.current { color: white; background: var(--ink); border-color: var(--ink); }
+    .phase-nav a.locked { opacity: .47; }
+
+    .phase-card { margin-bottom: 24px; scroll-margin-top: 80px; }
+    .phase-card.locked { opacity: .72; box-shadow: none; }
+
+    .phase-header {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 18px;
+      align-items: center;
+      padding: 24px 26px;
+      color: white;
+      background: var(--ink);
+    }
+
+    .phase-card.done .phase-header { background: var(--teal); }
+    .phase-card.locked .phase-header { background: #626d72; }
+
+    .phase-number {
+      min-width: 70px;
+      font-family: Georgia, serif;
+      font-size: 13px;
+      letter-spacing: .08em;
+      text-align: center;
+      border-right: 1px solid rgba(255,255,255,.25);
+    }
+    .phase-number strong { display: block; font-size: 34px; line-height: 1; }
+
+    .phase-title h2 { margin: 0; font-family: Georgia, "Batang", serif; font-size: clamp(22px, 3vw, 34px); }
+    .phase-title p { margin: 5px 0 0; color: #c8d3d4; font-size: 13px; }
+
+    .phase-status { display: flex; gap: 10px; align-items: center; font-size: 12px; font-weight: 800; }
+
+    .phase-check,
+    .task-check {
+      width: 24px;
+      height: 24px;
+      margin: 0;
+      accent-color: var(--teal-bright);
+      opacity: 1;
+    }
+
+    .phase-body { padding: 24px 26px 27px; }
+    .locked-message {
+      display: none;
+      padding: 14px 16px;
+      color: #5e4b27;
+      background: #fbefcc;
+      border: 1px solid #dac486;
+      font-size: 13px;
+    }
+    .phase-card.locked .locked-message { display: block; }
+    .phase-card.locked .task-list { display: none; }
+
+    .phase-meter { display: flex; gap: 13px; align-items: center; margin-bottom: 18px; }
+    .phase-meter-track { flex: 1; height: 8px; overflow: hidden; background: var(--paper-deep); }
+    .phase-meter-fill { width: 0; height: 100%; background: var(--teal); transition: width .35s ease; }
+    .phase-meter span { min-width: 76px; font-size: 12px; font-weight: 800; text-align: right; }
+
+    .task-list { display: grid; gap: 13px; }
+    .task-card { border: 1px solid var(--line); background: #fffefa; transition: border-color .2s, transform .2s; }
+    .task-card:hover { border-color: #8e9a9e; }
+    .task-card.completed { border-color: #6aa79f; background: #f2faf7; }
+
+    .task-summary {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 14px;
+      align-items: start;
+      padding: 17px 18px;
+    }
+
+    .task-copy h3 { margin: 0; font-size: 16px; }
+    .task-copy p { margin: 4px 0 0; color: var(--ink-soft); font-size: 13px; }
+    .task-badge { padding: 4px 8px; color: var(--amber); background: #fff2d5; font-size: 10px; font-weight: 900; letter-spacing: .06em; white-space: nowrap; }
+    .task-card.completed .task-badge { color: var(--teal); background: #dff3ee; }
+
+    details { border-top: 1px solid var(--line); }
+    details summary { padding: 12px 18px; color: var(--ink-soft); font-size: 12px; font-weight: 800; cursor: pointer; }
+
+    .evidence-form { display: grid; gap: 14px; padding: 4px 18px 20px 56px; }
+    .criteria-box { padding: 12px 14px; background: var(--paper); border-left: 4px solid var(--amber); font-size: 13px; }
+    .criteria-box strong { display: block; margin-bottom: 3px; font-size: 11px; letter-spacing: .08em; }
+
+    .field-grid { display: grid; grid-template-columns: 1.2fr 1fr .65fr; gap: 12px; }
+    label { display: block; color: var(--ink-soft); font-size: 11px; font-weight: 800; }
+    textarea, input[type="text"], select {
+      width: 100%;
+      margin-top: 5px;
+      padding: 10px 11px;
+      color: var(--ink);
+      background: white;
+      border: 1px solid #aba292;
+      border-radius: 0;
+    }
+    textarea { min-height: 82px; resize: vertical; }
+    textarea:focus, input:focus, select:focus, button:focus-visible, a:focus-visible {
+      outline: 3px solid rgba(16, 162, 148, .34);
+      outline-offset: 2px;
+    }
+    textarea:disabled, input:disabled, select:disabled { color: #586267; background: #ece9df; opacity: 1; }
+
+    .confirm-row { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between; }
+    .confirm-label { display: flex; gap: 9px; align-items: flex-start; color: var(--ink); font-size: 12px; }
+    .confirm-label input { margin-top: 3px; accent-color: var(--teal); }
+
+    .button-row { display: flex; gap: 8px; }
+    .action-btn {
+      min-height: 40px;
+      padding: 9px 14px;
+      color: white;
+      background: var(--teal);
+      border: 1px solid var(--teal);
+      font-size: 12px;
+      font-weight: 900;
+    }
+    .action-btn:disabled { color: #787b76; background: #ddd8cb; border-color: #c5bdad; }
+    .action-btn.secondary { color: var(--ink); background: transparent; border-color: var(--line); }
+    .action-btn.danger { color: var(--red); background: transparent; border-color: #d8aaa4; }
+
+    .completion-record { padding: 10px 12px; color: #0a5a53; background: #dff3ee; font-size: 12px; }
+    .reversal-record { margin-top: 6px; color: var(--red); font-size: 11px; }
+
+    .acceptance-banner {
+      margin: 32px 0;
+      padding: 27px 30px;
+      color: white;
+      background: var(--red);
+      box-shadow: var(--shadow);
+    }
+    .acceptance-banner span { font-size: 11px; font-weight: 900; letter-spacing: .13em; }
+    .acceptance-banner strong { display: block; margin-top: 8px; font-family: Georgia, "Batang", serif; font-size: clamp(20px, 3vw, 31px); }
+
+    .backup-panel { padding: 28px 30px; }
+    .backup-panel p { color: var(--ink-soft); font-size: 13px; }
+    .backup-actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 20px; }
+    .backup-actions button, .backup-actions label {
+      display: inline-flex;
+      min-height: 43px;
+      align-items: center;
+      padding: 9px 15px;
+      color: white;
+      background: var(--ink);
+      border: 1px solid var(--ink);
+      font-size: 12px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+    .backup-actions .danger { color: var(--red); background: transparent; border-color: var(--red); }
+    #import-file { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; }
+
+    .footer { padding: 28px 16px 40px; color: #6a716f; font-size: 11px; text-align: center; }
+    .toast {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 50;
+      max-width: 360px;
+      padding: 13px 17px;
+      color: white;
+      background: var(--ink);
+      box-shadow: var(--shadow);
+      transform: translateY(140%);
+      transition: transform .25s ease;
+      font-size: 13px;
+    }
+    .toast.show { transform: translateY(0); }
+
+    @media (max-width: 820px) {
+      .summary-grid, .guide-panel { grid-template-columns: 1fr; }
+      .summary-grid { margin-top: -24px; }
+      .scope-strip { grid-template-columns: 1fr 1fr; }
+      .guide-list { grid-template-columns: 1fr 1fr; }
+      .phase-header { grid-template-columns: auto 1fr; }
+      .phase-status { grid-column: 1 / -1; justify-content: flex-end; }
+      .field-grid { grid-template-columns: 1fr; }
+      .evidence-form { padding-left: 18px; }
+    }
+
+    @media (max-width: 520px) {
+      .masthead-inner { padding: 35px 0 40px; }
+      .layout { width: min(100% - 20px, 1280px); }
+      .control-panel, .phase-body, .backup-panel { padding: 20px 17px; }
+      .scope-strip, .guide-list { grid-template-columns: 1fr; }
+      .phase-header { padding: 20px 17px; }
+      .phase-number { min-width: 52px; }
+      .task-summary { grid-template-columns: auto 1fr; }
+      .task-badge { grid-column: 2; justify-self: start; }
+      .confirm-row { align-items: stretch; flex-direction: column; }
+      .button-row { flex-direction: column; }
+    }
+
+    @media print {
+      body { background: white; }
+      .masthead { color: black; background: white; border: 0; }
+      .masthead-copy { color: #333; }
+      .summary-grid { margin-top: 0; }
+      .phase-nav, .backup-panel, .action-btn, .toast { display: none !important; }
+      .progress-panel, .control-panel, .guide-panel, .phase-card { box-shadow: none; break-inside: avoid; }
+      .phase-header { color: black; background: #e8e8e8 !important; }
+      .phase-title p { color: #444; }
+      .phase-card.locked .task-list { display: grid; }
+      .locked-message { display: none !important; }
+      details { open: true; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#checklist">체크리스트로 바로가기</a>
+
+  <header class="masthead">
+    <div class="masthead-inner">
+      <div class="kicker">CLAFACT-AUTO / COMPLETION CONTROL</div>
+      <h1>8번 직접값 381건<br>전체 완료 통제표</h1>
+      <p class="masthead-copy">
+        체크는 기록이 아니라 <strong>검증의 결과</strong>입니다. 완료 내용·근거·검증 통과·완료 기준 확인이
+        모두 있어야 체크되며, 앞 단계가 끝나야 다음 단계가 열립니다.
+      </p>
+    </div>
+  </header>
+
+  <main class="layout" id="checklist">
+    <section class="summary-grid" aria-label="전체 진행 현황">
+      <div class="progress-panel">
+        <div class="progress-ring" id="progress-ring" role="img" aria-label="전체 진행률 0퍼센트">
+          <div><strong id="progress-percent">0%</strong><span>COMPLETE</span></div>
+        </div>
+        <p class="progress-caption"><strong id="completed-task-count">0</strong> / <span id="total-task-count">0</span>개 작업 완료</p>
+      </div>
+      <div class="control-panel">
+        <h2>길을 잃지 않는 단 하나의 기준</h2>
+        <div class="scope-strip">
+          <div class="scope-stat"><span>전체 원장</span><strong>1,542</strong></div>
+          <div class="scope-stat"><span>현재 범위</span><strong>381</strong></div>
+          <div class="scope-stat"><span>실행 단계</span><strong>10</strong></div>
+          <div class="scope-stat"><span>누락 허용</span><strong>0</strong></div>
+        </div>
+        <div class="next-action" aria-live="polite">
+          <span>지금 해야 할 일</span>
+          <strong id="next-action-text">0단계 기준 코드와 입력을 고정하세요.</strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="guide-panel" aria-labelledby="guide-title">
+      <div>
+        <h2 id="guide-title">체크되는 조건</h2>
+        <p>체크박스는 직접 누를 수 없습니다. 오른쪽 네 조건을 모두 충족한 뒤 완료를 확정하세요.</p>
+      </div>
+      <div class="guide-list">
+        <div class="guide-step">무엇을 완료했는지 구체적으로 기록</div>
+        <div class="guide-step">결과 파일·실행번호·커밋 등 근거 기록</div>
+        <div class="guide-step">검증 결과를 ‘통과’로 선택</div>
+        <div class="guide-step">완료 기준을 확인하고 완료 확정</div>
+      </div>
+    </section>
+
+    <nav class="phase-nav" id="phase-nav" aria-label="단계 바로가기"></nav>
+    <div id="phase-container"></div>
+
+    <section class="acceptance-banner" aria-label="최종 완료 식">
+      <span>FINAL ACCOUNTABILITY EQUATION</span>
+      <strong>판정 완료 + 정당한 보류 + 다른 유형 이동 + 검증 제외 = 381건</strong>
+    </section>
+
+    <section class="backup-panel" aria-labelledby="backup-title">
+      <h2 id="backup-title">진행 상태 백업</h2>
+      <p>진행 상태는 이 브라우저에 자동 저장됩니다. 다른 PC로 옮기거나 별도 보관하려면 JSON 파일로 내보내세요.</p>
+      <div class="backup-actions">
+        <button type="button" id="export-state">상태 JSON 내보내기</button>
+        <label for="import-file" id="import-state">상태 JSON 가져오기</label>
+        <input type="file" id="import-file" accept="application/json,.json">
+        <button type="button" id="print-checklist">인쇄 / PDF 저장</button>
+        <button type="button" id="reset-state" class="danger">전체 진행 상태 초기화</button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    CLAFACT-AUTO · 직접값 381건 완료계획 2026-08-25 · 체크리스트 버전 1
+  </footer>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    "use strict";
+
+    const STORAGE_KEY = "clafact-direct-value-381-checklist-v1";
+    const STATE_VERSION = 1;
+
+    const phases = [
+      {
+        id: "phase-0",
+        title: "기준 코드와 381건 원본 고정",
+        purpose: "대시보드·배치·CLI가 같은 코드와 같은 입력을 사용하도록 출발점을 하나로 고정합니다.",
+        tasks: [
+          ["main 기준 기능 확인", "숫자 역할 안전장치와 8번에 필요한 공통 기능이 main에 있는지 확인합니다.", "필요 기능 목록, 커밋 번호, 누락 기능이 모두 기록되어야 합니다."],
+          ["분산 변경 통합", "구조정보 반복 호출 개선 등 검증된 변경을 하나의 실행 브랜치에 모읍니다.", "필요 변경이 하나의 브랜치에 있고 변경 목록이 남아야 합니다."],
+          ["회귀 테스트 실행", "통합 코드가 기존 파이프라인을 깨뜨리지 않았는지 확인합니다.", "테스트 명령, 통과·실패 수, 기존 실패와 신규 실패 구분이 있어야 합니다."],
+          ["대시보드 배포 버전 확인", "Render가 실제로 어떤 브랜치와 커밋을 배포했는지 확인합니다.", "배포 브랜치, 커밋, 배포 완료 시각이 기록되어야 합니다."],
+          ["381건 입력 동결", "08_직접값 탭 381행을 변경 불가능한 실행 입력으로 저장합니다.", "동결 CSV 또는 JSONL 경로와 파일 해시가 있어야 합니다."],
+          ["입력 계수 검증", "381건의 누락·중복·Claim번호 고유성을 확인합니다.", "입력 381, 고유 381, 누락 0, 중복 0을 증명하는 결과가 있어야 합니다."]
+        ]
+      },
+      {
+        id: "phase-1",
+        title: "검증 대상 숫자 재확정",
+        purpose: "원문의 여러 숫자 중 실제로 검증할 기사값을 정확히 고릅니다.",
+        tasks: [
+          ["원문 수치 전부 목록화", "각 Claim 원문에 있는 모든 숫자와 표현을 기록합니다.", "381건 모두에 원문 수치 목록이 있어야 합니다."],
+          ["숫자 역할 분류", "대상값·비교값·기준연도·기간·연령·순위·환산값을 구분합니다.", "모든 수치에 역할 또는 제외 이유가 있어야 합니다."],
+          ["대상값 원문 연결", "선택한 기사값이 원문의 정확한 표현과 연결되는지 확인합니다.", "자동 처리 Claim의 대상값 원문 표현이 비어 있지 않아야 합니다."],
+          ["지표·단위 호환 확인", "수출액-달러, 수출대수-대처럼 지표와 단위를 맞춥니다.", "지표·단위 충돌 상태로 자동 처리되는 Claim이 0건이어야 합니다."],
+          ["부호·방향 보존", "흑자·적자, 증가·감소의 부호와 방향을 보존합니다.", "부호가 필요한 Claim 모두에 부호 근거가 있어야 합니다."],
+          ["숫자 역할 오인 차단", "20대·5개월·상위 10개 같은 숫자를 기사값으로 자동 승인하지 않습니다.", "숫자 역할 충돌이 자동 처리로 통과한 건수가 0이어야 합니다."],
+          ["복수 Claim 분리", "한 문장에 독립 주장이 여러 개면 각각의 자식 Claim으로 분리합니다.", "분리 대상 수와 생성 자식 Claim 수가 일치하고 부모 연결이 남아야 합니다."]
+        ]
+      },
+      {
+        id: "phase-2",
+        title: "직접값 여부 재분류",
+        purpose: "직접값 탭에 잘못 들어온 증감량·증감률·비중·기록·순위 Claim을 올바른 유형으로 옮깁니다.",
+        tasks: [
+          ["직접값·기준값 확정", "공식값 1개로 검증할 수 있는 Claim을 확정합니다.", "직접값과 기준값 각각의 목록과 건수가 있어야 합니다."],
+          ["6번 증감량 이동", "공식값 두 개의 차이가 필요한 Claim을 6번으로 이동합니다.", "이동 Claim번호, 원문 근거, 이동 이유가 모두 있어야 합니다."],
+          ["7번 증감률 이동", "두 시점 변화율이 필요한 Claim을 7번으로 이동합니다.", "이동 Claim번호, 비교기간, 원문 근거가 모두 있어야 합니다."],
+          ["기타 검증유형 이동", "비중·기록·순위·문맥 보완 유형을 각 담당 경로로 이동합니다.", "모든 이동 Claim에 목적지와 이유가 있어야 합니다."],
+          ["검증 제외 확정", "통계 검증 대상이 아닌 Claim을 근거와 함께 제외합니다.", "제외 Claim마다 원문 근거와 제외 사유가 있어야 합니다."],
+          ["381건 재분류 계수 확인", "새 분류의 합이 원래 381건과 일치하는지 확인합니다.", "모든 분류의 합 381, 누락 0, 중복 0이어야 합니다."]
+        ]
+      },
+      {
+        id: "phase-3",
+        title: "실행 가능한 새 묶음 확정",
+        purpose: "재분류 후 남은 진짜 직접값을 좌표와 공식자료 경로별 실행 묶음으로 다시 만듭니다.",
+        tasks: [
+          ["시점·주기 보완 묶음", "지난달·지난해·누계 표현과 기사 작성일을 결합합니다.", "보완 대상과 보완 후 시점·주기가 모두 기록되어야 합니다."],
+          ["단순 좌표 묶음", "추가 차원이 없는 정확값·기준값 Claim을 분리합니다.", "단순 정확값과 단순 기준값 목록이 각각 확정되어야 합니다."],
+          ["세부 좌표 묶음", "지역·연령·산업·품목·상대국 조건이 있는 Claim을 분리합니다.", "각 Claim의 필수 세부조건이 기록되어야 합니다."],
+          ["누계·작성기관 묶음", "누계 범위와 공식 작성기관 보조 경로가 필요한 Claim을 분리합니다.", "누계 범위 또는 작성기관 경로가 각 Claim에 명시되어야 합니다."],
+          ["새 묶음 계수 검증", "새 묶음·다른 유형 이동·제외의 합을 확인합니다.", "합계 381, Claim당 단일 묶음, 누락 0, 중복 0이어야 합니다."]
+        ]
+      },
+      {
+        id: "phase-4",
+        title: "지표 의미와 공식자료 경로 확정",
+        purpose: "고용·무역·물가·인구·국민계정의 반복 개념을 공식 통계표 검색 입력으로 연결합니다.",
+        tasks: [
+          ["고용 개념 연결", "취업자·실업률·고용률·경제활동인구와 세부조건을 구분합니다.", "고용 Claim의 표준 개념·검색어·작성기관이 확정되어야 합니다."],
+          ["무역 개념 연결", "수출액·수입액·무역수지·수출량과 품목·상대국을 구분합니다.", "무역 Claim의 금액 단위·부호·KOSIS 우선경로가 확정되어야 합니다."],
+          ["물가 개념 연결", "지수 수준과 상승률, 근원물가와 생활물가를 구분합니다.", "물가 Claim의 지표 종류와 기준연도 역할이 확정되어야 합니다."],
+          ["인구·국민계정 연결", "총인구·주민등록인구·추계인구와 GDP 수준·성장률을 구분합니다.", "해당 Claim의 공식 작성기관·주기·계열 조건이 확정되어야 합니다."],
+          ["공식 경로 연결표 검증", "각 Claim에 KOSIS 우선경로와 필요한 보조 공식경로를 연결합니다.", "진짜 직접값 Claim 모두에 표준 개념과 공식 경로가 하나 이상 있어야 합니다."]
+        ]
+      },
+      {
+        id: "phase-5",
+        title: "KOSIS 공식 좌표 확정",
+        purpose: "공식 구조정보로 표·항목·분류·지역·기간 코드를 정확히 확정합니다.",
+        tasks: [
+          ["공식 통계표 검색", "표준 개념과 검색어로 KOSIS 통계표 검색 API를 호출합니다.", "모든 실행 Claim에 실제 요청 상태와 후보 목록이 남아야 합니다."],
+          ["공식 구조정보 조회", "후보표의 항목·주기·분류·기간 구조를 공식 API로 조회합니다.", "구조정보 응답 상태와 출처가 각 후보에 있어야 합니다."],
+          ["필수조건 우선 검사", "주기·단위·기간·지역·대상·차원 불일치 후보를 먼저 제거합니다.", "탈락 후보마다 탈락 조건이 기록되어야 합니다."],
+          ["세부조건 코드 변환", "지역·연령·산업·품목·상대국을 공식 멤버 코드로 연결합니다.", "세부 Claim 모두에 요구 차원과 공식 코드가 있어야 합니다."],
+          ["후보 확정 또는 보류", "남은 후보가 하나일 때만 좌표를 확정하고 모호하면 보류합니다.", "강제 1위 선택이 없고 확정·보류 이유가 모두 기록되어야 합니다."],
+          ["좌표 계수 검증", "검색 도달·구조정보 성공·좌표 확정·보류 건수를 집계합니다.", "단계별 Claim 수가 입력 수와 일치하고 누락이 없어야 합니다."]
+        ]
+      },
+      {
+        id: "phase-6",
+        title: "공식값과 공표정보 조회",
+        purpose: "확정 좌표의 공식값과 기사 작성 당시 이용 가능한 공표 근거를 실제로 조회합니다.",
+        tasks: [
+          ["KOSIS 공식값 조회", "확정 좌표로 KOSIS 공식값 API를 호출합니다.", "성공·실패 모두 요청 상태와 응답 근거가 있어야 합니다."],
+          ["공표정보 조회", "KOSIS 통계설명의 공표주기·시기·방법을 확인합니다.", "자동 판정 후보마다 공표정보 응답이 있어야 합니다."],
+          ["기사시점 이용 가능성 확인", "기사 작성일 전에 공식값이 이용 가능했는지 확인합니다.", "기사일·대상기간·공표일 비교 결과가 있어야 합니다."],
+          ["누계 범위 확인", "누계 Claim의 시작·종료 범위가 공식값과 같은지 확인합니다.", "누계 Claim 모두에 범위 일치 여부가 있어야 합니다."],
+          ["작성기관 보조 경로 실행", "KOSIS 경로가 없는 대상만 공식 작성기관 경로로 조회합니다.", "보조 경로 사용 이유와 공식 문서 대상기간이 있어야 합니다."],
+          ["공식 근거 보존", "URL·조회시각·응답 내용 해시를 저장합니다.", "자동 판정 후보의 공식 근거 필드가 100% 채워져야 합니다."]
+        ]
+      },
+      {
+        id: "phase-7",
+        title: "Python 계산과 판정",
+        purpose: "단위·부호·반올림을 정상화하고 공식값만으로 재현 가능한 판정을 만듭니다.",
+        tasks: [
+          ["단위 변환", "천 달러·만 명·십억 달러 등을 공통 단위로 변환합니다.", "각 변환 Claim에 변환 전후 값과 변환식이 있어야 합니다."],
+          ["부호·방향 검사", "적자·흑자와 증가·감소의 부호를 다시 확인합니다.", "부호 적용 Claim 모두에 원문 근거와 적용값이 있어야 합니다."],
+          ["반올림 허용범위 계산", "기사 표기 자릿수에 맞는 허용범위를 계산합니다.", "판정마다 허용범위 또는 정확 일치 근거가 있어야 합니다."],
+          ["직접값·기준값 판정", "Python이 일치·불일치 또는 기준 충족 여부를 계산합니다.", "LLM 생성값 없이 계산 입력·출력·판정이 저장되어야 합니다."],
+          ["불일치 사전검사", "불일치 전에 기사값·시점·좌표·공표정보를 모두 재확인합니다.", "불일치 판정 100%에 사전검사 통과 기록이 있어야 합니다."]
+        ]
+      },
+      {
+        id: "phase-8",
+        title: "결과 검수와 일반화 평가",
+        purpose: "판정이 생성됐다는 사실이 아니라 판정이 실제로 맞고 신규 Claim에도 적용되는지 확인합니다.",
+        tasks: [
+          ["불일치 판정 전수 검수", "모든 불일치의 원문·좌표·단위·시점을 다시 확인합니다.", "불일치 판정 검수 완료율이 100%여야 합니다."],
+          ["이동·제외 전수 검수", "다른 유형 이동과 검증 제외 근거를 모두 확인합니다.", "이동·제외 Claim의 검수 완료율이 100%여야 합니다."],
+          ["일치 판정 표본 검수", "영역·주기·좌표 난이도별로 일치 판정을 표본 확인합니다.", "표본 목록, 오류 수, 정확도가 기록되어야 합니다."],
+          ["오류 묶음 확대 검수", "표본 오류가 5%를 넘으면 해당 묶음 전체를 재검토합니다.", "오류율과 확대 검수 여부가 기록되어야 합니다."],
+          ["신규 Claim 일반화 시험", "반복 패턴별 원장 밖 신규 Claim을 대시보드에서 시험합니다.", "패턴별 신규 Claim 입력과 공식 근거 결과가 있어야 합니다."],
+          ["세 경로 동일성 시험", "대시보드·배치·CLI 결과를 비교합니다.", "대표 입력의 구조화·좌표·값·판정 불일치가 0건이어야 합니다."]
+        ]
+      },
+      {
+        id: "phase-9",
+        title: "대시보드 반영과 최종 마감",
+        purpose: "검증된 일반 규칙을 배포하고 381건 전부를 설명 가능한 최종 상태로 마감합니다.",
+        tasks: [
+          ["main 통합·전체 테스트", "검증된 규칙을 main에 통합하고 전체 회귀 테스트를 실행합니다.", "커밋 번호, 테스트 결과, 신규 실패 0건이 확인되어야 합니다."],
+          ["Render 배포 확인", "main 푸시 후 Render가 같은 커밋을 배포했는지 확인합니다.", "배포 커밋과 서비스 정상 상태가 기록되어야 합니다."],
+          ["대시보드 대표 시험", "영역별 대표 Claim과 신규 Claim을 대시보드에서 실행합니다.", "공식 좌표·값·판정이 최종 원장과 같아야 합니다."],
+          ["381건 최종 계수 마감", "모든 Claim을 판정·정당한 보류·이동·제외 중 하나로 확정합니다.", "네 상태의 합 381, 미처리 0, 중복 0이어야 합니다."],
+          ["최종 원장·근거 파일 확정", "CSV·JSONL·API 근거·대시보드 결과를 한 실행번호로 묶습니다.", "모든 최종 파일 경로·해시·버전이 기록되어야 합니다."],
+          ["최종 보고서 작성", "개선 전후, 적용 범위, 남은 보류, 신규 일반화 성능을 보고합니다.", "성공 수와 적용 가능 범위를 구분한 최종 TXT 보고서가 있어야 합니다."]
+        ]
+      }
+    ];
+
+    const allTasks = phases.flatMap((phase, phaseIndex) =>
+      phase.tasks.map((task, taskIndex) => ({
+        id: `${phase.id}-task-${taskIndex + 1}`,
+        phaseIndex,
+        title: task[0],
+        description: task[1],
+        criteria: task[2]
+      }))
+    );
+
+    function blankTaskState() {
+      return {
+        completionSummary: "",
+        evidenceReference: "",
+        verificationResult: "",
+        criteriaConfirmed: false,
+        completed: false,
+        completedAt: "",
+        reversalReason: ""
+      };
+    }
+
+    function defaultState() {
+      return {
+        version: STATE_VERSION,
+        updatedAt: new Date().toISOString(),
+        tasks: Object.fromEntries(allTasks.map(task => [task.id, blankTaskState()]))
+      };
+    }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return defaultState();
+        return sanitizeState(JSON.parse(raw));
+      } catch (error) {
+        console.warn("저장 상태를 읽지 못해 새 상태로 시작합니다.", error);
+        return defaultState();
+      }
+    }
+
+    function sanitizeState(candidate) {
+      const clean = defaultState();
+      if (!candidate || candidate.version !== STATE_VERSION || typeof candidate.tasks !== "object") {
+        return clean;
+      }
+      for (const task of allTasks) {
+        const incoming = candidate.tasks[task.id];
+        if (!incoming || typeof incoming !== "object") continue;
+        clean.tasks[task.id] = {
+          completionSummary: String(incoming.completionSummary || ""),
+          evidenceReference: String(incoming.evidenceReference || ""),
+          verificationResult: incoming.verificationResult === "PASS" ? "PASS" : "",
+          criteriaConfirmed: Boolean(incoming.criteriaConfirmed),
+          completed: Boolean(incoming.completed),
+          completedAt: String(incoming.completedAt || ""),
+          reversalReason: String(incoming.reversalReason || "")
+        };
+        if (clean.tasks[task.id].completed && !canComplete(clean.tasks[task.id])) {
+          clean.tasks[task.id].completed = false;
+          clean.tasks[task.id].completedAt = "";
+        }
+      }
+      clean.updatedAt = String(candidate.updatedAt || new Date().toISOString());
+      enforceSequentialCompletion(clean);
+      return clean;
+    }
+
+    function canComplete(taskState) {
+      const completionSummary = taskState.completionSummary || "";
+      const evidenceReference = taskState.evidenceReference || "";
+      const verificationResult = taskState.verificationResult || "";
+      const criteriaConfirmed = Boolean(taskState.criteriaConfirmed);
+      return Boolean(
+        completionSummary.trim() &&
+        evidenceReference.trim() &&
+        verificationResult === "PASS" &&
+        criteriaConfirmed
+      );
+    }
+
+    function phaseTasks(phaseIndex) {
+      return allTasks.filter(task => task.phaseIndex === phaseIndex);
+    }
+
+    function phaseComplete(phaseIndex, stateObject = state) {
+      return phaseTasks(phaseIndex).every(task => stateObject.tasks[task.id].completed);
+    }
+
+    function phaseUnlocked(phaseIndex) {
+      if (phaseIndex === 0) return true;
+      return Array.from({ length: phaseIndex }, (_, index) => index).every(index => phaseComplete(index));
+    }
+
+    function enforceSequentialCompletion(stateObject) {
+      let previousComplete = true;
+      for (let phaseIndex = 0; phaseIndex < phases.length; phaseIndex += 1) {
+        if (!previousComplete) {
+          for (const task of phaseTasks(phaseIndex)) {
+            stateObject.tasks[task.id].completed = false;
+            stateObject.tasks[task.id].completedAt = "";
+          }
+        }
+        previousComplete = phaseComplete(phaseIndex, stateObject);
+      }
+    }
+
+    function saveState() {
+      state.updatedAt = new Date().toISOString();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>'"]/g, character => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;"
+      })[character]);
+    }
+
+    function formatDate(iso) {
+      if (!iso) return "";
+      return new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(iso));
+    }
+
+    function renderTask(task) {
+      const taskState = state.tasks[task.id];
+      const disabled = taskState.completed ? "disabled" : "";
+      const checked = taskState.completed ? "checked" : "";
+      const badge = taskState.completed ? "완료·증거 잠금" : "증거 필요";
+      return `
+        <article class="task-card ${taskState.completed ? "completed" : ""}" id="${task.id}">
+          <div class="task-summary">
+            <input class="task-check" type="checkbox" disabled ${checked} aria-label="${escapeHtml(task.title)} 완료 상태">
+            <div class="task-copy">
+              <h3>${escapeHtml(task.title)}</h3>
+              <p>${escapeHtml(task.description)}</p>
+            </div>
+            <span class="task-badge">${badge}</span>
+          </div>
+          <details ${taskState.completed ? "open" : ""}>
+            <summary>완료 기준과 증거 기록 열기</summary>
+            <div class="evidence-form" data-task-id="${task.id}">
+              <div class="criteria-box"><strong>완료 기준</strong>${escapeHtml(task.criteria)}</div>
+              <div class="field-grid">
+                <label>완료한 내용
+                  <textarea data-field="completionSummary" ${disabled} placeholder="무엇을 어떻게 완료했는지 적으세요.">${escapeHtml(taskState.completionSummary)}</textarea>
+                </label>
+                <label>근거 파일·실행번호·커밋
+                  <textarea data-field="evidenceReference" ${disabled} placeholder="파일 경로, 실행번호, 커밋, 결과 수치를 적으세요.">${escapeHtml(taskState.evidenceReference)}</textarea>
+                </label>
+                <label>검증 결과
+                  <select data-field="verificationResult" ${disabled}>
+                    <option value="">선택 필요</option>
+                    <option value="PASS" ${taskState.verificationResult === "PASS" ? "selected" : ""}>통과</option>
+                  </select>
+                </label>
+              </div>
+              <div class="confirm-row">
+                <label class="confirm-label">
+                  <input type="checkbox" data-field="criteriaConfirmed" ${taskState.criteriaConfirmed ? "checked" : ""} ${disabled}>
+                  위 완료 기준과 근거를 직접 확인했습니다.
+                </label>
+                <div class="button-row">
+                  ${taskState.completed
+                    ? `<button class="action-btn danger" type="button" data-action="undo">완료 취소</button>`
+                    : `<button class="action-btn" type="button" data-action="complete" ${canComplete(taskState) ? "" : "disabled"}>완료 확정</button>`}
+                </div>
+              </div>
+              ${taskState.completedAt ? `<div class="completion-record">완료 확정: ${escapeHtml(formatDate(taskState.completedAt))}</div>` : ""}
+              ${taskState.reversalReason ? `<div class="reversal-record">최근 완료 취소 사유: ${escapeHtml(taskState.reversalReason)}</div>` : ""}
+            </div>
+          </details>
+        </article>`;
+    }
+
+    function renderPhase(phase, phaseIndex) {
+      const tasks = phaseTasks(phaseIndex);
+      const completedCount = tasks.filter(task => state.tasks[task.id].completed).length;
+      const done = completedCount === tasks.length;
+      const unlocked = phaseUnlocked(phaseIndex);
+      const percent = Math.round((completedCount / tasks.length) * 100);
+      return `
+        <section class="phase-card ${done ? "done" : ""} ${unlocked ? "" : "locked"}" id="${phase.id}">
+          <div class="phase-header">
+            <div class="phase-number">PHASE<strong>${phaseIndex}</strong></div>
+            <div class="phase-title"><h2>${escapeHtml(phase.title)}</h2><p>${escapeHtml(phase.purpose)}</p></div>
+            <div class="phase-status">
+              <span>${done ? "단계 완료" : unlocked ? `${completedCount}/${tasks.length} 진행` : "이전 단계 대기"}</span>
+              <input class="phase-check" type="checkbox" disabled ${done ? "checked" : ""} aria-label="${escapeHtml(phase.title)} 완료 상태">
+            </div>
+          </div>
+          <div class="phase-body">
+            <div class="locked-message">이전 단계의 모든 하위 작업을 증거와 함께 완료해야 이 단계가 열립니다.</div>
+            <div class="task-list">
+              <div class="phase-meter"><div class="phase-meter-track"><div class="phase-meter-fill" style="width:${percent}%"></div></div><span>${completedCount} / ${tasks.length}</span></div>
+              ${tasks.map(renderTask).join("")}
+            </div>
+          </div>
+        </section>`;
+    }
+
+    function renderNavigation() {
+      const current = phases.findIndex((_, index) => !phaseComplete(index));
+      document.getElementById("phase-nav").innerHTML = phases.map((phase, index) => {
+        const classes = [phaseComplete(index) ? "done" : "", index === current ? "current" : "", phaseUnlocked(index) ? "" : "locked"].filter(Boolean).join(" ");
+        return `<a href="#${phase.id}" class="${classes}">${index}단계</a>`;
+      }).join("");
+    }
+
+    function renderProgress() {
+      const completed = allTasks.filter(task => state.tasks[task.id].completed).length;
+      const percent = Math.round((completed / allTasks.length) * 100);
+      const ring = document.getElementById("progress-ring");
+      ring.style.setProperty("--progress", `${percent * 3.6}deg`);
+      ring.setAttribute("aria-label", `전체 진행률 ${percent}퍼센트`);
+      document.getElementById("progress-percent").textContent = `${percent}%`;
+      document.getElementById("completed-task-count").textContent = completed;
+      document.getElementById("total-task-count").textContent = allTasks.length;
+
+      const nextPhaseIndex = phases.findIndex((_, index) => !phaseComplete(index));
+      const nextText = nextPhaseIndex === -1
+        ? "모든 단계가 완료됐습니다. 최종 원장과 보고서의 381건 계수를 확인하세요."
+        : `${nextPhaseIndex}단계 · ${phases[nextPhaseIndex].title}`;
+      document.getElementById("next-action-text").textContent = nextText;
+    }
+
+    function attachTaskEvents() {
+      document.querySelectorAll(".evidence-form").forEach(form => {
+        const taskId = form.dataset.taskId;
+        const taskState = state.tasks[taskId];
+        form.querySelectorAll("[data-field]").forEach(control => {
+          const field = control.dataset.field;
+          const eventName = control.type === "checkbox" || control.tagName === "SELECT" ? "change" : "input";
+          control.addEventListener(eventName, () => {
+            taskState[field] = control.type === "checkbox" ? control.checked : control.value;
+            saveState();
+            const completeButton = form.querySelector('[data-action="complete"]');
+            if (completeButton) completeButton.disabled = !canComplete(taskState);
+          });
+        });
+
+        const completeButton = form.querySelector('[data-action="complete"]');
+        if (completeButton) {
+          completeButton.addEventListener("click", () => {
+            if (!canComplete(taskState)) return;
+            taskState.completed = true;
+            taskState.completedAt = new Date().toISOString();
+            taskState.reversalReason = "";
+            saveState();
+            showToast("완료 기준과 증거가 확인되어 체크되었습니다.");
+            render();
+          });
+        }
+
+        const undoButton = form.querySelector('[data-action="undo"]');
+        if (undoButton) {
+          undoButton.addEventListener("click", () => undoCompletion(taskId));
+        }
+      });
+    }
+
+    function undoCompletion(taskId) {
+      const task = allTasks.find(item => item.id === taskId);
+      const reason = window.prompt("완료를 취소하는 이유를 입력하세요. 뒤 단계의 완료 체크도 안전을 위해 해제됩니다.");
+      if (!reason || !reason.trim()) return;
+      const taskState = state.tasks[taskId];
+      taskState.completed = false;
+      taskState.completedAt = "";
+      taskState.criteriaConfirmed = false;
+      taskState.verificationResult = "";
+      taskState.reversalReason = reason.trim();
+
+      for (const laterTask of allTasks.filter(item => item.phaseIndex > task.phaseIndex)) {
+        state.tasks[laterTask.id].completed = false;
+        state.tasks[laterTask.id].completedAt = "";
+        state.tasks[laterTask.id].criteriaConfirmed = false;
+        state.tasks[laterTask.id].verificationResult = "";
+      }
+      saveState();
+      showToast("완료가 취소됐고 뒤 단계가 다시 잠겼습니다.");
+      render();
+    }
+
+    function render() {
+      document.getElementById("phase-container").innerHTML = phases.map(renderPhase).join("");
+      renderNavigation();
+      renderProgress();
+      attachTaskEvents();
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.classList.add("show");
+      window.clearTimeout(showToast.timer);
+      showToast.timer = window.setTimeout(() => toast.classList.remove("show"), 2600);
+    }
+
+    function exportState() {
+      saveState();
+      const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `CLAFACT_8번_직접값_381건_체크리스트상태_${new Date().toISOString().slice(0, 10)}.json`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+      showToast("현재 진행 상태를 JSON으로 내보냈습니다.");
+    }
+
+    function importState(file) {
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const candidate = JSON.parse(String(reader.result));
+          if (candidate.version !== STATE_VERSION || typeof candidate.tasks !== "object") {
+            throw new Error("지원하지 않는 체크리스트 상태 파일입니다.");
+          }
+          state = sanitizeState(candidate);
+          saveState();
+          render();
+          showToast("상태 파일을 확인하고 가져왔습니다.");
+        } catch (error) {
+          window.alert(`가져오기 실패: ${error.message}`);
+        } finally {
+          document.getElementById("import-file").value = "";
+        }
+      };
+      reader.readAsText(file, "utf-8");
+    }
+
+    function resetState() {
+      const first = window.confirm("전체 진행 상태를 초기화하시겠습니까? 입력한 증거와 완료 기록이 모두 지워집니다.");
+      if (!first) return;
+      const second = window.confirm("복구하려면 먼저 JSON으로 내보내야 합니다. 정말 초기화하시겠습니까?");
+      if (!second) return;
+      state = defaultState();
+      saveState();
+      render();
+      showToast("체크리스트를 처음 상태로 초기화했습니다.");
+    }
+
+    let state = loadState();
+    render();
+
+    document.getElementById("export-state").addEventListener("click", exportState);
+    document.getElementById("import-file").addEventListener("change", event => importState(event.target.files[0]));
+    document.getElementById("print-checklist").addEventListener("click", () => window.print());
+    document.getElementById("reset-state").addEventListener("click", resetState);
+  </script>
+</body>
+</html>
