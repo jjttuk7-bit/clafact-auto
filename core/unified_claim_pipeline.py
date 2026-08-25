@@ -19,6 +19,10 @@ from core.recovery_stage_audit import build_recovery_stage_audit
 from core.trade_claim_recovery import split_trade_composite_claim
 from core.validated_claim_recovery import recover_validated_claim
 from core.slot_audit import audit_claim_slots
+from core.source_target_grounding import (
+    target_link_preverification_reason,
+    trusted_target_expression,
+)
 from schemas.claim import ClaimSchema
 from schemas.claim_registry import ClaimRegistryRecord
 from schemas.slot_audit import SlotAuditSchema
@@ -93,6 +97,17 @@ def verify_registry_record(
     allow_structured_recovery: bool = True,
 ) -> list[PipelineEntry]:
     """Verify one Registry record through the same recovery used by articles."""
+    target_link_reason = target_link_preverification_reason(record)
+    if target_link_reason is not None:
+        held_claim = record.claim.model_copy(update={
+            "parse_status": "HUMAN_REVIEW",
+            "parse_reason": target_link_reason,
+        })
+        return [
+            _verify_stored_claim(
+                record.model_copy(update={"claim": held_claim}), official_service
+            )
+        ]
     if _sentence_only_context_target_unresolved(record, article_context):
         held_claim = record.claim.model_copy(update={
             "parse_status": "HOLD",
@@ -177,8 +192,13 @@ def _verify_deterministic_stored_claims(
     children = split_trade_composite_claim(record.claim, record.article_published_at)
     split = len(children) > 1
     entries: list[PipelineEntry] = []
+    source_value_text = trusted_target_expression(record)
     for child in children:
-        recovered = recover_validated_claim(child, record.article_published_at)
+        recovered = recover_validated_claim(
+            child,
+            record.article_published_at,
+            source_value_text=source_value_text,
+        )
         entry = _verify_stored_claim(record.model_copy(update={"claim": recovered}), official_service)
         if split:
             entry = replace(

@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "verified_at": "2026-08-25T17:51:48+09:00",
+  "status": "PASS",
+  "input_count": 381,
+  "output_count": 381,
+  "unique_claim_id_count": 381,
+  "grounded_count": 365,
+  "ungrounded_count": 16,
+  "status_counts": {
+    "SOURCE_GROUNDED": 365,
+    "TARGET_CONTEXT_ROLE_CONFLICT": 7,
+    "TARGET_NOT_FOUND_IN_SOURCE": 6,
+    "TARGET_AMBIGUOUS_IN_SOURCE": 3
+  },
+  "reason_counts": {
+    "SOURCE_TARGET_EXACT_MATCH": 365,
+    "TARGET_CONTEXT_ROLE_CONFLICT": 7,
+    "TARGET_NOT_FOUND_IN_SOURCE": 6,
+    "TARGET_AMBIGUOUS_IN_SOURCE": 3
+  },
+  "issues": [],
+  "source": {
+    "path": "D:\\projects\\services\\archived\\clafact-auto\\.worktrees\\direct-value-execution\\deliverables\\CLAFACT_AUTO_8번_1단계_숫자역할분류_20260825.csv",
+    "bytes": 1339369,
+    "sha256": "D77AFCB72CD968B26B2484923D4FDD313C8741C89F1E8E82C059755A71404BED"
+  },
+  "outputs": {
+    "csv": {
+      "path": "D:\\projects\\services\\archived\\clafact-auto\\.worktrees\\direct-value-execution\\artifacts\\direct_value_381_target_grounding_20260825\\CLAFACT_8번_직접값_381건_대상값원문연결.csv",
+      "bytes": 1481821,
+      "sha256": "8BFD70AB9EA3E96109A4FDD56EDA1D4CF671009E45DA53420F873E104A4AE146"
+    },
+    "patch_jsonl": {
+      "path": "D:\\projects\\services\\archived\\clafact-auto\\.worktrees\\direct-value-execution\\artifacts\\direct_value_381_target_grounding_20260825\\CLAFACT_8번_직접값_381건_대상값원문연결_파이프라인보강.jsonl",
+      "bytes": 193472,
+      "sha256": "8673AD3AE06750A67F7B2F1B78170431649BA86E148D0798A651BCACF29F4EEB"
+    }
+  }
+}

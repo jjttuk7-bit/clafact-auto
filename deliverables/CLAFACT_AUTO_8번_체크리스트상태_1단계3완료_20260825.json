@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "updatedAt": "2026-08-25T17:55:00+09:00",
+  "tasks": {
+    "phase-0-task-1": {"completed": true, "criteriaConfirmed": true, "verificationResult": "PASS", "completedAt": "2026-08-25T15:52:29+09:00", "completionSummary": "main 기준 기능과 누락을 확인했다.", "evidenceReference": "CLAFACT_AUTO_8번_0단계_main기준기능점검_20260825.csv", "reversalReason": ""},
+    "phase-0-task-2": {"completed": true, "criteriaConfirmed": true, "verificationResult": "PASS", "completedAt": "2026-08-25T16:02:21+09:00", "completionSummary": "분산 변경을 실행 브랜치에 통합했다.", "evidenceReference": "CLAFACT_AUTO_8번_0단계_분산변경통합_20260825.csv", "reversalReason": ""},
+    "phase-0-task-3": {"completed": true, "criteriaConfirmed": true, "verificationResult": "PASS", "completedAt": "2026-08-25T16:11:51+09:00", "completionSummary": "전체 회귀시험을 실행했다.", "evidenceReference": "CLAFACT_AUTO_8번_0단계_전체회귀시험결과_20260825.csv", "reversalReason": ""},
+    "phase-0-task-4": {"completed": true, "criteriaConfirmed": true, "verificationResult": "PASS", "completedAt": "2026-08-25T16:26:25+09:00", "completionSummary": "Render 배포 버전을 확인했다.", "evidenceReference": "CLAFACT_AUTO_8번_0단계_Render배포버전확인_최종_20260825.csv", "reversalReason": ""},
+    "phase-0-task-5": {"completed": true, "criteriaConfirmed": true, "verificationResult": "PASS", "completedAt": "2026-08-25T16:55:02+09:00", "completionSummary": "직접값 381건 입력을 동결했다.", "evidenceReference": "CLAFACT_AUTO_8번_0단계_381건입력동결_20260825.csv", "reversalReason": ""},
+    "phase-0-task-6": {"completed": true, "criteriaConfirmed": true, "verificationResult": "PASS: 입력 381, 고유 381, 누락 0, 중복 0", "completedAt": "2026-08-25T17:05:19+09:00", "completionSummary": "동결 입력 계수를 독립 검증했다.", "evidenceReference": "CLAFACT_AUTO_8번_0단계_입력계수검증_20260825.csv", "reversalReason": ""},
+    "phase-1-task-1": {"completed": true, "criteriaConfirmed": true, "verificationResult": "PASS: Claim 381, 수치 1456, 미포함 숫자 0, 위치 불일치 0", "completedAt": "2026-08-25T17:17:09+09:00", "completionSummary": "381건 모든 원문의 숫자 표현을 위치·문맥과 함께 목록화했다.", "evidenceReference": "CLAFACT_AUTO_8번_1단계_원문수치목록화_20260825.csv", "reversalReason": ""},
+    "phase-1-task-2": {"completed": true, "criteriaConfirmed": true, "verificationResult": "PASS: Claim 381, 숫자 1456, 역할 누락 0, 보호역할 자동선택 0, 대상 연결 365", "completedAt": "2026-08-25T17:35:05+09:00", "completionSummary": "모든 숫자에 역할을 부여하고 검증 대상이 아닌 숫자의 자동 선택을 차단했다.", "evidenceReference": "CLAFACT_AUTO_8번_1단계_숫자역할분류_20260825.csv", "reversalReason": ""},
+    "phase-1-task-3": {"completed": true, "criteriaConfirmed": true, "verificationResult": "PASS: Claim 381, 원문연결 365, 재구조화 16, 원문위치·병합오류 0", "completedAt": "2026-08-25T17:55:00+09:00", "completionSummary": "확정 대상 표현을 Registry 보강자료와 통합 파이프라인 원문 검증 범위에 연결했다.", "evidenceReference": "CLAFACT_AUTO_8번_1단계_대상값원문연결_20260825.csv; CSV SHA256=8BFD70AB9EA3E96109A4FDD56EDA1D4CF671009E45DA53420F873E104A4AE146; 보강 JSONL SHA256=8673AD3AE06750A67F7B2F1B78170431649BA86E148D0798A651BCACF29F4EEB", "reversalReason": ""}
+  }
+}

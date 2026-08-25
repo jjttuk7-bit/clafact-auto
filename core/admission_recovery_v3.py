@@ -24,6 +24,7 @@ from core.targeted_claim_splitter import (
     discover_numeric_mentions,
 )
 from core.trade_claim_recovery import recover_trade_period, split_trade_composite_claim
+from core.source_target_grounding import trusted_target_expression
 from core.validated_claim_recovery import recover_validated_claim
 from schemas.claim import ClaimSchema
 from schemas.claim_registry import ClaimRegistryRecord
@@ -50,6 +51,15 @@ def recover_registry_record_v3(record: ClaimRegistryRecord, *, extractor: Struct
     record_children = split_record_comparison_claim(record.claim)
     if len(record_children) > 1:
         return _recover_record_children(record, record_children, official_service)
+    prelinked_target = trusted_target_expression(record)
+    if prelinked_target is not None:
+        return _recover_prelinked_target(
+            record,
+            prelinked_target,
+            extractor=extractor,
+            official_service=official_service,
+            article_context=article_context,
+        )
     mentions = discover_numeric_mentions(record.claim.source_sentence)
     grouper = getattr(extractor, "group_claims", None)
     target_roles: list[dict[str, str]]
@@ -151,6 +161,78 @@ def recover_registry_record_v3(record: ClaimRegistryRecord, *, extractor: Struct
         resolution = official_service.resolve(parsed, article_date=record.article_published_at) if route == "KOSIS_PIPELINE_ELIGIBLE" and record.article_published_at is not None else None
         entries.append(RecoveryEntry(record.claim.claim_id, derived, route, resolution))
     return RecoveryResult(cast(RecoveryAction, "MULTI_CLAIM_SPLIT"), entries)
+
+
+def _recover_prelinked_target(
+    record: ClaimRegistryRecord,
+    expression: str,
+    *,
+    extractor: StructuredClaimExtractor,
+    official_service: OfficialEvidenceResolver,
+    article_context: str | None,
+) -> RecoveryResult:
+    """Recover exactly one previously span-verified numeric target."""
+
+    payload = {
+        "source_sentence": record.claim.source_sentence,
+        "target_numeric_expression": expression,
+        "instruction": "원문에서 확정된 target_numeric_expression 하나만 12슬롯 구조화",
+    }
+    encoded = json.dumps(payload, ensure_ascii=False)
+    parsed = _parse_target(expression, encoded, extractor, record)
+    parsed_before_context = parsed
+    context_used = False
+    if _should_retry_with_context(parsed) and article_context:
+        payload["article_context"] = article_context
+        payload["target_already_split"] = True
+        payload["instruction"] = (
+            "확정된 target_numeric_expression은 바꾸지 말고 부족한 문맥 슬롯만 보강"
+        )
+        parsed = _parse_target(
+            expression,
+            json.dumps(payload, ensure_ascii=False),
+            extractor,
+            record,
+        )
+        context_used = True
+    parsed = parsed.model_copy(update={
+        "claim_id": _child_id(record.claim.source_sentence, expression),
+        "source_sentence": record.claim.source_sentence,
+    })
+    parsed = recover_validated_claim(
+        parsed,
+        record.article_published_at,
+        source_value_text=expression,
+    )
+    route = _admission_route(parsed)
+    enrichment = dict(record.slot_enrichment or {})
+    enrichment.update({
+        "stage": "PRELINKED_SOURCE_TARGET",
+        "parent_claim_id": record.claim.claim_id,
+        "target_numeric_expression": expression,
+        "admission_route": route,
+        "source_ref": record.source_ref,
+        "article_context_used": context_used,
+        "context_enriched_slots": (
+            _changed_slots(parsed_before_context, parsed) if context_used else []
+        ),
+    })
+    derived = record.model_copy(update={
+        "claim": parsed,
+        "source_ref": "admission_recovery_v3",
+        "slot_enrichment": enrichment,
+    })
+    resolution = (
+        official_service.resolve(parsed, article_date=record.article_published_at)
+        if route == "KOSIS_PIPELINE_ELIGIBLE" and record.article_published_at is not None
+        else None
+    )
+    return RecoveryResult(
+        cast(
+            RecoveryAction, "CONTEXT_REPARSE" if context_used else "DIRECT"
+        ),
+        [RecoveryEntry(record.claim.claim_id, derived, route, resolution)],
+    )
 
 
 def _recover_trade_children(
