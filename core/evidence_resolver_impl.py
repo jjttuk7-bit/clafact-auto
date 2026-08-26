@@ -15,6 +15,12 @@ from schemas.evidence import EvidenceCellSchema
 def resolve_evidence_cell(claim: ClaimSchema, candidate: KosisCandidateSchema) -> EvidenceCellSchema:
     """Confirm an evidence cell only from catalog metadata or official coordinates."""
     dimensions, coordinate_resolved = _resolve_dimensions(claim, candidate)
+    if coordinate_resolved and not _claim_coordinate_requirements_covered(
+        claim,
+        candidate,
+        dimensions,
+    ):
+        coordinate_resolved = False
     indicator_terms = _indicator_terms(claim)
     matches = [
         (item_id, item_name)
@@ -79,16 +85,24 @@ def _resolve_dimensions(claim: ClaimSchema, candidate: KosisCandidateSchema) -> 
     selected: dict[str, str] = {}
     for index, dimension_id in enumerate(candidate.dimension_ids):
         members = candidate.dimension_members.get(dimension_id, [])
+        axis_name = candidate.dimension_names[index] if index < len(candidate.dimension_names) else None
+        axis = _axis_kind(axis_name)
+        targets = _axis_targets(claim, axis_name)
         if len(members) == 1:
+            if (
+                _axis_has_explicit_claim_value(claim, axis)
+                and _normalize(members[0]) not in targets
+            ):
+                return {}, False
             selected[dimension_id] = members[0]
             continue
-        axis_name = candidate.dimension_names[index] if index < len(candidate.dimension_names) else None
-        targets = _axis_targets(claim, axis_name)
         matches = [member for member in members if _normalize(member) and _normalize(member) in targets]
         total_members = [member for member in members if _is_total_member(member)]
         if len(matches) == 1:
             selected[dimension_id] = matches[0]
             continue
+        if not matches and _axis_has_explicit_claim_value(claim, axis):
+            return {}, False
         if not matches and len(total_members) == 1:
             selected[dimension_id] = total_members[0]
             continue
@@ -124,6 +138,7 @@ def _axis_kind(axis_name: str | None) -> str | None:
         "gender": ("성별", "남녀", "gender", "sex"),
         "age": ("연령", "나이", "age"),
         "industry": ("산업", "업종", "직종", "industry"),
+        "education": ("학력", "교육정도", "교육수준", "education"),
         "product": ("품목", "상품", "재화", "product", "item"),
         "population": ("모집단", "대상", "population"),
     }
@@ -132,6 +147,18 @@ def _axis_kind(axis_name: str | None) -> str | None:
             return kind
     return f"custom:{normalized}" if normalized else None
 
+
+def _axis_has_explicit_claim_value(claim: ClaimSchema, axis: str | None) -> bool:
+    dimensions = claim.dimension or {}
+    if axis == "region":
+        return bool(claim.region)
+    if axis == "population":
+        return bool(claim.population or _dimension_values_for_axis(dimensions, "population"))
+    if axis == "age":
+        return bool(claim.population or _dimension_values_for_axis(dimensions, "age"))
+    if axis:
+        return bool(_dimension_values_for_axis(dimensions, axis))
+    return False
 
 def _dimension_values_for_axis(dimensions: dict[str, str], axis: str) -> list[str]:
     named_members = normalized_dimension_members(dimensions)
@@ -156,6 +183,53 @@ def _dimension_text(value: dict[str, str] | None) -> str | None:
     if not value:
         return None
     return " ".join(dimension_member_values(value))
+
+
+def _claim_coordinate_requirements_covered(
+    claim: ClaimSchema,
+    candidate: KosisCandidateSchema,
+    dimensions: dict[str, str],
+) -> bool:
+    required = {
+        _normalize(value)
+        for key, values in normalized_dimension_members(claim.dimension).items()
+        for value in values
+        if _normalize(value) and not _is_methodology_qualifier(claim, key, value)
+    }
+    population = _normalize(claim.population)
+    has_age_dimension = any(
+        _axis_kind(key) == "age"
+        for key in normalized_dimension_members(claim.dimension)
+    )
+    if (
+        population
+        and not has_age_dimension
+        and (re.search(r"\d+(?:대|세)", population) or population in {"청년층", "고령층"})
+    ):
+        required.add(population)
+    region = _normalize(claim.region)
+    if region and region != "전국":
+        required.add(region)
+    if not required:
+        return True
+    available = {_normalize(value) for value in dimensions.values() if _normalize(value)}
+    available.update(_normalize(value) for value in candidate.core_item_names if _normalize(value))
+    available.add(_normalize(candidate.tbl_name))
+    return all(
+        any(target == value or target in value or (_is_total_member(target) and _is_total_member(value)) for value in available)
+        for target in required
+    )
+
+def _is_methodology_qualifier(claim: ClaimSchema, key: str, value: str) -> bool:
+    """Do not require an age methodology label as a KOSIS coordinate member."""
+    normalized_key = _normalize(key)
+    normalized_value = _normalize(value)
+    return bool(
+        claim.population
+        and "세" in claim.population
+        and normalized_key in {"기준", "비교기준"}
+        and normalized_value.startswith("국제비교")
+    )
 
 
 def _claim_dimensions_confirmed(claim: ClaimSchema, dimensions: dict[str, str]) -> bool:

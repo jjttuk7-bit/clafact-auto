@@ -16,6 +16,7 @@ from core.claim_group_normalizer import (
 )
 from core.claim_group_validator import validate_grouping_plan
 from core.claim_parser import StructuredClaimExtractor, parse_claim
+from core.direct_value_child_guard import apply_direct_value_child_guard
 from core.operational_error import OperationalStageError, run_operational_stage
 from core.record_comparison_splitter import split_record_comparison_claim
 from core.targeted_claim_splitter import (
@@ -24,6 +25,7 @@ from core.targeted_claim_splitter import (
     discover_numeric_mentions,
 )
 from core.trade_claim_recovery import recover_trade_period, split_trade_composite_claim
+from core.source_target_grounding import trusted_target_expression
 from core.validated_claim_recovery import recover_validated_claim
 from schemas.claim import ClaimSchema
 from schemas.claim_registry import ClaimRegistryRecord
@@ -50,8 +52,19 @@ def recover_registry_record_v3(record: ClaimRegistryRecord, *, extractor: Struct
     record_children = split_record_comparison_claim(record.claim)
     if len(record_children) > 1:
         return _recover_record_children(record, record_children, official_service)
+    prelinked_target = trusted_target_expression(record)
     mentions = discover_numeric_mentions(record.claim.source_sentence)
     grouper = getattr(extractor, "group_claims", None)
+    if prelinked_target is not None and not (
+        len(mentions) >= 2 and callable(grouper)
+    ):
+        return _recover_prelinked_target(
+            record,
+            prelinked_target,
+            extractor=extractor,
+            official_service=official_service,
+            article_context=article_context,
+        )
     target_roles: list[dict[str, str]]
     target_role_assignments: list[list[dict[str, str]]]
     grouping_source_fallback = False
@@ -118,8 +131,12 @@ def recover_registry_record_v3(record: ClaimRegistryRecord, *, extractor: Struct
     if not targets:
         return recover_registry_record_v2(record, extractor=extractor, official_service=official_service, article_context=article_context)
     entries: list[RecoveryEntry] = []
-    for target, numeric_roles, numeric_role_assignments in zip(
-        targets, target_roles, target_role_assignments, strict=True
+    for child_ordinal, (
+        target,
+        numeric_roles,
+        numeric_role_assignments,
+    ) in enumerate(
+        zip(targets, target_roles, target_role_assignments, strict=True), start=1
     ):
         parsed = _parse_target(target.expression, target.extractor_input, extractor, record)
         parsed_before_context = parsed
@@ -136,8 +153,13 @@ def recover_registry_record_v3(record: ClaimRegistryRecord, *, extractor: Struct
             parsed = _parse_target(target.expression, json.dumps(payload, ensure_ascii=False), extractor, record)
             context_used = True
         context_enriched_slots = _changed_slots(parsed_before_context, parsed) if context_used else []
-        parsed = parsed.model_copy(update={"claim_id": _child_id(record.claim.source_sentence, target.expression), "source_sentence": record.claim.source_sentence})
+        parsed = parsed.model_copy(update={"claim_id": _child_id(record.claim.claim_id, record.claim.source_sentence, target.expression, child_ordinal), "source_sentence": record.claim.source_sentence})
         parsed = recover_validated_claim(parsed, record.article_published_at, source_value_text=target.expression)
+        parsed = apply_direct_value_child_guard(
+            parsed,
+            target_expression=target.expression,
+            target_role=numeric_roles.get(target.expression),
+        )
         route = _admission_route(parsed)
         derived = record.model_copy(update={"claim": parsed, "source_ref": "admission_recovery_v3", "slot_enrichment": {
             "stage": "TARGETED_MULTI_CLAIM_SPLIT", "parent_claim_id": record.claim.claim_id,
@@ -151,6 +173,82 @@ def recover_registry_record_v3(record: ClaimRegistryRecord, *, extractor: Struct
         resolution = official_service.resolve(parsed, article_date=record.article_published_at) if route == "KOSIS_PIPELINE_ELIGIBLE" and record.article_published_at is not None else None
         entries.append(RecoveryEntry(record.claim.claim_id, derived, route, resolution))
     return RecoveryResult(cast(RecoveryAction, "MULTI_CLAIM_SPLIT"), entries)
+
+
+def _recover_prelinked_target(
+    record: ClaimRegistryRecord,
+    expression: str,
+    *,
+    extractor: StructuredClaimExtractor,
+    official_service: OfficialEvidenceResolver,
+    article_context: str | None,
+) -> RecoveryResult:
+    """Recover exactly one previously span-verified numeric target."""
+
+    payload = {
+        "source_sentence": record.claim.source_sentence,
+        "target_numeric_expression": expression,
+        "instruction": "원문에서 확정된 target_numeric_expression 하나만 12슬롯 구조화",
+    }
+    encoded = json.dumps(payload, ensure_ascii=False)
+    parsed = _parse_target(expression, encoded, extractor, record)
+    parsed_before_context = parsed
+    context_used = False
+    if _should_retry_with_context(parsed) and article_context:
+        payload["article_context"] = article_context
+        payload["target_already_split"] = True
+        payload["instruction"] = (
+            "확정된 target_numeric_expression은 바꾸지 말고 부족한 문맥 슬롯만 보강"
+        )
+        parsed = _parse_target(
+            expression,
+            json.dumps(payload, ensure_ascii=False),
+            extractor,
+            record,
+        )
+        context_used = True
+    parsed = parsed.model_copy(update={
+        "claim_id": _child_id(record.claim.claim_id, record.claim.source_sentence, expression, 1),
+        "source_sentence": record.claim.source_sentence,
+    })
+    parsed = recover_validated_claim(
+        parsed,
+        record.article_published_at,
+        source_value_text=expression,
+    )
+    parsed = apply_direct_value_child_guard(
+        parsed,
+        target_expression=expression,
+    )
+    route = _admission_route(parsed)
+    enrichment = dict(record.slot_enrichment or {})
+    enrichment.update({
+        "stage": "PRELINKED_SOURCE_TARGET",
+        "parent_claim_id": record.claim.claim_id,
+        "target_numeric_expression": expression,
+        "admission_route": route,
+        "source_ref": record.source_ref,
+        "article_context_used": context_used,
+        "context_enriched_slots": (
+            _changed_slots(parsed_before_context, parsed) if context_used else []
+        ),
+    })
+    derived = record.model_copy(update={
+        "claim": parsed,
+        "source_ref": "admission_recovery_v3",
+        "slot_enrichment": enrichment,
+    })
+    resolution = (
+        official_service.resolve(parsed, article_date=record.article_published_at)
+        if route == "KOSIS_PIPELINE_ELIGIBLE" and record.article_published_at is not None
+        else None
+    )
+    return RecoveryResult(
+        cast(
+            RecoveryAction, "CONTEXT_REPARSE" if context_used else "DIRECT"
+        ),
+        [RecoveryEntry(record.claim.claim_id, derived, route, resolution)],
+    )
 
 
 def _recover_trade_children(
@@ -229,6 +327,12 @@ def _admission_route(claim: ClaimSchema) -> AdmissionRoute:
 def _should_retry_with_context(claim: ClaimSchema) -> bool:
     if _admission_route(claim) == "CONTEXT_REQUIRED":
         return True
+    if (
+        claim.value is not None
+        and claim.unit
+        and (not claim.indicator or not claim.time)
+    ):
+        return True
     prefix = "MISSING_REQUIRED_SLOTS:"
     reason = (claim.parse_reason or "").strip()
     if not reason.startswith(prefix):
@@ -239,8 +343,14 @@ def _should_retry_with_context(claim: ClaimSchema) -> bool:
     return bool(missing_slots) and missing_slots <= {"time"}
 
 
-def _child_id(source_sentence: str, expression: str) -> str:
-    digest = sha256((source_sentence + "\n" + expression).encode("utf-8")).hexdigest()[:16]
+def _child_id(
+    parent_claim_id: str,
+    source_sentence: str,
+    expression: str,
+    child_ordinal: int,
+) -> str:
+    identity = f"{parent_claim_id}\n{source_sentence}\n{expression}\n{child_ordinal}"
+    digest = sha256(identity.encode("utf-8")).hexdigest()[:16]
     return f"claim_{digest}"
 
 

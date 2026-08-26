@@ -81,7 +81,16 @@ def _recovery_sources(claim: ClaimSchema, article_context: str | None) -> tuple[
     if len(clauses) > 1:
         return "MULTI_CLAIM_SPLIT", clauses
     decision = classify_admissibility(claim.parse_reason, "AUTO" if claim.parse_status == "AUTO_OK" else "HOLD")
-    if decision.route == "CONTEXT_REQUIRED" and article_context and article_context.strip():
+    context_recoverable = bool(
+        claim.value is not None
+        and claim.unit
+        and (not claim.indicator or not claim.time)
+    )
+    if (
+        (decision.route == "CONTEXT_REQUIRED" or context_recoverable)
+        and article_context
+        and article_context.strip()
+    ):
         return "CONTEXT_REPARSE", [_context_prompt(claim, article_context)]
     if claim.parse_status == "AUTO_OK":
         return "DIRECT", [claim.source_sentence]

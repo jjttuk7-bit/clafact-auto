@@ -1,0 +1,40 @@
+{
+  "KOSIS_API완료수": 9,
+  "공식작성기관문서완료수": 1,
+  "남은사유상위": {
+    "AMBIGUOUS_MARGIN": 5,
+    "AS_OF_UNAVAILABLE": 13,
+    "CLAIM_PARSE_UNCERTAIN": 24,
+    "INDICATOR_MEASURE_FAMILY_AMBIGUOUS": 3,
+    "INDICATOR_REFINEMENT_REQUIRED": 20,
+    "INDICATOR_UNIT_MEASURE_MISMATCH": 7,
+    "LOW_SEMANTIC_SCORE": 4,
+    "NO_EVIDENCE_COORDINATE_CANDIDATE": 47,
+    "NO_HARD_GUARD_CANDIDATE": 48,
+    "RECLASSIFY_TO_DIFFERENCE": 47,
+    "RECLASSIFY_TO_GROWTH_RATE": 27,
+    "RECLASSIFY_TO_RECORD": 24,
+    "TARGET_AMBIGUOUS_IN_SOURCE": 5,
+    "TARGET_NOT_FOUND_IN_SOURCE": 17,
+    "TARGET_VALUE_NOT_IN_SOURCE_SENTENCE": 13
+  },
+  "다른유형이동": {
+    "다른 유형으로 이동: 6번 증감량": 47,
+    "다른 유형으로 이동: 7번 증감률": 27,
+    "다른 유형으로 이동: 비중·구성비": 1,
+    "다른 유형으로 이동: 순위": 1,
+    "다른 유형으로 이동: 최고·최저 기록": 24
+  },
+  "단일수치부모수": 133,
+  "복수수치부모수": 227,
+  "복수전체자식수": 290,
+  "불일치수": 0,
+  "실행한8번상세결과수": 330,
+  "원본부모Claim수": 381,
+  "원장경로": "D:\\projects\\services\\archived\\clafact-auto\\.worktrees\\three-type-release\\deliverables\\CLAFACT_AUTO_8번_직접값_최종실행원장_20260826.csv",
+  "원장행수": 578,
+  "일치수": 10,
+  "입력차단부모수": 21,
+  "재분류후8번대상수": 230,
+  "전체공식근거완료수": 10
+}

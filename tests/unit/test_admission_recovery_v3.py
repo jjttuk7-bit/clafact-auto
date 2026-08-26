@@ -116,4 +116,6 @@ def test_v3_preserves_index_basis_and_admits_the_index_child() -> None:
     assert result.entries[0].record.slot_enrichment["target_numeric_expression"] == "116.31(2020\ub144=100)"
     assert result.entries[0].record.claim.unit == "2020=100"
     assert result.entries[0].admission_route == "KOSIS_PIPELINE_ELIGIBLE"
-    assert len(service.claims) == 2
+    assert len(service.claims) == 1
+    assert result.entries[1].record.claim.parse_status == "HUMAN_REVIEW"
+    assert result.entries[1].record.claim.parse_reason == "RECLASSIFY_TO_GROWTH_RATE"

@@ -21,6 +21,9 @@ GROUPING_INSTRUCTIONS = (
     "Ranks, baselines, sample sizes, and explanatory numbers are CONTEXT_VALUE. Split groups "
     "only when indicators or populations are genuinely different. Use HUMAN_REVIEW when the "
     "relationship is ambiguous. Every supplied mention_id must appear exactly once."
+    " READY requires at least one group, and every group main_mention_id must be assigned "
+    "MAIN_VALUE or CHANGE_VALUE in that same group. CONTEXT_VALUE must have group_id null."
+    " HUMAN_REVIEW requires groups=[]; assign every mention as CONTEXT_VALUE with group_id null."
 )
 
 
@@ -70,8 +73,17 @@ def parse_openai_grouping_response(payload: object) -> ClaimGroupingPlan:
         arguments = calls[0].get("arguments")
         if not isinstance(arguments, str):
             raise ValueError
-        return ClaimGroupingOutputPayload.model_validate_json(arguments).to_plan()
+        provider_output = ClaimGroupingOutputPayload.model_validate_json(arguments)
     except (ValueError, TypeError, ValidationError):
         from core.openai_function_claim_extractor import OpenAIContractError
 
         raise OpenAIContractError("INVALID_CLAIM_GROUPING_OUTPUT") from None
+    try:
+        return provider_output.to_plan()
+    except ValidationError:
+        return ClaimGroupingPlan(
+            status="HUMAN_REVIEW",
+            reason="GROUPING_PROVIDER_CONTRADICTION",
+            assignments=[],
+            groups=[],
+        )
