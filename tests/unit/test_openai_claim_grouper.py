@@ -28,6 +28,8 @@ def test_openai_group_request_forces_one_strict_group_function() -> None:
     assert request["parallel_tool_calls"] is False
     assert request["tools"][0]["strict"] is True
     assert [item["mention_id"] for item in json.loads(request["input"])["mentions"]] == ["n1", "n2"]
+    assert "READY requires at least one group" in request["instructions"]
+    assert "HUMAN_REVIEW requires groups=[]" in request["instructions"]
 
 
 def test_openai_group_response_is_validated_to_plan() -> None:
@@ -114,3 +116,51 @@ def test_openai_group_response_rejects_free_text_or_unknown_role() -> None:
                 ]
             }
         )
+
+
+@pytest.mark.parametrize(
+    "status,reason,assignments,groups",
+    [
+        (
+            "READY",
+            "",
+            [
+                {"mention_id": "n1", "role": "CONTEXT_VALUE", "group_id": None},
+                {"mention_id": "n2", "role": "CONTEXT_VALUE", "group_id": None},
+            ],
+            [],
+        ),
+        (
+            "HUMAN_REVIEW",
+            "수치 관계가 모호함",
+            [
+                {"mention_id": "n1", "role": "CONTEXT_VALUE", "group_id": "g1"},
+                {"mention_id": "n2", "role": "REFERENCE_VALUE", "group_id": "g1"},
+            ],
+            [
+                {"group_id": "g1", "main_mention_id": "n1", "indicator_hint": "사망자 수"}
+            ],
+        ),
+    ],
+)
+def test_openai_group_response_contradiction_fails_closed_to_human_review(
+    status: str,
+    reason: str,
+    assignments: list[dict],
+    groups: list[dict],
+) -> None:
+    payload = {
+        "output": [{
+            "type": "function_call",
+            "name": EMIT_CLAIM_GROUPS_FUNCTION_NAME,
+            "arguments": json.dumps({
+                "status": status,
+                "reason": reason,
+                "assignments": assignments,
+                "groups": groups,
+            }, ensure_ascii=False),
+        }]
+    }
+
+    plan = parse_openai_grouping_response(payload)
+
