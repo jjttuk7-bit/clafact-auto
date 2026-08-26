@@ -214,6 +214,11 @@ def _claim_coordinate_requirements_covered(
         return True
     available = {_normalize(value) for value in dimensions.values() if _normalize(value)}
     available.update(_normalize(value) for value in candidate.core_item_names if _normalize(value))
+    available.update(
+        _normalize(value)
+        for value in candidate.binding_scope_terms
+        if _normalize(value)
+    )
     available.add(_normalize(candidate.tbl_name))
     return all(
         any(target == value or target in value or (_is_total_member(target) and _is_total_member(value)) for value in available)

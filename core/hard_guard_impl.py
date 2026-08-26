@@ -51,7 +51,7 @@ def _age(c, x):
     if not c.population or "\uc138" not in c.population or _has(x, "\uc5f0\ub839"):
         return False
     requested = _key(c.population).replace("\uacc4", "")
-    scope = _key(" ".join([x.tbl_name, *x.core_item_names]))
+    scope = _key(" ".join([x.tbl_name, *x.core_item_names, *x.binding_scope_terms]))
     return not (
         (requested and requested in scope)
         or (
@@ -66,7 +66,7 @@ def _dim(c, x):
     if not c.dimension or not x.dimension_members:
         return False
     official = {_key(value) for values in x.dimension_members.values() for value in values}
-    scope = _key(" ".join([x.tbl_name, *x.core_item_names]))
+    scope = _key(" ".join([x.tbl_name, *x.core_item_names, *x.binding_scope_terms]))
     return any(
         not (member in official or member in scope or sum(member in value for value in official) == 1)
         for member in _coordinate_members(c)

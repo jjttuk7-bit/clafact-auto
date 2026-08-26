@@ -32,6 +32,7 @@ class KosisCandidateSchema(BaseModel):
     period_ranges: dict[str, KosisPeriodRangeSchema] = Field(default_factory=dict)
     source_stat_id: str | None = None
     source_name: str | None = None
+    binding_scope_terms: list[str] = Field(default_factory=list)
     metadata_status: str
 
 

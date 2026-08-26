@@ -1,0 +1,93 @@
+{
+  "admission_route_counts": {
+    "CONTEXT_REQUIRED": 1,
+    "KOSIS_PIPELINE_ELIGIBLE": 5,
+    "STRUCTURAL_HOLD": 1
+  },
+  "all_claims_terminal": false,
+  "checkpoint_parent_count": 7,
+  "derived_claims": 7,
+  "input_coverage_complete": true,
+  "input_registry_records": 7,
+  "official_api_counts": {
+    "api_provenance_cells": 1,
+    "api_provenance_claims": 1,
+    "catalog_query_attempted": 28,
+    "catalog_query_empty": 0,
+    "catalog_query_failed": 0,
+    "catalog_query_succeeded_nonempty": 28,
+    "metadata_itm_attempted": 181,
+    "metadata_itm_failed": 40,
+    "metadata_itm_succeeded": 141,
+    "metadata_prd_attempted": 141,
+    "metadata_prd_failed": 4,
+    "metadata_prd_succeeded": 137,
+    "official_value_fetch_hold": 1,
+    "official_value_fetch_pass": 1,
+    "verified_publication_claims": 1
+  },
+  "official_resolution_count": 5,
+  "operational_failure_count": 0,
+  "recovery_action_counts": {
+    "DIRECT": 5,
+    "NO_RECOVERY": 2
+  },
+  "registry_load_errors": [],
+  "resumed_parent_count": 0,
+  "run_signature": {
+    "context_sha256": null,
+    "git_head": "8cf89029459f5e9a152874db5ec47f433e530bc5",
+    "live_budget_seconds": 60.0,
+    "runner_version": "canonical-v6-shared-live-metadata",
+    "runtime_source_sha256": "d1d24a6ea6876dd1a1c5cc1ac20c56ea15b9a4dccb2f82bfc836d7e9035cea4f",
+    "semantic_catalog_sha256": "da509e4cf7399e79878de525462c4d16613f0e7eb9c240cfe6cc137102104ac7",
+    "stored_slots_only": true,
+    "worker_timeout_seconds": 240.0
+  },
+  "stage_status_counts": {
+    "CALCULATION": {
+      "PASS": 1
+    },
+    "CATALOG_SEARCH": {
+      "PASS": 5
+    },
+    "CLAIM_PARSE": {
+      "PASS": 5
+    },
+    "EVIDENCE_CELL": {
+      "HOLD": 1,
+      "PASS": 2
+    },
+    "HARD_GUARD": {
+      "HOLD": 2,
+      "PASS": 3
+    },
+    "OFFICIAL_VALUE_FETCH": {
+      "HOLD": 1,
+      "PASS": 1
+    },
+    "SEMANTIC_MAPPING": {
+      "PASS": 5
+    },
+    "SEMANTIC_MATCH": {
+      "HOLD": 1,
+      "PASS": 2
+    },
+    "VERDICT": {
+      "PASS": 1
+    }
+  },
+  "terminal_reason_counts": {
+    "AMBIGUOUS_MARGIN": 1,
+    "FETCH_FAILED": 1,
+    "NO_EVIDENCE_COORDINATE_CANDIDATE": 2,
+    "TARGET_NOT_FOUND_IN_SOURCE": 1,
+    "WITHIN_TOLERANCE": 1,
+    "중심 수치와 비교 수치가 함께 제시되지만, 두 학력 집단의 독립적인 실업률을 하나의 단일 목표 수치로 구조화해야 하므로 비교 수치의 표준 슬롯 처리가 불충분함": 1
+  },
+  "terminal_route_counts": {
+    "AUTO": 1,
+    "HOLD": 4,
+    "HUMAN_REVIEW": 2
+  }
+}

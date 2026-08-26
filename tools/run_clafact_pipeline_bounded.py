@@ -39,6 +39,7 @@ RUNTIME_SIGNATURE_PATHS = (
 SEMANTIC_CATALOG_PATHS = (
     PROJECT_ROOT / "data" / "semantic_standard" / "concept_seed_v1.json",
     PROJECT_ROOT / "data" / "semantic_standard" / "concept_overlay_v3.json",
+    PROJECT_ROOT / "data" / "semantic_standard" / "kosis_bindings.json",
     PROJECT_ROOT / "data" / "kosis_catalog" / "catalog_350.json",
     PROJECT_ROOT / "data" / "kosis_catalog" / "catalog_overlay_v2.json",
 )

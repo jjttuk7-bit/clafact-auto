@@ -58,6 +58,8 @@ def classify_direct_value_target(
                 "GROWTH_RATE", "RECLASSIFY_TO_GROWTH_RATE"
             )
         return DirectValueTypeDecision("DIFFERENCE", "RECLASSIFY_TO_DIFFERENCE")
+    if level_connector_present:
+        return DirectValueTypeDecision("DIRECT_VALUE", None)
     if _THRESHOLD.search(tail[:32]) or "돌파" in tail[:24]:
         return DirectValueTypeDecision("THRESHOLD", None)
     if re.match(

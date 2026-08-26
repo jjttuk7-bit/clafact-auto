@@ -1,0 +1,82 @@
+{
+  "admission_route_counts": {
+    "KOSIS_PIPELINE_ELIGIBLE": 7
+  },
+  "all_claims_terminal": true,
+  "checkpoint_parent_count": 7,
+  "derived_claims": 7,
+  "input_coverage_complete": true,
+  "input_registry_records": 7,
+  "official_api_counts": {
+    "api_provenance_cells": 7,
+    "api_provenance_claims": 7,
+    "catalog_query_attempted": 36,
+    "catalog_query_empty": 0,
+    "catalog_query_failed": 0,
+    "catalog_query_succeeded_nonempty": 36,
+    "metadata_itm_attempted": 7,
+    "metadata_itm_failed": 0,
+    "metadata_itm_succeeded": 7,
+    "metadata_prd_attempted": 7,
+    "metadata_prd_failed": 0,
+    "metadata_prd_succeeded": 7,
+    "official_value_fetch_hold": 2,
+    "official_value_fetch_pass": 5,
+    "verified_publication_claims": 7
+  },
+  "official_resolution_count": 7,
+  "operational_failure_count": 0,
+  "recovery_action_counts": {
+    "DIRECT": 7
+  },
+  "registry_load_errors": [],
+  "resumed_parent_count": 0,
+  "run_signature": {
+    "context_sha256": "840433063a498837ac7e28e7489a8ac794ba277ee88600ef7cb388eda7b55a8c",
+    "git_head": "8cf89029459f5e9a152874db5ec47f433e530bc5",
+    "live_budget_seconds": 60.0,
+    "runner_version": "canonical-v6-shared-live-metadata",
+    "runtime_source_sha256": "d8821915019bc2911805a819e6d28a5f14b83599f6e03fb770a580315fb15e8a",
+    "semantic_catalog_sha256": "3484354c23dcb4c01f84e7efe3263b6dfda51b44e329f46f514d3c0117522505",
+    "stored_slots_only": true,
+    "worker_timeout_seconds": 240.0
+  },
+  "stage_status_counts": {
+    "CALCULATION": {
+      "PASS": 5
+    },
+    "CATALOG_SEARCH": {
+      "PASS": 7
+    },
+    "CLAIM_PARSE": {
+      "PASS": 7
+    },
+    "EVIDENCE_CELL": {
+      "PASS": 7
+    },
+    "HARD_GUARD": {
+      "PASS": 7
+    },
+    "OFFICIAL_VALUE_FETCH": {
+      "HOLD": 2,
+      "PASS": 5
+    },
+    "SEMANTIC_MAPPING": {
+      "PASS": 7
+    },
+    "SEMANTIC_MATCH": {
+      "PASS": 7
+    },
+    "VERDICT": {
+      "PASS": 5
+    }
+  },
+  "terminal_reason_counts": {
+    "AS_OF_UNAVAILABLE": 2,
+    "WITHIN_TOLERANCE": 5
+  },
+  "terminal_route_counts": {
+    "AUTO": 5,
+    "HOLD": 2
+  }
+}

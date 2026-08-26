@@ -18,6 +18,8 @@ def apply_catalog_binding(claim, concept, candidates):
 def _apply(candidate, binding):
     target = binding.get("itm_id")
     update = {"source_stat_id": "OFFICIAL_RECURRING_DOMAIN_BINDING"}
+    if scope_terms := _strings(binding.get("scope_terms")):
+        update["binding_scope_terms"] = scope_terms
     if target is not None:
         pairs = [(i, n) for i, n in zip(candidate.core_item_ids, candidate.core_item_names) if i == str(target)]
         if len(pairs) != 1:
@@ -65,6 +67,10 @@ def _applies(binding, claim, concept):
             return False
     if binding.get("dimension_absent") is True and claim.dimension:
         return False
+    if binding.get("age_scope_required") is True and not _has_age_scope(claim):
+        return False
+    if binding.get("education_scope_required") is True and not _has_education_scope(claim):
+        return False
     national = claim.region in {None, "전국", "대한민국", "한국"}
     if binding.get("region_scope") == "national" and not national:
         return False
@@ -73,6 +79,13 @@ def _applies(binding, claim, concept):
     return True
 
 def _strings(value): return [str(item) for item in value] if isinstance(value, list) else []
+def _has_age_scope(claim):
+    values = [claim.population or "", *(claim.dimension or {}).values()]
+    return any(re.search(r"\d+\s*(?:대|세)|청년층|고령층", str(value)) for value in values)
+def _has_education_scope(claim):
+    dimensions = claim.dimension or {}
+    text = " ".join([*map(str, dimensions.keys()), *map(str, dimensions.values()), str(claim.population or "")])
+    return any(term in text for term in ("학력", "교육정도", "고졸", "중졸", "대졸", "전문대"))
 def _freq(value):
     normalized = _key(value or "")
     return {"m":"월","month":"월","monthly":"월","월간":"월","q":"분기","quarter":"분기","quarterly":"분기","y":"년","year":"년","yearly":"년","annual":"년","연":"년","연간":"년","halfyear":"반기"}.get(normalized, normalized)

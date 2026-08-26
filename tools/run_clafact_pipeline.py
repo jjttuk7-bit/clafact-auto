@@ -34,7 +34,7 @@ def main() -> None:
         parser.error("KOSIS_API_KEY is required")
 
     registry = load_claim_registry(args.registry_path)
-    contexts = {} if args.stored_slots_only else _load_context(args.context_jsonl)
+    contexts = _load_context(args.context_jsonl)
     runtime = build_canonical_pipeline(
         settings,
         live_time_budget_seconds=args.live_budget_seconds,

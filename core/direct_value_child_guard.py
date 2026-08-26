@@ -9,6 +9,7 @@ from core.direct_value_verification_type import (
     _find_target_span,
     classify_direct_value_target,
 )
+from core.claim_contract import assess_claim_contract
 from schemas.claim import ClaimSchema
 
 
@@ -65,6 +66,7 @@ def apply_direct_value_child_guard(
     target_expression: str,
     target_role: str | None = None,
 ) -> ClaimSchema:
+    claim = _enrich_target_qualifiers(claim, target_expression)
     decision = classify_direct_value_target(
         claim.source_sentence,
         target_expression=target_expression,
@@ -97,18 +99,87 @@ def apply_direct_value_child_guard(
                 "parse_status": "AUTO_OK",
                 "parse_reason": None,
             })
-        if decision.type_code == "DIRECT_VALUE" and claim.calculation == "THRESHOLD":
-            return claim.model_copy(update={
+        if decision.type_code == "DIRECT_VALUE":
+            candidate = claim.model_copy(update={
                 "calculation": "DIRECT_VALUE",
                 "condition": None,
                 "parse_status": "AUTO_OK",
                 "parse_reason": None,
             })
+            if assess_claim_contract(candidate).status == "PASS":
+                return candidate
         return claim
     return claim.model_copy(update={
         "parse_status": "HUMAN_REVIEW",
         "parse_reason": reason,
     })
+
+
+def enrich_target_qualifiers_from_context(
+    claim: ClaimSchema,
+    *,
+    target_expression: str,
+    article_context: str,
+) -> ClaimSchema:
+    """Add one unambiguous age range found near the same target in article context."""
+
+    indicator = str(claim.indicator or "")
+    scope_text = f"{claim.source_sentence} {_slot_text(claim)}"
+    education_markers = (
+        "\ud559\ub825", "\uace0\uc878", "\uc911\uc878", "\ub300\uc878", "\uc804\ubb38\ub300",
+    )
+    if "\uc2e4\uc5c5\ub960" not in indicator or not any(
+        marker in scope_text for marker in education_markers
+    ):
+        return claim
+    dimensions = dict(claim.dimension or {})
+    if claim.population and re.search(r"\d+\s*(?:대|세)", claim.population):
+        return claim
+    if any(re.search(r"\d+\s*(?:대|세)", str(value)) for value in dimensions.values()):
+        return claim
+    compact = [re.escape(character) for character in target_expression if not character.isspace()]
+    if not compact or not article_context:
+        return claim
+    target_pattern = re.compile(r"\s*".join(compact))
+    windows = [
+        article_context[max(0, match.start() - 100):min(len(article_context), match.end() + 100)]
+        for match in target_pattern.finditer(article_context)
+    ]
+    ranges = {
+        f"{int(match.group(1))}~{int(match.group(2))}세"
+        for window in windows
+        for match in re.finditer(r"(?<!\d)(\d{1,2})\s*[~∼～\-–—]\s*(\d{1,2})\s*세", window)
+    }
+    ranges.update(
+        f"{int(match.group(1))}대"
+        for window in windows
+        for match in re.finditer(r"(?<!\d)(\d{1,2})\s*대(?!\s*후반)", window)
+    )
+    if len(ranges) != 1:
+        return claim
+    age = next(iter(ranges))
+    dimensions["age"] = age
+    return claim.model_copy(update={
+        "population": claim.population or age,
+        "dimension": dimensions,
+    })
+def _enrich_target_qualifiers(claim: ClaimSchema, target_expression: str) -> ClaimSchema:
+    span = _find_target_span(claim.source_sentence, target_expression)
+    if span is None:
+        return claim
+    local = _target_clause(claim.source_sentence, span[0], span[1] - span[0])
+    education = [
+        qualifier
+        for qualifier in ("중졸 이하", "고졸", "대졸 이상")
+        if qualifier in local
+    ]
+    if len(education) != 1:
+        return claim
+    dimensions = dict(claim.dimension or {})
+    existing = " ".join(map(str, dimensions.values()))
+    if education[0] not in existing:
+        dimensions["학력"] = education[0]
+    return claim.model_copy(update={"dimension": dimensions})
 
 
 def _target_clause(source: str, start: int, expression_length: int) -> str:

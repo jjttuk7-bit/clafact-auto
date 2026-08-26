@@ -10,7 +10,10 @@ from typing import Any
 from core.admission_recovery import OfficialEvidenceResolver
 from core.admission_recovery_v3 import recover_registry_record_v3
 from core.claim_context_guard import context_target_unresolved
-from core.direct_value_child_guard import apply_direct_value_child_guard
+from core.direct_value_child_guard import (
+    apply_direct_value_child_guard,
+    enrich_target_qualifiers_from_context,
+)
 from core.claim_admissibility import classify_admissibility
 from core.article_claim_pipeline import parse_article_claims
 from core.claim_lineage import ClaimLineageRecord
@@ -22,6 +25,7 @@ from core.trade_claim_recovery import split_trade_composite_claim
 from core.validated_claim_recovery import recover_validated_claim
 from core.slot_audit import audit_claim_slots
 from core.source_target_grounding import (
+    repair_exact_target_grounding,
     target_link_preverification_reason,
     trusted_target_expression,
 )
@@ -104,6 +108,16 @@ def verify_registry_record(
     allow_structured_recovery: bool = True,
 ) -> list[PipelineEntry]:
     """Verify one Registry record through the same recovery used by articles."""
+    record = repair_exact_target_grounding(record)
+    context_target = trusted_target_expression(record)
+    if context_target is not None and article_context:
+        context_claim = enrich_target_qualifiers_from_context(
+            record.claim,
+            target_expression=context_target,
+            article_context=article_context,
+        )
+        record = record.model_copy(update={"claim": context_claim})
+
     target_link_reason = target_link_preverification_reason(record)
     if target_link_reason is not None:
         held_claim = record.claim.model_copy(update={
@@ -120,8 +134,13 @@ def verify_registry_record(
         target_expression is not None
         and not _multi_claim_grouping_required(record, extractor)
     ):
-        guarded_claim = apply_direct_value_child_guard(
+        recovered_claim = recover_validated_claim(
             record.claim,
+            record.article_published_at,
+            source_value_text=target_expression,
+        )
+        guarded_claim = apply_direct_value_child_guard(
+            recovered_claim,
             target_expression=target_expression,
         )
         record = record.model_copy(update={"claim": guarded_claim})

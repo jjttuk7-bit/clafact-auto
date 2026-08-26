@@ -7,6 +7,8 @@ import hashlib
 import json
 from typing import Mapping
 
+from core.source_numeric_inventory import inventory_numeric_mentions
+from core.source_numeric_role_classifier import classify_numeric_roles
 from schemas.claim_registry import ClaimRegistryRecord
 
 
@@ -157,3 +159,43 @@ def target_link_preverification_reason(record: ClaimRegistryRecord) -> str | Non
     enrichment = record.slot_enrichment or {}
     status = str(enrichment.get("target_link_status") or "")
     return status if status in _PREVERIFICATION_REASONS else None
+
+
+def repair_exact_target_grounding(record: ClaimRegistryRecord) -> ClaimRegistryRecord:
+    """Repair a stale no-match only when one source number exactly matches the Claim."""
+
+    enrichment = dict(record.slot_enrichment or {})
+    if enrichment.get("target_link_status") != "TARGET_NOT_FOUND_IN_SOURCE":
+        return record
+    claim = record.claim
+    mentions = inventory_numeric_mentions(claim.source_sentence)
+    classified = classify_numeric_roles(
+        source_sentence=claim.source_sentence,
+        mentions=mentions,
+        claim_value=claim.value,
+        claim_unit=claim.unit or "",
+        indicator=claim.indicator,
+    )
+    selected = [
+        assignment
+        for assignment in classified.assignments
+        if assignment.auto_target_eligible and assignment.role == "대상값"
+    ]
+    if classified.target_status != "TARGET_SELECTED" or len(selected) != 1:
+        return record
+    assignment = selected[0]
+    matching = [mention for mention in mentions if mention.mention_id == assignment.mention_id]
+    if len(matching) != 1:
+        return record
+    mention = matching[0]
+    enrichment.update({
+        "target_link_status": "SOURCE_GROUNDED",
+        "target_link_reason_code": "SOURCE_TARGET_EXACT_MATCH_REPAIRED",
+        "target_link_version": "1.1",
+        "target_numeric_expression": mention.expression,
+        "target_numeric_mention_id": mention.mention_id,
+        "target_numeric_role": assignment.role,
+        "target_numeric_start": mention.start,
+        "target_numeric_end": mention.end,
+    })
+    return record.model_copy(update={"slot_enrichment": enrichment})

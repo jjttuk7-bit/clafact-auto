@@ -1,0 +1,11 @@
+{
+  "등록한공식경로규칙수": 5,
+  "기존공식근거완료수": 10,
+  "재실행대상수": 7,
+  "재실행신규공식근거완료수": 5,
+  "재실행일치수": 5,
+  "재실행불일치수": 0,
+  "재실행보류수": 2,
+  "최종누적공식근거완료수": 15,
+  "결과CSV": "D:\\projects\\services\\archived\\clafact-auto\\.worktrees\\three-type-release\\deliverables\\CLAFACT_AUTO_8번_직접값_5개공식경로_7건재실행_20260826.csv"
+}
