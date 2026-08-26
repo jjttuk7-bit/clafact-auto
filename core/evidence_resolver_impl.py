@@ -12,6 +12,14 @@ from schemas.claim import ClaimSchema
 from schemas.evidence import EvidenceCellSchema
 
 
+def _official_item_pairs(candidate: KosisCandidateSchema) -> list[tuple[str, str]]:
+    if len(candidate.core_item_ids) == len(candidate.core_item_names):
+        return list(zip(candidate.core_item_ids, candidate.core_item_names))
+    official_ids = list(candidate.item_units)
+    if not candidate.core_item_ids and len(official_ids) == len(candidate.core_item_names):
+        return list(zip(official_ids, candidate.core_item_names))
+    return []
+
 def resolve_evidence_cell(claim: ClaimSchema, candidate: KosisCandidateSchema) -> EvidenceCellSchema:
     """Confirm an evidence cell only from catalog metadata or official coordinates."""
     dimensions, coordinate_resolved = _resolve_dimensions(claim, candidate)
@@ -22,17 +30,18 @@ def resolve_evidence_cell(claim: ClaimSchema, candidate: KosisCandidateSchema) -
     ):
         coordinate_resolved = False
     indicator_terms = _indicator_terms(claim)
+    item_pairs = _official_item_pairs(candidate)
     matches = [
         (item_id, item_name)
-        for item_id, item_name in zip(candidate.core_item_ids, candidate.core_item_names)
+        for item_id, item_name in item_pairs
         if _item_matches_indicator(_normalize(item_name), indicator_terms)
     ]
     if (
         not matches
-        and len(candidate.core_item_ids) == 1
+        and len(item_pairs) == 1
         and _claim_dimensions_confirmed(claim, dimensions)
     ):
-        matches = [(candidate.core_item_ids[0], candidate.core_item_names[0])]
+        matches = [item_pairs[0]]
     status = "CONFIRMED" if len(matches) == 1 and claim.time and claim.unit else "AMBIGUOUS" if len(matches) > 1 else "UNRESOLVED"
     item_id = matches[0][0] if len(matches) == 1 else "UNRESOLVED"
     if not coordinate_resolved:
@@ -124,7 +133,7 @@ def _axis_targets(claim: ClaimSchema, axis_name: str | None) -> set[str]:
             values = [claim.population]
     elif axis == "age":
         values = _dimension_values_for_axis(dimensions, "age")
-        if not values and claim.population:
+        if not values and _explicit_age_population(claim.population):
             values = [claim.population]
     elif axis:
         values = dimension_member_values(dimensions) if set(dimensions) == {"raw"} else _dimension_values_for_axis(dimensions, axis)
@@ -155,10 +164,21 @@ def _axis_has_explicit_claim_value(claim: ClaimSchema, axis: str | None) -> bool
     if axis == "population":
         return bool(claim.population or _dimension_values_for_axis(dimensions, "population"))
     if axis == "age":
-        return bool(claim.population or _dimension_values_for_axis(dimensions, "age"))
+        return bool(_explicit_age_population(claim.population) or _dimension_values_for_axis(dimensions, "age"))
     if axis:
         return bool(_dimension_values_for_axis(dimensions, axis))
     return False
+
+
+def _explicit_age_population(value: str | None) -> bool:
+    normalized = _normalize(value)
+    return bool(
+        normalized
+        and (
+            re.search(r"\d+(?:대|세)", normalized)
+            or normalized in {"청년", "청년층", "고령", "고령층"}
+        )
+    )
 
 def _dimension_values_for_axis(dimensions: dict[str, str], axis: str) -> list[str]:
     named_members = normalized_dimension_members(dimensions)

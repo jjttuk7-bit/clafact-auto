@@ -1,0 +1,106 @@
+{
+  "admission_route_counts": {
+    "CONTEXT_REQUIRED": 4,
+    "KOSIS_PIPELINE_ELIGIBLE": 68
+  },
+  "all_claims_terminal": false,
+  "checkpoint_parent_count": 72,
+  "derived_claims": 72,
+  "input_coverage_complete": true,
+  "input_registry_records": 72,
+  "official_api_counts": {
+    "api_provenance_cells": 6,
+    "api_provenance_claims": 6,
+    "catalog_query_attempted": 186,
+    "catalog_query_empty": 0,
+    "catalog_query_failed": 109,
+    "catalog_query_succeeded_nonempty": 77,
+    "metadata_itm_attempted": 1411,
+    "metadata_itm_failed": 270,
+    "metadata_itm_succeeded": 1141,
+    "metadata_prd_attempted": 1141,
+    "metadata_prd_failed": 14,
+    "metadata_prd_succeeded": 1127,
+    "official_value_fetch_hold": 10,
+    "official_value_fetch_pass": 1,
+    "verified_publication_claims": 4
+  },
+  "official_resolution_count": 56,
+  "operational_failure_count": 12,
+  "recovery_action_counts": {
+    "DIRECT": 56,
+    "NO_RECOVERY": 16
+  },
+  "registry_load_errors": [],
+  "resumed_parent_count": 0,
+  "run_signature": {
+    "context_sha256": null,
+    "git_head": "4afee12d6d09d54e9ba327abb28be9e2b7781073",
+    "live_budget_seconds": 120.0,
+    "runner_version": "canonical-v6-shared-live-metadata",
+    "runtime_source_sha256": "a741f7f2f7a25223bcb14f72f6ebd1528d47f78afaec243aab33f430ad6580a1",
+    "semantic_catalog_sha256": "144edc26cb910f09a87e88ad685ebfeae73120c4cd105e29d334578e78c67038",
+    "stored_slots_only": true,
+    "worker_timeout_seconds": 300.0
+  },
+  "stage_status_counts": {
+    "CALCULATION": {
+      "PASS": 2
+    },
+    "CATALOG_SEARCH": {
+      "PASS": 56
+    },
+    "CLAIM_PARSE": {
+      "PASS": 52
+    },
+    "EVIDENCE_CELL": {
+      "HOLD": 2,
+      "PASS": 11
+    },
+    "HARD_GUARD": {
+      "HOLD": 39,
+      "PASS": 13
+    },
+    "KOSIS_METADATA": {
+      "HOLD": 4
+    },
+    "OFFICIAL_AUTHOR_FETCH": {
+      "PASS": 1
+    },
+    "OFFICIAL_AUTHOR_SEARCH": {
+      "PASS": 1
+    },
+    "OFFICIAL_VALUE_FETCH": {
+      "HOLD": 10,
+      "PASS": 1
+    },
+    "SEMANTIC_MAPPING": {
+      "PASS": 56
+    },
+    "SEMANTIC_MATCH": {
+      "HOLD": 2,
+      "PASS": 11
+    },
+    "VERDICT": {
+      "PASS": 2
+    }
+  },
+  "terminal_reason_counts": {
+    "AMBIGUOUS_MARGIN": 1,
+    "AS_OF_UNAVAILABLE": 4,
+    "FETCH_FAILED": 5,
+    "KOSIS_CATALOG_UNAVAILABLE": 12,
+    "KOSIS_METADATA_UNAVAILABLE": 4,
+    "LOW_SEMANTIC_SCORE": 1,
+    "NON_OBSERVED_FORECAST": 2,
+    "NON_STATISTICAL_PRIVATE_TRANSACTION": 2,
+    "NO_EVIDENCE_COORDINATE_CANDIDATE": 14,
+    "NO_HARD_GUARD_CANDIDATE": 25,
+    "WITHIN_TOLERANCE": 2
+  },
+  "terminal_route_counts": {
+    "AUTO": 2,
+    "HOLD": 66,
+    "HUMAN_REVIEW": 4
+  }
+}

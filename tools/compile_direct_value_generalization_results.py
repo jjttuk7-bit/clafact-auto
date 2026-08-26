@@ -115,7 +115,12 @@ def _strict_official_complete(row: dict[str, Any], verdict: dict[str, Any], prov
     if not all(item.get("source") in {"API", "OFFICIAL_DOCUMENT"} and item.get("source_url") and item.get("content_hash") and item.get("retrieved_at") and isinstance(item.get("publication"), dict) and item["publication"].get("status") == "VERIFIED" for item in provenance):
         return False
     if evidence:
-        return Counter(str(item.get("canonical_key") or "") for item in evidence) == Counter(str(item.get("evidence_key") or "") for item in provenance)
+        evidence_keys = Counter(str(item.get("canonical_key") or "") for item in evidence)
+        api_keys = Counter(
+            str(item.get("evidence_key") or "")
+            for item in provenance if item.get("source") == "API"
+        )
+        return "" not in evidence_keys and evidence_keys == api_keys
     return all(item.get("source") == "OFFICIAL_DOCUMENT" for item in provenance)
 
 

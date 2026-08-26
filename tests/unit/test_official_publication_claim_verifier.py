@@ -157,7 +157,7 @@ def test_does_not_fetch_untrusted_or_post_article_publication() -> None:
     assert calls == 0
 
 
-def test_only_runs_for_as_of_growth_rate_claims() -> None:
+def test_runs_direct_value_only_through_strict_period_release_path() -> None:
     calls = 0
 
     def opener(*_args, **_kwargs):
@@ -172,4 +172,4 @@ def test_only_runs_for_as_of_growth_rate_claims() -> None:
     assert verifier.recover(_claim(), ordinary, article_date=date(2025, 6, 25)) is ordinary
     as_of = _as_of_verdict()
     assert verifier.recover(direct, as_of, article_date=date(2025, 6, 25)) is as_of
-    assert calls == 0
+    assert calls == 1

@@ -308,6 +308,10 @@ def _prefer_exact_concept_code(
     candidates: list[KosisCandidateSchema],
 ) -> list[KosisCandidateSchema]:
     """Narrow ties only when official metadata contains the Concept's exact code."""
+    if concept.concept_id.startswith("OBSERVED:") or concept.standard_key.startswith(
+        "observed_indicator_"
+    ):
+        return candidates
     concept_codes = {
         token
         for value in (concept.concept_id, concept.standard_key)

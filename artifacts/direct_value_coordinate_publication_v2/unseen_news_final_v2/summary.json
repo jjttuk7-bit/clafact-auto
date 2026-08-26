@@ -1,0 +1,12 @@
+{
+  "cases": {
+    "UNSEEN_EMPLOYMENT_TOTAL_PARAPHRASE": true,
+    "UNSEEN_OLDER_EMPLOYMENT_RATE_PARAPHRASE": true,
+    "UNSEEN_RESTING_POPULATION_PARAPHRASE": true,
+    "UNSEEN_UNEMPLOYMENT_RATE_PARAPHRASE": true
+  },
+  "failed_count": 0,
+  "input_count": 4,
+  "passed_count": 4,
+  "result_path": "D:\\projects\\services\\archived\\clafact-auto\\.worktrees\\direct-value-coordinate-publication\\artifacts\\direct_value_coordinate_publication_v2\\unseen_news_final_v2\\results.jsonl"
+}

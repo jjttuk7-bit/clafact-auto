@@ -17,6 +17,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from config.settings import Settings
 from core.canonical_pipeline import build_canonical_pipeline
 from core.dashboard_acceptance import verify_dashboard_article
+from core.unit_normalizer import convert_value
 
 
 CASES = (
@@ -38,6 +39,12 @@ CASES = (
         "article_text": "2025년 4월 전국 65세 이상 인구의 고용률은 40.4%로 나타났다.",
         "expected_value": 40.4,
     },
+    {
+        "case_id": "UNSEEN_RESTING_POPULATION_PARAPHRASE",
+        "article_date": date(2025, 6, 11),
+        "article_text": "국가데이터처가 발표한 2025년 5월 전국 쉬었음 인구는 239만 명으로 집계됐다.",
+        "expected_value": 2_390_000.0,
+    },
 )
 
 
@@ -55,8 +62,8 @@ def main() -> None:
             runtime, case["article_text"], article_published_at=case["article_date"]
         )
         entries = [_jsonable(entry) for entry in result.entries]
-        matched = [entry for entry in entries if _same_number(
-            (entry.get("claim") or {}).get("value"), case["expected_value"]
+        matched = [entry for entry in entries if _claim_matches_expected(
+            entry.get("claim") or {}, case["expected_value"]
         )]
         accepted = any(_strict_official_complete(entry) for entry in matched)
         rows.append({**case, "article_date": case["article_date"].isoformat(),
@@ -89,6 +96,19 @@ def _strict_official_complete(entry: dict[str, Any]) -> bool:
         for item in provenance
     )
 
+
+def _claim_matches_expected(claim: dict[str, Any], expected: float) -> bool:
+    value = claim.get("value")
+    unit = str(claim.get("unit") or "")
+    if _same_number(value, expected):
+        return True
+    for base_unit in ("명", "가구", "달러", "%"):
+        try:
+            if _same_number(convert_value(float(value), unit, base_unit), expected):
+                return True
+        except (TypeError, ValueError):
+            continue
+    return False
 
 def _same_number(left: Any, right: Any) -> bool:
     try:

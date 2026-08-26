@@ -1,0 +1,81 @@
+{
+  "admission_route_counts": {
+    "KOSIS_PIPELINE_ELIGIBLE": 13
+  },
+  "all_claims_terminal": true,
+  "checkpoint_parent_count": 13,
+  "derived_claims": 13,
+  "input_coverage_complete": true,
+  "input_registry_records": 13,
+  "official_api_counts": {
+    "api_provenance_cells": 1,
+    "api_provenance_claims": 1,
+    "catalog_query_attempted": 56,
+    "catalog_query_empty": 0,
+    "catalog_query_failed": 36,
+    "catalog_query_succeeded_nonempty": 20,
+    "metadata_itm_attempted": 397,
+    "metadata_itm_failed": 52,
+    "metadata_itm_succeeded": 345,
+    "metadata_prd_attempted": 345,
+    "metadata_prd_failed": 2,
+    "metadata_prd_succeeded": 343,
+    "official_value_fetch_hold": 2,
+    "official_value_fetch_pass": 0,
+    "verified_publication_claims": 0
+  },
+  "official_resolution_count": 13,
+  "operational_failure_count": 0,
+  "recovery_action_counts": {
+    "DIRECT": 13
+  },
+  "registry_load_errors": [],
+  "resumed_parent_count": 0,
+  "run_signature": {
+    "context_sha256": null,
+    "git_head": "4afee12d6d09d54e9ba327abb28be9e2b7781073",
+    "live_budget_seconds": 180.0,
+    "runner_version": "canonical-v6-shared-live-metadata",
+    "runtime_source_sha256": "a741f7f2f7a25223bcb14f72f6ebd1528d47f78afaec243aab33f430ad6580a1",
+    "semantic_catalog_sha256": "144edc26cb910f09a87e88ad685ebfeae73120c4cd105e29d334578e78c67038",
+    "stored_slots_only": true,
+    "worker_timeout_seconds": 300.0
+  },
+  "stage_status_counts": {
+    "CATALOG_SEARCH": {
+      "PASS": 13
+    },
+    "CLAIM_PARSE": {
+      "PASS": 11
+    },
+    "EVIDENCE_CELL": {
+      "PASS": 2
+    },
+    "HARD_GUARD": {
+      "HOLD": 9,
+      "PASS": 2
+    },
+    "KOSIS_METADATA": {
+      "HOLD": 2
+    },
+    "OFFICIAL_VALUE_FETCH": {
+      "HOLD": 2
+    },
+    "SEMANTIC_MAPPING": {
+      "PASS": 13
+    },
+    "SEMANTIC_MATCH": {
+      "PASS": 2
+    }
+  },
+  "terminal_reason_counts": {
+    "AS_OF_UNAVAILABLE": 1,
+    "FETCH_FAILED": 1,
+    "KOSIS_METADATA_UNAVAILABLE": 2,
+    "NO_EVIDENCE_COORDINATE_CANDIDATE": 1,
+    "NO_HARD_GUARD_CANDIDATE": 8
+  },
+  "terminal_route_counts": {
+    "HOLD": 13
+  }
+}

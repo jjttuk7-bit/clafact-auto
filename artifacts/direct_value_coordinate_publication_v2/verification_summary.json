@@ -1,0 +1,35 @@
+{
+  "goal_scope": {
+    "direct_value_ledger_claims": 230,
+    "frozen_problem_claims": 110,
+    "rule_discovery_claims": 72,
+    "intermediate_validation_claims": 25,
+    "final_blind_claims": 13,
+    "final_blind_execution_count": 1
+  },
+  "ledger_result": {
+    "baseline_official_complete": 15,
+    "improved_official_complete": 17,
+    "new_official_complete": 2,
+    "remaining_not_official_complete": 213,
+    "csv_sha256": "65c07d77ce60ca25a13493cac035dbedb20c258fc348a9efef93bea04199a7c6"
+  },
+  "final_blind_result": {
+    "auto": 0,
+    "hold": 13,
+    "official_value_stage_reached": 2
+  },
+  "unseen_news_final": {
+    "input_count": 4,
+    "passed_count": 4,
+    "failed_count": 0,
+    "uses_openai_structured_output": true,
+    "uses_live_official_api": true
+  },
+  "test_suite": {
+    "passed": 1462,
+    "failed": 3,
+    "failure_cause": "작업공간에 포함되지 않은 기존 외부 Registry 산출물 파일 2종 부재",
+    "regression_failures_from_this_change": 0
+  }
+}
