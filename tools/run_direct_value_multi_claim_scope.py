@@ -7,6 +7,7 @@ from dataclasses import asdict, is_dataclass
 from datetime import date
 from hashlib import sha256
 import json
+import platform
 from pathlib import Path
 from typing import Any
 
@@ -44,9 +45,10 @@ def main() -> None:
     )
     args.output_dir.mkdir(parents=True, exist_ok=True)
     checkpoint = args.checkpoint or args.output_dir / "checkpoint.jsonl"
-    signature = _execution_signature(scope.source_sha256)
+    settings = Settings()
+    signature = _execution_signature(scope.source_sha256, settings)
     pipeline = build_canonical_pipeline(
-        Settings(),
+        settings,
         live_time_budget_seconds=args.live_budget_seconds,
     )
 
@@ -56,29 +58,15 @@ def main() -> None:
             article_context=case.source_sentence,
         )
         children = [_serialize_entry(entry) for entry in entries]
-        grouped = bool(children) and all(
-            child["recovery_action"] == "MULTI_CLAIM_SPLIT"
-            for child in children
-        )
+        status, reason_code = _grouping_parent_status(children)
         return {
             "parent_claim_id": case.parent_claim_id,
             "source_sentence_sha256": sha256(
                 case.source_sentence.encode("utf-8")
             ).hexdigest().upper(),
             "expressions": list(case.expressions),
-            "status": "PASS" if grouped else "HUMAN_REVIEW",
-            "reason_code": (
-                None
-                if grouped
-                else next(
-                    (
-                        child.get("reason_code")
-                        for child in children
-                        if child.get("reason_code")
-                    ),
-                    "CLAIM_GROUPING_INCOMPLETE",
-                )
-            ),
+            "status": status,
+            "reason_code": reason_code,
             "children": children,
         }
 
@@ -207,11 +195,47 @@ def _optional(row: dict[str, str], key: str) -> str | None:
     return value or None
 
 
-def _execution_signature(source_sha256: str) -> str:
+def _grouping_parent_status(children: list[dict[str, Any]]) -> tuple[str, str | None]:
+    if not children:
+        return "HUMAN_REVIEW", "CLAIM_GROUPING_INCOMPLETE"
+    for child in children:
+        reason = str(child.get("reason_code") or "")
+        if reason.startswith("GROUPING_"):
+            return "HUMAN_REVIEW", reason
+    if all(child.get("recovery_action") == "MULTI_CLAIM_SPLIT" for child in children):
+        return "PASS", None
+    reason = next((child.get("reason_code") for child in children if child.get("reason_code")), None)
+    return "HUMAN_REVIEW", reason or "CLAIM_GROUPING_INCOMPLETE"
+
+
+def _execution_signature(source_sha256: str, settings: Settings) -> str:
     digest = sha256()
     digest.update(source_sha256.encode("ascii"))
-    for root in (PROJECT_ROOT / "core", PROJECT_ROOT / "schemas"):
-        for path in sorted(root.rglob("*.py")):
+    manifest = {
+        "python": platform.python_version(),
+        "implementation": platform.python_implementation(),
+        "claim_provider": settings.claim_provider,
+        "openai_model": settings.openai_model,
+        "hcx_extraction_mode": settings.hcx_extraction_mode,
+        "versions": {
+            name: getattr(settings, name)
+            for name in (
+                "dataset_version", "preprocess_version", "claim_schema_version",
+                "semantic_standard_version", "kosis_catalog_version",
+                "matching_version", "calculation_version",
+            )
+        },
+    }
+    digest.update(json.dumps(manifest, sort_keys=True).encode("utf-8"))
+    roots = (
+        PROJECT_ROOT / "core", PROJECT_ROOT / "schemas", PROJECT_ROOT / "config",
+        PROJECT_ROOT / "data/semantic_standard", PROJECT_ROOT / "data/kosis_catalog",
+        PROJECT_ROOT / "data/official_author",
+    )
+    for root in roots:
+        if not root.exists():
+            continue
+        for path in sorted(item for item in root.rglob("*") if item.is_file()):
             digest.update(path.relative_to(PROJECT_ROOT).as_posix().encode("utf-8"))
             digest.update(path.read_bytes())
     digest.update(Path(__file__).read_bytes())

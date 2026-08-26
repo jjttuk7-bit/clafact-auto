@@ -130,8 +130,12 @@ def recover_registry_record_v3(record: ClaimRegistryRecord, *, extractor: Struct
     if not targets:
         return recover_registry_record_v2(record, extractor=extractor, official_service=official_service, article_context=article_context)
     entries: list[RecoveryEntry] = []
-    for target, numeric_roles, numeric_role_assignments in zip(
-        targets, target_roles, target_role_assignments, strict=True
+    for child_ordinal, (
+        target,
+        numeric_roles,
+        numeric_role_assignments,
+    ) in enumerate(
+        zip(targets, target_roles, target_role_assignments, strict=True), start=1
     ):
         parsed = _parse_target(target.expression, target.extractor_input, extractor, record)
         parsed_before_context = parsed
@@ -148,7 +152,7 @@ def recover_registry_record_v3(record: ClaimRegistryRecord, *, extractor: Struct
             parsed = _parse_target(target.expression, json.dumps(payload, ensure_ascii=False), extractor, record)
             context_used = True
         context_enriched_slots = _changed_slots(parsed_before_context, parsed) if context_used else []
-        parsed = parsed.model_copy(update={"claim_id": _child_id(record.claim.source_sentence, target.expression), "source_sentence": record.claim.source_sentence})
+        parsed = parsed.model_copy(update={"claim_id": _child_id(record.claim.claim_id, record.claim.source_sentence, target.expression, child_ordinal), "source_sentence": record.claim.source_sentence})
         parsed = recover_validated_claim(parsed, record.article_published_at, source_value_text=target.expression)
         route = _admission_route(parsed)
         derived = record.model_copy(update={"claim": parsed, "source_ref": "admission_recovery_v3", "slot_enrichment": {
@@ -198,7 +202,7 @@ def _recover_prelinked_target(
         )
         context_used = True
     parsed = parsed.model_copy(update={
-        "claim_id": _child_id(record.claim.source_sentence, expression),
+        "claim_id": _child_id(record.claim.claim_id, record.claim.source_sentence, expression, 1),
         "source_sentence": record.claim.source_sentence,
     })
     parsed = recover_validated_claim(
@@ -323,8 +327,14 @@ def _should_retry_with_context(claim: ClaimSchema) -> bool:
     return bool(missing_slots) and missing_slots <= {"time"}
 
 
-def _child_id(source_sentence: str, expression: str) -> str:
-    digest = sha256((source_sentence + "\n" + expression).encode("utf-8")).hexdigest()[:16]
+def _child_id(
+    parent_claim_id: str,
+    source_sentence: str,
+    expression: str,
+    child_ordinal: int,
+) -> str:
+    identity = f"{parent_claim_id}\n{source_sentence}\n{expression}\n{child_ordinal}"
+    digest = sha256(identity.encode("utf-8")).hexdigest()[:16]
     return f"claim_{digest}"
 
 

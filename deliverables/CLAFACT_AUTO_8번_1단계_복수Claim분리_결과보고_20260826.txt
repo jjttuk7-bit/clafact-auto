@@ -1,0 +1,44 @@
+﻿CLAFACT-AUTO 직접값 8번 · 복수 Claim 분리 결과
+
+1. 무엇을 했는가
+- 숫자 역할이 안전한 부모 Claim 360건을 확인했습니다.
+- 수치가 하나인 133건은 분리하지 않고 보존했습니다.
+- 수치가 둘 이상인 227건만 외부 구조화 API와 대시보드 동일 파이프라인으로 실행했습니다.
+
+2. 실행 결과
+- 최초 외부 실행 응답 기록: 227건
+- 최초 분리 확정: 200건
+- 외부 오류 재시도: 19건
+- 재시도로 회복: 11건
+- 최종 외부 실행 응답 기록: 227건
+- 최종 분리 확정: 211건
+- 최종 검토 필요: 16건
+- 최종 생성 자식 Claim: 290건
+- 자동 경로까지 도달한 자식: 24건
+- KOSIS API 값·좌표·응답 hash·공표일이 모두 확인된 판정 완료: 21건
+
+3. 남은 문제
+- 부모 단계 GROUPING_AMBIGUOUS: 8건
+- 부모 단계 KOSIS_CATALOG_UNAVAILABLE: 6건
+- 부모 단계 CLAIM_PARSE_UNAVAILABLE: 1건
+- 부모 단계 CONTEXT_TARGET_UNRESOLVED: 1건
+
+4. 자식 Claim에서 많이 남은 문제
+- NO_HARD_GUARD_CANDIDATE: 68건
+- NO_EVIDENCE_COORDINATE_CANDIDATE: 30건
+- TARGET_VALUE_NOT_IN_SOURCE_SENTENCE: 29건
+- AS_OF_UNAVAILABLE: 14건
+- MISSING_REQUIRED_SLOTS:time: 14건
+- WITHIN_TOLERANCE: 14건
+- AMBIGUOUS_MARGIN: 10건
+- OUTSIDE_TOLERANCE: 10건
+- GROUPING_AMBIGUOUS: 8건
+- MISSING_REQUIRED_SLOTS:comparison: 8건
+- FETCH_FAILED: 6건
+- KOSIS_CATALOG_UNAVAILABLE: 6건
+
+5. 이 결과의 의미
+- 특정 문장 하나를 고친 것이 아니라, 복수 수치 문장 전체에 같은 분리·검증 규칙을 적용했습니다.
+- 실행 완료와 공식 판정 완료를 구분해 기록했습니다.
+- 실패도 숨기지 않고 정확한 단계·사유·진단번호와 함께 기록했습니다.
+- 생성된 자식 Registry는 대시보드와 같은 통합 파이프라인에 다시 넣을 수 있습니다.
