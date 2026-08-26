@@ -1,0 +1,95 @@
+{
+  "admission_route_counts": {
+    "CONTEXT_REQUIRED": 2,
+    "KOSIS_PIPELINE_ELIGIBLE": 37
+  },
+  "all_claims_terminal": false,
+  "checkpoint_parent_count": 39,
+  "derived_claims": 39,
+  "input_coverage_complete": true,
+  "input_registry_records": 39,
+  "official_api_counts": {
+    "api_provenance_cells": 2,
+    "api_provenance_claims": 2,
+    "catalog_query_attempted": 125,
+    "catalog_query_empty": 0,
+    "catalog_query_failed": 65,
+    "catalog_query_succeeded_nonempty": 60,
+    "metadata_itm_attempted": 475,
+    "metadata_itm_failed": 60,
+    "metadata_itm_succeeded": 415,
+    "metadata_prd_attempted": 413,
+    "metadata_prd_failed": 13,
+    "metadata_prd_succeeded": 400,
+    "official_value_fetch_hold": 1,
+    "official_value_fetch_pass": 1,
+    "verified_publication_claims": 1
+  },
+  "official_resolution_count": 34,
+  "operational_failure_count": 3,
+  "recovery_action_counts": {
+    "DIRECT": 34,
+    "NO_RECOVERY": 5
+  },
+  "registry_load_errors": [],
+  "resumed_parent_count": 0,
+  "run_signature": {
+    "context_sha256": null,
+    "git_head": "4e07d354e644da3676d70ba8b36d7caaa63e4469",
+    "live_budget_seconds": 20.0,
+    "runner_version": "canonical-v6-shared-live-metadata",
+    "runtime_source_sha256": "f14406ccc2b1a06232daa9813e9d55a761c587b2c817946ed9e3e14fe850412d",
+    "semantic_catalog_sha256": "784bec7aa9336068f5a288c5eaf5fa911ed42c0ec81a1f549051964e29c5db94",
+    "stored_slots_only": true,
+    "worker_timeout_seconds": 120.0
+  },
+  "stage_status_counts": {
+    "CALCULATION": {
+      "PASS": 1
+    },
+    "CATALOG_SEARCH": {
+      "PASS": 34
+    },
+    "CLAIM_PARSE": {
+      "PASS": 33
+    },
+    "EVIDENCE_CELL": {
+      "PASS": 2
+    },
+    "HARD_GUARD": {
+      "HOLD": 31,
+      "PASS": 2
+    },
+    "KOSIS_METADATA": {
+      "HOLD": 1
+    },
+    "OFFICIAL_VALUE_FETCH": {
+      "HOLD": 1,
+      "PASS": 1
+    },
+    "SEMANTIC_MAPPING": {
+      "PASS": 34
+    },
+    "SEMANTIC_MATCH": {
+      "PASS": 2
+    },
+    "VERDICT": {
+      "PASS": 1
+    }
+  },
+  "terminal_reason_counts": {
+    "KOSIS_CATALOG_UNAVAILABLE": 3,
+    "KOSIS_METADATA_UNAVAILABLE": 1,
+    "NON_STATISTICAL_POLICY_THRESHOLD": 1,
+    "NON_STATISTICAL_PRIVATE_TRANSACTION": 1,
+    "NO_EVIDENCE_COORDINATE_CANDIDATE": 11,
+    "NO_HARD_GUARD_CANDIDATE": 20,
+    "OUTSIDE_TOLERANCE": 1,
+    "PUBLICATION_FETCH_FAILED": 1
+  },
+  "terminal_route_counts": {
+    "AUTO": 1,
+    "HOLD": 36,
+    "HUMAN_REVIEW": 2
+  }
+}

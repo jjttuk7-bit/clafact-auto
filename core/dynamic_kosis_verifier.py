@@ -463,10 +463,28 @@ def _percent_reporting_tolerance(claim: ClaimSchema) -> float | None:
     return 0.5 * (10 ** -max(decimal_places))
 
 
+def _scaled_reporting_tolerance(claim: ClaimSchema) -> float | None:
+    """Return half a displayed unit for scaled values such as 2916만명."""
+    unit = re.sub(r"\s+", "", claim.unit or "")
+    if claim.value is None or not unit or not any(scale in unit for scale in ("천", "만", "억", "조")):
+        return None
+    unit_pattern = r"\s*".join(re.escape(character) for character in unit)
+    pattern = re.compile(
+        rf"(?P<number>[+-]?(?:\d{{1,3}}(?:,\d{{3}})+|\d+)(?:\.(?P<decimals>\d+))?)\s*{unit_pattern}"
+    )
+    precisions = []
+    for match in pattern.finditer(claim.source_sentence):
+        reported = float(match.group("number").replace(",", ""))
+        if abs(abs(reported) - abs(claim.value)) <= max(1e-12, abs(claim.value) * 1e-9):
+            precisions.append(len(match.group("decimals") or ""))
+    return 0.5 * (10 ** -max(precisions)) if precisions else None
+
 def _claim_tolerance(claim: ClaimSchema) -> float:
     """Accept only the explicit reporting precision present in the article text."""
     if percent_tolerance := _percent_reporting_tolerance(claim):
         return percent_tolerance
+    if scaled_tolerance := _scaled_reporting_tolerance(claim):
+        return scaled_tolerance
     if claim.unit != "명":
         return 0.01
     source = claim.source_sentence

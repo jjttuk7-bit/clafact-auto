@@ -50,6 +50,9 @@ def _dimension_alias(
         return key, _COMBINED_INDUSTRY
 
     if _is_education_key(key):
+        if compact == "대졸":
+            official = _available_member(members, "대졸이상", "대학교졸이상")
+            return "교육정도", official or value
         if "고등학교" in compact and "졸업" in compact:
             return "교육정도", _available_member(members, "고졸") or value
         if ("4년제" in compact or "대학" in compact) and "이상" in compact:

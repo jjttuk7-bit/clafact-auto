@@ -59,3 +59,15 @@ def test_explicit_education_never_falls_back_to_total_member() -> None:
 
     assert cell.status == "UNRESOLVED"
     assert cell.dimension_members == {}
+
+
+def test_explicit_industry_matches_unique_official_coded_label() -> None:
+    cell = resolve_evidence_cell(
+        _claim(dimension={"산업": "건설업"}),
+        _candidate(
+            item="취업자 수", unit="명", axis_name="산업별",
+            members=["계", "C 제조업(10~34)", "F 건설업(41~42)"],
+        ),
+    )
+    assert cell.status == "CONFIRMED"
+    assert cell.dimension_members == {"I": "F 건설업(41~42)"}

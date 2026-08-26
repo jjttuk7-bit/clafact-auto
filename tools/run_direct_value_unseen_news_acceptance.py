@@ -45,8 +45,12 @@ CASES = (
         "article_text": "국가데이터처가 발표한 2025년 5월 전국 쉬었음 인구는 239만 명으로 집계됐다.",
         "expected_value": 2_390_000.0,
     },
-)
-
+    {
+        "case_id": "UNSEEN_CONSTRUCTION_EMPLOYMENT_PARAPHRASE",
+        "article_date": date(2025, 3, 12),
+        "article_text": "국가데이터처 집계로 2025년 2월 전국 건설업 취업자는 190만9000명이었다.",
+        "expected_value": 1_909_000.0,
+    },)
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)

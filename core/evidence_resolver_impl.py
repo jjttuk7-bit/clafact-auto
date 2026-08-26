@@ -106,6 +106,14 @@ def _resolve_dimensions(claim: ClaimSchema, candidate: KosisCandidateSchema) -> 
             selected[dimension_id] = members[0]
             continue
         matches = [member for member in members if _normalize(member) and _normalize(member) in targets]
+        if not matches:
+            contained = [
+                member for member in members
+                if (official := _normalize(member))
+                and any(target and target in official for target in targets)
+            ]
+            if len(contained) == 1:
+                matches = contained
         total_members = [member for member in members if _is_total_member(member)]
         if len(matches) == 1:
             selected[dimension_id] = matches[0]

@@ -1,0 +1,38 @@
+{
+  "goal": "direct_value_coordinate_62_generalization",
+  "frozen_target_count": 62,
+  "initial_reason_counts": {
+    "NO_HARD_GUARD_CANDIDATE": 39,
+    "NO_EVIDENCE_COORDINATE_CANDIDATE": 23
+  },
+  "split_counts": {
+    "RULE_DISCOVERY": 39,
+    "INTERMEDIATE_VALIDATION": 14,
+    "FINAL_BLIND": 9
+  },
+  "final_blind_run_count": 1,
+  "final_blind_official_complete": 0,
+  "prior_ledger_official_complete": 17,
+  "final_ledger_official_complete": 19,
+  "official_complete_increase": 2,
+  "prior_coordinate_recorded": 43,
+  "final_coordinate_recorded": 47,
+  "coordinate_increase": 4,
+  "unseen_news": {
+    "input_count": 5,
+    "passed_count": 5,
+    "failed_count": 0
+  },
+  "remaining_reason_counts": {
+    "NO_HARD_GUARD_CANDIDATE": 27,
+    "NO_EVIDENCE_COORDINATE_CANDIDATE": 17,
+    "KOSIS_CATALOG_UNAVAILABLE": 8,
+    "KOSIS_METADATA_UNAVAILABLE": 4,
+    "PUBLICATION_FETCH_FAILED": 2,
+    "NON_STATISTICAL_POLICY_THRESHOLD": 1,
+    "NON_STATISTICAL_PRIVATE_TRANSACTION": 1
+  },
+  "ledger": "deliverables/CLAFACT_AUTO_8번_직접값_230건_좌표62개선원장_20260827.csv",
+  "ledger_sha256": "f3fe0a192e169ce92b580368daeb05fc6e50e127561943d5e4bd2942effc8e80",
+  "manifest_sha256": "2f2f7208c56b74d7bf3804fe1b60adf7713dc13a46fa68a413d7229b2768091f"
+}

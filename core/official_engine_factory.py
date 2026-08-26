@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 import re
 
-from core.catalog_binding import apply_catalog_binding
+from core.catalog_binding import apply_catalog_binding, seed_catalog_bindings
 from core.structural_candidate_selector import select_official_candidate
 from core.catalog_discovery import discover_catalog_candidates
 from core.catalog_metadata_refresh import refresh_item_metadata_for_claim
@@ -79,6 +79,7 @@ def build_official_evidence_service(
         # Catalog search has completed. A verified recurring binding now limits
         # which table receives the official ITM/PRD request. The binding runs
         # again after hydration in OfficialEvidenceService before Hard Guard.
+        discovered = seed_catalog_bindings(claim, concept, discovered)
         discovered = apply_catalog_binding(claim, concept, discovered)
         metadata_diagnostics: Counter[str] = Counter()
 
