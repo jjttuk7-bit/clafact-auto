@@ -1,0 +1,74 @@
+{
+  "baseline_csv": "D:\\projects\\services\\archived\\clafact-auto\\.worktrees\\direct-value-general-rules\\deliverables\\CLAFACT_AUTO_8번_직접값_230건_일반화기준원장_20260826.csv",
+  "baseline_sha256": "26ed9c8b603a6550b4f24c4d480bc264ccbc3f956599f7b63cfb4bbfd86cac88",
+  "sets": {
+    "FINAL_BLIND": {
+      "article_count": 22,
+      "claim_count": 23,
+      "path": "D:\\projects\\services\\archived\\clafact-auto\\.worktrees\\direct-value-general-rules\\artifacts\\direct_value_generalization_v1\\subsets\\final_blind.jsonl",
+      "reason_counts": {
+        "AS_OF_UNAVAILABLE": 1,
+        "CLAIM_PARSE_UNCERTAIN": 3,
+        "INDICATOR_REFINEMENT_REQUIRED": 4,
+        "INDICATOR_UNIT_MEASURE_MISMATCH": 1,
+        "LOW_SEMANTIC_SCORE": 1,
+        "NO_EVIDENCE_COORDINATE_CANDIDATE": 1,
+        "NO_HARD_GUARD_CANDIDATE": 8,
+        "PUBLICATION_FETCH_FAILED": 1,
+        "TARGET_AMBIGUOUS_IN_SOURCE": 1,
+        "TARGET_NOT_FOUND_IN_SOURCE": 1,
+        "WITHIN_TOLERANCE": 1
+      },
+      "sha256": "bbbfa1bc761ec82420e1cdda752f5d7286c61769ae63f601307953c34f7c0faa"
+    },
+    "INTERMEDIATE_VALIDATION": {
+      "article_count": 30,
+      "claim_count": 46,
+      "path": "D:\\projects\\services\\archived\\clafact-auto\\.worktrees\\direct-value-general-rules\\artifacts\\direct_value_generalization_v1\\subsets\\intermediate_validation.jsonl",
+      "reason_counts": {
+        "AS_OF_UNAVAILABLE": 3,
+        "CLAIM_PARSE_UNCERTAIN": 5,
+        "DIRECT_VALUE_CHANGE_TARGET_MISCLASSIFIED": 1,
+        "FETCH_FAILED": 1,
+        "GROUPING_AMBIGUOUS": 2,
+        "INDICATOR_REFINEMENT_REQUIRED": 4,
+        "INDICATOR_UNIT_MEASURE_MISMATCH": 1,
+        "KOSIS_CATALOG_UNAVAILABLE": 1,
+        "NO_EVIDENCE_COORDINATE_CANDIDATE": 13,
+        "NO_HARD_GUARD_CANDIDATE": 8,
+        "RELATIVE_TIME_UNRESOLVED": 1,
+        "TARGET_AMBIGUOUS_IN_SOURCE": 1,
+        "TARGET_NOT_FOUND_IN_SOURCE": 3,
+        "TARGET_VALUE_NOT_IN_SOURCE_SENTENCE": 2
+      },
+      "sha256": "99b2e98de85997bdbe7478401dc6c3c7725e360a7d8a1cebb0d86559093d06f5"
+    },
+    "RULE_DISCOVERY": {
+      "article_count": 89,
+      "claim_count": 161,
+      "path": "D:\\projects\\services\\archived\\clafact-auto\\.worktrees\\direct-value-general-rules\\artifacts\\direct_value_generalization_v1\\subsets\\rule_discovery.jsonl",
+      "reason_counts": {
+        "AMBIGUOUS_MARGIN": 4,
+        "AS_OF_UNAVAILABLE": 10,
+        "CALCULATION_EVIDENCE_PLAN_UNRESOLVED": 1,
+        "CLAIM_PARSE_UNCERTAIN": 15,
+        "CONTEXT_TARGET_UNRESOLVED": 1,
+        "DIRECT_VALUE_CHANGE_TARGET_MISCLASSIFIED": 1,
+        "FETCH_FAILED": 2,
+        "INDICATOR_MEASURE_FAMILY_AMBIGUOUS": 3,
+        "INDICATOR_REFINEMENT_REQUIRED": 12,
+        "INDICATOR_UNIT_MEASURE_MISMATCH": 5,
+        "KOSIS_CATALOG_UNAVAILABLE": 1,
+        "LOW_SEMANTIC_SCORE": 3,
+        "NO_EVIDENCE_COORDINATE_CANDIDATE": 30,
+        "NO_HARD_GUARD_CANDIDATE": 32,
+        "RELATIVE_TIME_UNRESOLVED": 1,
+        "TARGET_AMBIGUOUS_IN_SOURCE": 3,
+        "TARGET_NOT_FOUND_IN_SOURCE": 12,
+        "TARGET_VALUE_NOT_IN_SOURCE_SENTENCE": 11,
+        "WITHIN_TOLERANCE": 14
+      },
+      "sha256": "6a53e3ed3c004d1343d8b7f9b79e03656a8b66a74c0e7334b3218c0e953bca0c"
+    }
+  }
+}

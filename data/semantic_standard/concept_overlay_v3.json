@@ -17,7 +17,7 @@
     "concept_id": "C000019",
     "canonical_name": "출생아 수",
     "standard_key": "birth_count",
-    "aliases": ["출생아 수 증가율", "출생아 증가율", "출생아 수 증가 폭"],
+    "aliases": ["출생자 수", "출생자", "출생아 수 증가율", "출생아 증가율", "출생아 수 증가 폭"],
     "kosis_search_terms": ["인구동향 출생아수", "월별 출생아수"]
   },
   {

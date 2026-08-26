@@ -11,6 +11,7 @@ from core import dynamic_kosis_verifier
 from core.dynamic_kosis_verifier import OfficialValueFetcher
 from core.hard_guard_diagnostics import summarize_hard_guard_rejections
 from core.operational_error import run_operational_stage
+from core.semantic_indicator_alignment import align_claim_indicator_to_concept
 from core.verdict_engine import make_verdict
 from schemas.pipeline_trace import PipelineTraceSchema
 from schemas.candidate import KosisCandidateSchema
@@ -75,8 +76,9 @@ class OfficialEvidenceService:
 
     def resolve(self, claim: ClaimSchema, *, article_date: date) -> OfficialEvidenceResolution:
         concept = self._concept_mapper(claim)
+        working_claim = align_claim_indicator_to_concept(claim, concept)
         catalog_result = (
-            run_operational_stage("KOSIS_CATALOG", lambda: self._catalog_resolver(claim, concept))
+            run_operational_stage("KOSIS_CATALOG", lambda: self._catalog_resolver(working_claim, concept))
             if concept.status == "MATCHED"
             else []
         )
@@ -115,14 +117,14 @@ class OfficialEvidenceService:
         # Explicit bindings are applied only after live Catalog and official
         # metadata hydration. They therefore narrow verified candidates; they
         # never replace either official lookup.
-        candidates = self._candidate_selector(claim, concept, candidates)
+        candidates = self._candidate_selector(working_claim, concept, candidates)
         catalog_diagnostics.update(
-            summarize_hard_guard_rejections(claim, candidates)
+            summarize_hard_guard_rejections(working_claim, candidates)
         )
         verdict = run_operational_stage(
             "VERIFICATION",
             lambda: dynamic_kosis_verifier.verify_claim_against_kosis(
-                claim,
+                working_claim,
                 concept,
                 candidates,
                 article_date=article_date,
@@ -131,7 +133,7 @@ class OfficialEvidenceService:
         )
         if self._publication_claim_verifier is not None:
             verdict = self._publication_claim_verifier.recover(
-                claim, verdict, article_date=article_date
+                working_claim, verdict, article_date=article_date
             )
         return OfficialEvidenceResolution(
             concept=concept,

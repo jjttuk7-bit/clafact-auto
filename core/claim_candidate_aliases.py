@@ -69,6 +69,15 @@ def _dimension_alias(
         if compact == "80대" and candidate.tbl_id == "DT_1B80A13":
             return key, "80 - 84세"
 
+        if compact.endswith("인구"):
+            expected = compact.removesuffix("인구")
+            official = next(
+                (member for member in members if _compact(member) == expected),
+                None,
+            )
+            if official:
+                return key, official
+
     if any("종사상지위" in name for name in candidate.dimension_names):
         status = _employment_status(compact)
         if status:

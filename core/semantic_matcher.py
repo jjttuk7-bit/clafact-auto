@@ -21,7 +21,10 @@ def semantic_match(
     ranked.sort(key=lambda item: (-item[0], -item[1], item[2].tbl_id, item[2].org_id))
     if not ranked: return []
     margin = ranked[0][0] - ranked[1][0] if len(ranked) > 1 else 1.0
-    registered = ranked[0][2].source_stat_id == "OFFICIAL_RECURRING_DOMAIN_BINDING"
+    registered = ranked[0][2].source_stat_id in {
+        "OFFICIAL_RECURRING_DOMAIN_BINDING",
+        "OFFICIAL_STRUCTURAL_COORDINATE_RULE",
+    }
     route_status, reason = (
         ("AUTO", "REGISTERED_OFFICIAL_BINDING")
         if registered else _route(ranked[0][1], margin, minimum_score, min_margin)

@@ -7,6 +7,7 @@ from pathlib import Path
 import re
 
 from core.catalog_binding import apply_catalog_binding
+from core.structural_candidate_selector import select_official_candidate
 from core.catalog_discovery import discover_catalog_candidates
 from core.catalog_metadata_refresh import refresh_item_metadata_for_claim
 from core.catalog_search import search_semantic_catalog
@@ -121,7 +122,7 @@ def build_official_evidence_service(
         ),
         catalog_resolver=resolve_catalog,
         official_fetcher=fetcher,
-        candidate_selector=apply_catalog_binding,
+        candidate_selector=select_official_candidate,
     )
 
 

@@ -1,0 +1,83 @@
+{
+  "admission_route_counts": {
+    "CONTEXT_REQUIRED": 13,
+    "KOSIS_PIPELINE_ELIGIBLE": 28,
+    "STRUCTURAL_HOLD": 5
+  },
+  "all_claims_terminal": false,
+  "derived_claims": 46,
+  "input_coverage_complete": true,
+  "input_registry_records": 46,
+  "official_api_counts": {
+    "api_provenance_cells": 5,
+    "api_provenance_claims": 5,
+    "catalog_query_attempted": 41,
+    "catalog_query_empty": 0,
+    "catalog_query_failed": 9,
+    "catalog_query_succeeded_nonempty": 32,
+    "metadata_itm_attempted": 644,
+    "metadata_itm_failed": 12,
+    "metadata_itm_succeeded": 632,
+    "metadata_prd_attempted": 632,
+    "metadata_prd_failed": 6,
+    "metadata_prd_succeeded": 626,
+    "official_value_fetch_hold": 6,
+    "official_value_fetch_pass": 0,
+    "verified_publication_claims": 0
+  },
+  "official_resolution_count": 27,
+  "operational_failure_count": 1,
+  "recovery_action_counts": {
+    "DIRECT": 27,
+    "NO_RECOVERY": 19
+  },
+  "registry_load_errors": [],
+  "stage_status_counts": {
+    "CATALOG_SEARCH": {
+      "PASS": 27
+    },
+    "CLAIM_PARSE": {
+      "PASS": 27
+    },
+    "EVIDENCE_CELL": {
+      "HOLD": 1,
+      "PASS": 6
+    },
+    "HARD_GUARD": {
+      "HOLD": 20,
+      "PASS": 7
+    },
+    "OFFICIAL_VALUE_FETCH": {
+      "HOLD": 6
+    },
+    "SEMANTIC_MAPPING": {
+      "PASS": 27
+    },
+    "SEMANTIC_MATCH": {
+      "HOLD": 1,
+      "PASS": 6
+    }
+  },
+  "terminal_reason_counts": {
+    "AMBIGUOUS_MARGIN": 1,
+    "AS_OF_UNAVAILABLE": 5,
+    "DIRECT_VALUE_CHANGE_TARGET_MISCLASSIFIED": 1,
+    "FETCH_FAILED": 1,
+    "INDICATOR_REFINEMENT_REQUIRED": 4,
+    "INDICATOR_UNIT_MEASURE_MISMATCH": 1,
+    "KOSIS_CATALOG_UNAVAILABLE": 1,
+    "MISSING_REQUIRED_SLOTS:time": 3,
+    "MISSING_REQUIRED_SLOTS:value": 1,
+    "NON_OBSERVED_FORECAST": 3,
+    "NO_EVIDENCE_COORDINATE_CANDIDATE": 13,
+    "NO_HARD_GUARD_CANDIDATE": 7,
+    "RELATIVE_TIME_UNRESOLVED": 1,
+    "TARGET_AMBIGUOUS_IN_SOURCE": 1,
+    "TARGET_VALUE_NOT_IN_SOURCE_SENTENCE": 2,
+    "목표 수치 1.9%와 기준 수치 2.1%는 명확하지만, 대명사 '이를'이 가리키는 구체적 지표가 문장에 명시되지 않음": 1
+  },
+  "terminal_route_counts": {
+    "HOLD": 28,
+    "HUMAN_REVIEW": 18
+  }
+}

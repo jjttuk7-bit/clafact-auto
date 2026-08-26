@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from core.catalog_binding import apply_catalog_binding
+from core.structural_candidate_selector import select_official_candidate
 from core.official_author_fallback_service import OfficialAuthorFallbackService
 from core.official_author_fetcher import OfficialAuthorDocumentFetcher
 from core.official_author_profiles import load_official_author_profiles
@@ -87,7 +88,7 @@ def build_official_evidence_service_v3(
         concept_mapper=lambda claim: normalize_concept_v3(claim, concepts),
         catalog_resolver=resolve_catalog,
         official_fetcher=base._official_fetcher,
-        candidate_selector=apply_catalog_binding,
+        candidate_selector=select_official_candidate,
         publication_claim_verifier=OfficialPublicationClaimVerifier(),
     )
     if official_author_profiles_path is None:

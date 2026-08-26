@@ -1,0 +1,91 @@
+{
+  "admission_route_counts": {
+    "CONTEXT_REQUIRED": 7,
+    "KOSIS_PIPELINE_ELIGIBLE": 15,
+    "STRUCTURAL_HOLD": 1
+  },
+  "all_claims_terminal": false,
+  "derived_claims": 23,
+  "input_coverage_complete": true,
+  "input_registry_records": 23,
+  "official_api_counts": {
+    "api_provenance_cells": 2,
+    "api_provenance_claims": 2,
+    "catalog_query_attempted": 50,
+    "catalog_query_empty": 0,
+    "catalog_query_failed": 12,
+    "catalog_query_succeeded_nonempty": 38,
+    "metadata_itm_attempted": 286,
+    "metadata_itm_failed": 5,
+    "metadata_itm_succeeded": 281,
+    "metadata_prd_attempted": 280,
+    "metadata_prd_failed": 6,
+    "metadata_prd_succeeded": 274,
+    "official_value_fetch_hold": 2,
+    "official_value_fetch_pass": 0,
+    "verified_publication_claims": 0
+  },
+  "official_resolution_count": 15,
+  "operational_failure_count": 0,
+  "recovery_action_counts": {
+    "DIRECT": 15,
+    "NO_RECOVERY": 8
+  },
+  "registry_load_errors": [],
+  "stage_status_counts": {
+    "CALCULATION": {
+      "PASS": 1
+    },
+    "CATALOG_SEARCH": {
+      "PASS": 15
+    },
+    "CLAIM_PARSE": {
+      "PASS": 15
+    },
+    "EVIDENCE_CELL": {
+      "HOLD": 1,
+      "PASS": 2
+    },
+    "HARD_GUARD": {
+      "HOLD": 12,
+      "PASS": 3
+    },
+    "OFFICIAL_AUTHOR_FETCH": {
+      "PASS": 1
+    },
+    "OFFICIAL_AUTHOR_SEARCH": {
+      "PASS": 1
+    },
+    "OFFICIAL_VALUE_FETCH": {
+      "HOLD": 2
+    },
+    "SEMANTIC_MAPPING": {
+      "PASS": 15
+    },
+    "SEMANTIC_MATCH": {
+      "HOLD": 1,
+      "PASS": 2
+    },
+    "VERDICT": {
+      "PASS": 1
+    }
+  },
+  "terminal_reason_counts": {
+    "AS_OF_UNAVAILABLE": 1,
+    "INDICATOR_REFINEMENT_REQUIRED": 3,
+    "INDICATOR_UNIT_MEASURE_MISMATCH": 1,
+    "LOW_SEMANTIC_SCORE": 1,
+    "MISSING_REQUIRED_SLOTS:time": 1,
+    "NON_OBSERVED_FORECAST": 2,
+    "NO_EVIDENCE_COORDINATE_CANDIDATE": 2,
+    "NO_HARD_GUARD_CANDIDATE": 9,
+    "PUBLICATION_FETCH_FAILED": 1,
+    "TARGET_AMBIGUOUS_IN_SOURCE": 1,
+    "WITHIN_TOLERANCE": 1
+  },
+  "terminal_route_counts": {
+    "AUTO": 1,
+    "HOLD": 14,
+    "HUMAN_REVIEW": 8
+  }
+}

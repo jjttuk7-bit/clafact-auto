@@ -33,6 +33,7 @@ from core.source_sign_direction import (
     apply_source_sign_direction_enrichment,
     sign_direction_preverification_reason,
 )
+from core.source_observation_guard import observation_preverification_reason
 from core.targeted_claim_splitter import discover_numeric_mentions
 from schemas.claim import ClaimSchema
 from schemas.claim_registry import ClaimRegistryRecord
@@ -146,6 +147,18 @@ def verify_registry_record(
         record = record.model_copy(update={"claim": guarded_claim})
         if guarded_claim.parse_status != "AUTO_OK":
             return [_verify_stored_claim(record, official_service)]
+    observation_reason = observation_preverification_reason(record.claim)
+    if (
+        observation_reason is not None
+        and not _multi_claim_grouping_required(record, extractor)
+    ):
+        held_claim = record.claim.model_copy(update={
+            "parse_status": "HUMAN_REVIEW",
+            "parse_reason": observation_reason,
+        })
+        return [_verify_stored_claim(
+            record.model_copy(update={"claim": held_claim}), official_service
+        )]
     indicator_unit_reason = indicator_unit_preverification_reason(record)
     if (
         indicator_unit_reason is not None

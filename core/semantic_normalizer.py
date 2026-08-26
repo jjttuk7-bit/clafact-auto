@@ -9,6 +9,7 @@ from typing import Iterable
 
 from core.claim_dimensions import dimension_member_values
 from core.data_loader import SemanticStandardRecord
+from core.targeted_claim_splitter import discover_numeric_mentions
 from schemas.claim import ClaimSchema
 from schemas.concept import StandardConceptSchema
 
@@ -72,6 +73,18 @@ def _source_context_matches(
     if not indicator or not source:
         return []
     matches: list[tuple[SemanticStandardRecord, str]] = []
+    if indicator not in source and len(discover_numeric_mentions(claim.source_sentence)) == 1:
+        for concept in concepts:
+            for label in (concept.canonical_name, *concept.aliases):
+                normalized_label = _normalize_text(label)
+                if len(normalized_label) >= 3 and normalized_label in source:
+                    matches.append((concept, label))
+        if matches:
+            longest = max(len(_normalize_text(label)) for _, label in matches)
+            return _unique_by_concept([
+                (concept, label) for concept, label in matches
+                if len(_normalize_text(label)) == longest
+            ])
     for concept in concepts:
         for label in (concept.canonical_name, *concept.aliases):
             normalized_label = _normalize_text(label)

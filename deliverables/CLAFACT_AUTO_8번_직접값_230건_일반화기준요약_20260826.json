@@ -1,0 +1,36 @@
+{
+  "article_count": 141,
+  "baseline_official_complete": 15,
+  "baseline_reasons": {
+    "AMBIGUOUS_MARGIN": 4,
+    "AS_OF_UNAVAILABLE": 14,
+    "CALCULATION_EVIDENCE_PLAN_UNRESOLVED": 1,
+    "CLAIM_PARSE_UNCERTAIN": 23,
+    "CONTEXT_TARGET_UNRESOLVED": 1,
+    "DIRECT_VALUE_CHANGE_TARGET_MISCLASSIFIED": 2,
+    "FETCH_FAILED": 3,
+    "GROUPING_AMBIGUOUS": 2,
+    "INDICATOR_MEASURE_FAMILY_AMBIGUOUS": 3,
+    "INDICATOR_REFINEMENT_REQUIRED": 20,
+    "INDICATOR_UNIT_MEASURE_MISMATCH": 7,
+    "KOSIS_CATALOG_UNAVAILABLE": 2,
+    "LOW_SEMANTIC_SCORE": 4,
+    "NO_EVIDENCE_COORDINATE_CANDIDATE": 44,
+    "NO_HARD_GUARD_CANDIDATE": 48,
+    "PUBLICATION_FETCH_FAILED": 1,
+    "RELATIVE_TIME_UNRESOLVED": 2,
+    "TARGET_AMBIGUOUS_IN_SOURCE": 5,
+    "TARGET_NOT_FOUND_IN_SOURCE": 16,
+    "TARGET_VALUE_NOT_IN_SOURCE_SENTENCE": 13,
+    "WITHIN_TOLERANCE": 15
+  },
+  "claim_count": 230,
+  "csv_sha256": "26ed9c8b603a6550b4f24c4d480bc264ccbc3f956599f7b63cfb4bbfd86cac88",
+  "output_csv": "D:\\projects\\services\\archived\\clafact-auto\\.worktrees\\direct-value-general-rules\\deliverables\\CLAFACT_AUTO_8번_직접값_230건_일반화기준원장_20260826.csv",
+  "split_counts": {
+    "FINAL_BLIND": 23,
+    "INTERMEDIATE_VALIDATION": 46,
+    "RULE_DISCOVERY": 161
+  },
+  "split_seed": "clafact-direct-value-generalization-v1"
+}
