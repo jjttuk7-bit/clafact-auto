@@ -28,6 +28,7 @@ from core.source_sign_direction import (
     apply_source_sign_direction_enrichment,
     sign_direction_preverification_reason,
 )
+from core.targeted_claim_splitter import discover_numeric_mentions
 from schemas.claim import ClaimSchema
 from schemas.claim_registry import ClaimRegistryRecord
 from schemas.slot_audit import SlotAuditSchema
@@ -114,7 +115,10 @@ def verify_registry_record(
             )
         ]
     indicator_unit_reason = indicator_unit_preverification_reason(record)
-    if indicator_unit_reason is not None:
+    if (
+        indicator_unit_reason is not None
+        and not _multi_claim_grouping_required(record, extractor)
+    ):
         held_claim = record.claim.model_copy(update={
             "parse_status": "HUMAN_REVIEW",
             "parse_reason": indicator_unit_reason,
@@ -125,7 +129,10 @@ def verify_registry_record(
             )
         ]
     sign_direction_reason = sign_direction_preverification_reason(record)
-    if sign_direction_reason is not None:
+    if (
+        sign_direction_reason is not None
+        and not _multi_claim_grouping_required(record, extractor)
+    ):
         held_claim = record.claim.model_copy(update={
             "parse_status": "HUMAN_REVIEW",
             "parse_reason": sign_direction_reason,
@@ -297,6 +304,15 @@ def _terminal_result(
     if admission_route != "KOSIS_PIPELINE_ELIGIBLE":
         return "HUMAN_REVIEW", claim.parse_reason or admission_route
     return "HUMAN_REVIEW", "OFFICIAL_RESOLUTION_NOT_ATTEMPTED"
+
+
+def _multi_claim_grouping_required(
+    record: ClaimRegistryRecord,
+    extractor: StructuredClaimExtractor,
+) -> bool:
+    return len(discover_numeric_mentions(record.claim.source_sentence)) >= 2 and callable(
+        getattr(extractor, "group_claims", None)
+    )
 
 
 def _sentence_only_context_target_unresolved(

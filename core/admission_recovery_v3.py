@@ -52,7 +52,11 @@ def recover_registry_record_v3(record: ClaimRegistryRecord, *, extractor: Struct
     if len(record_children) > 1:
         return _recover_record_children(record, record_children, official_service)
     prelinked_target = trusted_target_expression(record)
-    if prelinked_target is not None:
+    mentions = discover_numeric_mentions(record.claim.source_sentence)
+    grouper = getattr(extractor, "group_claims", None)
+    if prelinked_target is not None and not (
+        len(mentions) >= 2 and callable(grouper)
+    ):
         return _recover_prelinked_target(
             record,
             prelinked_target,
@@ -60,8 +64,6 @@ def recover_registry_record_v3(record: ClaimRegistryRecord, *, extractor: Struct
             official_service=official_service,
             article_context=article_context,
         )
-    mentions = discover_numeric_mentions(record.claim.source_sentence)
-    grouper = getattr(extractor, "group_claims", None)
     target_roles: list[dict[str, str]]
     target_role_assignments: list[list[dict[str, str]]]
     grouping_source_fallback = False
