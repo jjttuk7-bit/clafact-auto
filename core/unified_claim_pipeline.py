@@ -364,12 +364,11 @@ def _sentence_only_context_target_unresolved(
     record: ClaimRegistryRecord,
     article_context: str | None,
 ) -> bool:
-    if not article_context:
-        return False
     source = "".join(record.claim.source_sentence.split())
-    context = "".join(article_context.split())
-    if source != context:
-        return False
+    if article_context:
+        context = "".join(article_context.split())
+        if source != context:
+            return False
     return context_target_unresolved(record.claim.source_sentence, record.claim)
 
 

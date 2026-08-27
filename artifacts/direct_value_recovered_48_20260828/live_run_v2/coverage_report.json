@@ -1,0 +1,96 @@
+{
+  "admission_route_counts": {
+    "CONTEXT_REQUIRED": 36,
+    "KOSIS_PIPELINE_ELIGIBLE": 16
+  },
+  "all_claims_terminal": false,
+  "derived_claims": 52,
+  "input_coverage_complete": true,
+  "input_registry_records": 48,
+  "official_api_counts": {
+    "api_provenance_cells": 4,
+    "api_provenance_claims": 4,
+    "catalog_query_attempted": 35,
+    "catalog_query_empty": 0,
+    "catalog_query_failed": 6,
+    "catalog_query_succeeded_nonempty": 29,
+    "metadata_itm_attempted": 371,
+    "metadata_itm_failed": 0,
+    "metadata_itm_succeeded": 371,
+    "metadata_prd_attempted": 370,
+    "metadata_prd_failed": 1,
+    "metadata_prd_succeeded": 369,
+    "official_value_fetch_hold": 5,
+    "official_value_fetch_pass": 0,
+    "verified_publication_claims": 1
+  },
+  "official_resolution_count": 15,
+  "operational_failure_count": 1,
+  "recovery_action_counts": {
+    "DIRECT": 13,
+    "MULTI_CLAIM_SPLIT": 6,
+    "NO_RECOVERY": 33
+  },
+  "registry_load_errors": [],
+  "stage_status_counts": {
+    "CALCULATION": {
+      "PASS": 2
+    },
+    "CATALOG_SEARCH": {
+      "PASS": 15
+    },
+    "CLAIM_PARSE": {
+      "PASS": 15
+    },
+    "EVIDENCE_CELL": {
+      "HOLD": 1,
+      "PASS": 5
+    },
+    "HARD_GUARD": {
+      "HOLD": 9,
+      "PASS": 6
+    },
+    "OFFICIAL_AUTHOR_FETCH": {
+      "PASS": 2
+    },
+    "OFFICIAL_AUTHOR_SEARCH": {
+      "PASS": 2
+    },
+    "OFFICIAL_VALUE_FETCH": {
+      "HOLD": 5
+    },
+    "SEMANTIC_MAPPING": {
+      "PASS": 15
+    },
+    "SEMANTIC_MATCH": {
+      "HOLD": 1,
+      "PASS": 5
+    },
+    "VERDICT": {
+      "PASS": 2
+    }
+  },
+  "terminal_reason_counts": {
+    "AS_OF_UNAVAILABLE": 1,
+    "CONTEXT_TARGET_UNRESOLVED": 1,
+    "DIRECT_VALUE_CHANGE_TARGET_MISCLASSIFIED": 2,
+    "FETCH_FAILED": 1,
+    "INDICATOR_MEASURE_FAMILY_AMBIGUOUS": 2,
+    "INDICATOR_REFINEMENT_REQUIRED": 18,
+    "INDICATOR_UNIT_MEASURE_MISMATCH": 6,
+    "KOSIS_CATALOG_UNAVAILABLE": 1,
+    "LOW_SEMANTIC_SCORE": 1,
+    "NO_EVIDENCE_COORDINATE_CANDIDATE": 3,
+    "NO_HARD_GUARD_CANDIDATE": 6,
+    "OUTSIDE_TOLERANCE": 1,
+    "PUBLICATION_FETCH_FAILED": 1,
+    "RELATIVE_TIME_UNRESOLVED": 2,
+    "TARGET_VALUE_NOT_IN_SOURCE_SENTENCE": 5,
+    "WITHIN_TOLERANCE": 1
+  },
+  "terminal_route_counts": {
+    "AUTO": 2,
+    "HOLD": 14,
+    "HUMAN_REVIEW": 36
+  }
+}
