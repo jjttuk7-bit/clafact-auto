@@ -79,6 +79,8 @@ def classify_numeric_roles(
             preliminary[index] = ("연령", "AGE_GROUP_CONTEXT", "연령대를 나타내는 숫자", "HIGH")
         elif unit == "위" or re.search(r"(?:상위|하위|순위)\s*$", before):
             preliminary[index] = ("순위", "RANK_CONTEXT", "순위 또는 상·하위 범위를 나타내는 숫자", "HIGH")
+        elif re.search(r"\d{4}년\s*\(\s*$", before) and re.match(r"\s*\)\s*(?:의|보다|대비)", after):
+            preliminary[index] = ("비교값", "PARENTHETICAL_HISTORICAL_REFERENCE", "연도 뒤 괄호에 제시된 과거 비교값", "HIGH")
         elif unit in {"년", "월", "일", "분기", "개월", "달", "주", "시간"}:
             preliminary[index] = ("기간", "PERIOD_CONTEXT", "기준시점 또는 지속기간을 나타내는 숫자", "HIGH")
 

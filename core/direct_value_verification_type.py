@@ -12,7 +12,7 @@ class DirectValueTypeDecision:
     reason_code: str | None
 
 
-_PERCENT_UNITS = {"%", "％", "%p", "％p", "%포인트", "％포인트", "퍼센트포인트"}
+_RATE_UNITS = {"%", "％", "퍼센트"}
 _SHARE = re.compile(r"(?:비중|구성비|점유율|차지|전체의\s*\d)")
 _RECORD = re.compile(
     r"(?:역대|사상|최대|최소|최고|최저|고점|저점|처음|최초|"
@@ -28,6 +28,8 @@ _LEVEL_CONNECTOR = re.compile(
     r"^\s*(?:까지|대로|수준(?:으로|일|이|에)?|선(?:으로|에)?|로|으로)\s*"
 )
 _THRESHOLD = re.compile(r"(?:이상|이하|미만|초과|넘(?:었|어|는|어서)|밑돌|못\s*미치|아래로|돌파)")
+_CURRENT_RECORD_TAIL = re.compile(r"(?:역대|사상|통계\s*작성\s*이래|\d{4}년(?:\s*\d{1,2}월)?\s*이후).{0,20}(?:최고|최저|가장\s*(?:높|낮)|최대|최소)")
+_REGIONAL_RANK_TAIL = re.compile(r"(?:전국|지역|시도|17개\s*시도).{0,14}(?:가장\s*(?:높|낮)|\d+위)|(?:\d+위|순위)")
 
 
 def classify_direct_value_target(
@@ -53,11 +55,15 @@ def classify_direct_value_target(
     level_connector_present = change_tail != tail
     change_is_target = bool(_CHANGE.search(tail[:32])) and not level_connector_present
     if change_is_target:
-        if re.sub(r"\s+", "", unit) in _PERCENT_UNITS:
+        if re.sub(r"\s+", "", unit) in _RATE_UNITS:
             return DirectValueTypeDecision(
                 "GROWTH_RATE", "RECLASSIFY_TO_GROWTH_RATE"
             )
         return DirectValueTypeDecision("DIFFERENCE", "RECLASSIFY_TO_DIFFERENCE")
+    if _REGIONAL_RANK_TAIL.search(tail[:48]):
+        return DirectValueTypeDecision("RANK", "RECLASSIFY_TO_RANK")
+    if _CURRENT_RECORD_TAIL.search(tail[:48]) and not _CHANGE.search(tail[:48]):
+        return DirectValueTypeDecision("RECORD", "RECLASSIFY_TO_RECORD")
     if level_connector_present:
         return DirectValueTypeDecision("DIRECT_VALUE", None)
     if _THRESHOLD.search(tail[:32]) or "돌파" in tail[:24]:
