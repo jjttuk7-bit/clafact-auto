@@ -1,0 +1,87 @@
+{
+  "scope_count": 230,
+  "strict_official_complete_count": 17,
+  "match_count": 15,
+  "mismatch_count": 2,
+  "source_counts": {
+    "176_CANONICAL_RUN": 82,
+    "230_BASE": 54,
+    "94_COMMON_RULE_RERUN": 94
+  },
+  "status_counts": {
+    "HOLD": 139,
+    "HUMAN_REVIEW": 30,
+    "AUTO": 17,
+    "PRE_VERIFICATION": 44
+  },
+  "reason_counts": {
+    "KOSIS_CATALOG_UNAVAILABLE": 2,
+    "AS_OF_UNAVAILABLE": 18,
+    "NO_HARD_GUARD_CANDIDATE": 60,
+    "INDICATOR_REFINEMENT_REQUIRED": 14,
+    "CONTEXT_TARGET_UNRESOLVED": 2,
+    "AMBIGUOUS_MARGIN": 8,
+    "NO_EVIDENCE_COORDINATE_CANDIDATE": 43,
+    "WITHIN_TOLERANCE": 15,
+    "INDICATOR_UNIT_MEASURE_MISMATCH": 1,
+    "LOW_SEMANTIC_SCORE": 3,
+    "NON_OBSERVED_FORECAST": 1,
+    "PUBLICATION_FETCH_FAILED": 2,
+    "INDICATOR_MEASURE_FAMILY_AMBIGUOUS": 1,
+    "TARGET_NOT_FOUND_IN_SOURCE": 9,
+    "FETCH_FAILED": 3,
+    "DIRECT_VALUE_CHANGE_TARGET_MISCLASSIFIED": 2,
+    "TARGET_NOT_FOUND_IN_SOURCE|TARGET_VALUE_NOT_IN_SOURCE_SENTENCE": 12,
+    "CLAIM_PARSE_UNCERTAIN|MISSING_TIME": 4,
+    "MISSING_TIME|MISSING_FREQUENCY": 2,
+    "TARGET_NOT_FOUND_IN_SOURCE|MISSING_VALUE": 3,
+    "RELATIVE_TIME_UNRESOLVED": 2,
+    "TARGET_VALUE_NOT_IN_SOURCE_SENTENCE": 1,
+    "MISSING_FREQUENCY": 5,
+    "CLAIM_PARSE_UNCERTAIN|MISSING_INDICATOR|MISSING_FREQUENCY": 2,
+    "CLAIM_PARSE_UNCERTAIN": 2,
+    "CLAIM_PARSE_UNCERTAIN|MISSING_TIME|MISSING_FREQUENCY": 4,
+    "TARGET_AMBIGUOUS_IN_SOURCE": 2,
+    "MISSING_VALUE": 2,
+    "TARGET_NOT_FOUND_IN_SOURCE|MISSING_TIME": 1,
+    "OUTSIDE_TOLERANCE": 2,
+    "CLAIM_PARSE_UNCERTAIN|MISSING_INDICATOR|MISSING_TIME|MISSING_FREQUENCY": 1,
+    "TARGET_NOT_FOUND_IN_SOURCE|MISSING_FREQUENCY": 1
+  },
+  "failure_stage_counts": {
+    "최종 판정": 7,
+    "공식값 조회": 22,
+    "HARD_GUARD": 19,
+    "CLAIM_PARSE": 25,
+    "후보 의미 비교": 11,
+    "필수 조건 검사": 85,
+    "사전 구조화": 45,
+    "VERDICT": 9,
+    "완료": 6,
+    "OFFICIAL_VALUE_FETCH": 1
+  },
+  "final_group_counts": {
+    "공식 API 검색·값 조회 실패": 5,
+    "기사 작성일 기준 공표 확인 실패": 20,
+    "공식표 필수조건 불일치": 60,
+    "Claim 의미·역할 검토 필요": 30,
+    "공식 후보 의미 불확실": 11,
+    "공식 좌표 미확정": 43,
+    "공식 판정 완료": 17,
+    "Claim 구조 보완 필요": 44
+  },
+  "completed_source_counts": {
+    "230_BASE": 10,
+    "176_CANONICAL_RUN": 6,
+    "94_COMMON_RULE_RERUN": 1
+  },
+  "input_sha256": {
+    "deliverables\\CLAFACT_AUTO_8번_직접값_230건_지표구체화18재처리원장_20260828.csv": "7097d1068e1c7cf72de202f1bd41b28d3c9c382ef9c0afa0a102f13eeeda9705",
+    "deliverables\\CLAFACT_AUTO_직접값176_전체좌표탐색_20260828\\CLAFACT_AUTO_직접값176_단계별평가표.csv": "508379bee71489e7ffbe6f090b455e131b270ed4fe13321961569cc3da87398d",
+    "artifacts\\direct_value_coordinate_spec_176_20260828\\live_run\\claim_verification_results_final.jsonl": "658bd20c1d1523b65544281fe2be578a81f683aeb945130fb6a5a3ac5a58827d",
+    "deliverables\\CLAFACT_AUTO_직접값94_공통좌표규칙_20260828\\CLAFACT_AUTO_직접값94_재실행후_단계별평가표.csv": "e64ff571a6fc278395d51585b1d79420a49a4ea1fb97d88c66b3606eaae2d9d2",
+    "artifacts\\direct_value_coordinate_94_20260828\\claim_verification_results_compact.jsonl": "0c900a1d4a1a058b649a839e4b6457de56420f6c7ec20b1e6c99bbbd73e1ce3c"
+  },
+  "output_ledger": "deliverables\\CLAFACT_AUTO_8번_직접값_최종마감_20260828\\CLAFACT_AUTO_8번_직접값_230건_최종원장_20260828.csv",
+  "output_ledger_sha256": "3c2580c7190477544770fa2375071b4292a46a5550b571173bc5807e4cb8938f"
+}
