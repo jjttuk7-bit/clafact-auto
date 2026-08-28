@@ -23,6 +23,7 @@ _EXPECTED = {
     "CURRENCY": ("CURRENCY",),
     "RATE": ("PERCENT",),
     "QUANTITY": ("MASS", "VEHICLE"),
+    "CONTRIBUTION": ("PERCENT", "PERCENT_POINT"),
     "HOUSEHOLD": ("HOUSEHOLD",),
     "AREA": ("AREA",),
     "DEPENDENCY_RATIO": ("PERSON", "PERCENT"),
@@ -177,8 +178,10 @@ def _indicator_family(indicator: str) -> str:
         return "AREA"
     if "가구" in compact or compact == "농가수":
         return "HOUSEHOLD"
-    if any(token in compact for token in ("수출량", "수입량", "생산량")):
+    if any(token in compact for token in ("수출량", "수입량", "생산량", "등록대수")):
         return "QUANTITY"
+    if "기여도" in compact:
+        return "CONTRIBUTION"
     if any(token in compact for token in ("수출액", "수입액", "무역수지", "해외건설", "1인당gdp")):
         return "CURRENCY"
     if compact == "gdp":

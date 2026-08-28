@@ -1,0 +1,221 @@
+{
+  "decision_counts": {
+    "EXCLUDE_FORECAST": 3,
+    "EXCLUDE_POLICY_RATE": 6,
+    "KEEP_DIRECT_RECOVERED": 6,
+    "MOVE_MULTI_PERIOD_SPLIT": 1,
+    "MOVE_SHARE": 2
+  },
+  "decisions": [
+    {
+      "applied_rule": "SOURCE_GROUNDED_DIRECT_VALUE",
+      "claim_id": "A00067_3",
+      "final_reason": "SOURCE_GROUNDED_DIRECT_VALUE",
+      "original_reason": "INDICATOR_REFINEMENT_REQUIRED",
+      "result_code": "KEEP_DIRECT_RECOVERED",
+      "source_evidence": "1만8717대",
+      "split_set": "RULE_DISCOVERY",
+      "target_tab": "8.직접값",
+      "top_level_result": "KEEP_DIRECT_VALUE"
+    },
+    {
+      "applied_rule": "NON_OBSERVED_FORECAST",
+      "claim_id": "A00254_12",
+      "final_reason": "NON_OBSERVED_FORECAST",
+      "original_reason": "INDICATOR_REFINEMENT_REQUIRED",
+      "result_code": "EXCLUDE_FORECAST",
+      "source_evidence": "",
+      "split_set": "INTERMEDIATE_VALIDATION",
+      "target_tab": "검증 제외",
+      "top_level_result": "EXCLUDE_FROM_KOSIS"
+    },
+    {
+      "applied_rule": "SOURCE_SHARE",
+      "claim_id": "A00308_18",
+      "final_reason": "RECLASSIFY_TO_SHARE",
+      "original_reason": "INDICATOR_REFINEMENT_REQUIRED",
+      "result_code": "MOVE_SHARE",
+      "source_evidence": "20%",
+      "split_set": "RULE_DISCOVERY",
+      "target_tab": "4.비중·구성비",
+      "top_level_result": "MOVE_TO_OTHER_TYPE"
+    },
+    {
+      "applied_rule": "SOURCE_SHARE",
+      "claim_id": "A00513_2",
+      "final_reason": "RECLASSIFY_TO_SHARE",
+      "original_reason": "INDICATOR_REFINEMENT_REQUIRED",
+      "result_code": "MOVE_SHARE",
+      "source_evidence": "1.9%",
+      "split_set": "INTERMEDIATE_VALIDATION",
+      "target_tab": "4.비중·구성비",
+      "top_level_result": "MOVE_TO_OTHER_TYPE"
+    },
+    {
+      "applied_rule": "NON_STATISTICAL_POLICY_RATE",
+      "claim_id": "A00830_5",
+      "final_reason": "NON_STATISTICAL_POLICY_RATE",
+      "original_reason": "INDICATOR_REFINEMENT_REQUIRED",
+      "result_code": "EXCLUDE_POLICY_RATE",
+      "source_evidence": "",
+      "split_set": "RULE_DISCOVERY",
+      "target_tab": "검증 제외",
+      "top_level_result": "EXCLUDE_FROM_KOSIS"
+    },
+    {
+      "applied_rule": "SOURCE_GROUNDED_DIRECT_VALUE",
+      "claim_id": "A00840_14",
+      "final_reason": "SOURCE_GROUNDED_DIRECT_VALUE",
+      "original_reason": "INDICATOR_REFINEMENT_REQUIRED",
+      "result_code": "KEEP_DIRECT_RECOVERED",
+      "source_evidence": "1.2%",
+      "split_set": "RULE_DISCOVERY",
+      "target_tab": "8.직접값",
+      "top_level_result": "KEEP_DIRECT_VALUE"
+    },
+    {
+      "applied_rule": "NON_STATISTICAL_POLICY_RATE",
+      "claim_id": "A01120_4",
+      "final_reason": "NON_STATISTICAL_POLICY_RATE",
+      "original_reason": "INDICATOR_REFINEMENT_REQUIRED",
+      "result_code": "EXCLUDE_POLICY_RATE",
+      "source_evidence": "",
+      "split_set": "RULE_DISCOVERY",
+      "target_tab": "검증 제외",
+      "top_level_result": "EXCLUDE_FROM_KOSIS"
+    },
+    {
+      "applied_rule": "SOURCE_GROUNDED_DIRECT_VALUE",
+      "claim_id": "A01480_17",
+      "final_reason": "SOURCE_GROUNDED_DIRECT_VALUE",
+      "original_reason": "INDICATOR_REFINEMENT_REQUIRED",
+      "result_code": "KEEP_DIRECT_RECOVERED",
+      "source_evidence": "0.3%포인트",
+      "split_set": "INTERMEDIATE_VALIDATION",
+      "target_tab": "8.직접값",
+      "top_level_result": "KEEP_DIRECT_VALUE"
+    },
+    {
+      "applied_rule": "SOURCE_GROUNDED_DIRECT_VALUE",
+      "claim_id": "A01798_35",
+      "final_reason": "SOURCE_GROUNDED_DIRECT_VALUE",
+      "original_reason": "INDICATOR_REFINEMENT_REQUIRED",
+      "result_code": "KEEP_DIRECT_RECOVERED",
+      "source_evidence": "2180톤",
+      "split_set": "RULE_DISCOVERY",
+      "target_tab": "8.직접값",
+      "top_level_result": "KEEP_DIRECT_VALUE"
+    },
+    {
+      "applied_rule": "NON_STATISTICAL_POLICY_RATE",
+      "claim_id": "A01910_8",
+      "final_reason": "NON_STATISTICAL_POLICY_RATE",
+      "original_reason": "INDICATOR_REFINEMENT_REQUIRED",
+      "result_code": "EXCLUDE_POLICY_RATE",
+      "source_evidence": "",
+      "split_set": "RULE_DISCOVERY",
+      "target_tab": "검증 제외",
+      "top_level_result": "EXCLUDE_FROM_KOSIS"
+    },
+    {
+      "applied_rule": "NON_STATISTICAL_POLICY_RATE",
+      "claim_id": "A01940_3",
+      "final_reason": "NON_STATISTICAL_POLICY_RATE",
+      "original_reason": "INDICATOR_REFINEMENT_REQUIRED",
+      "result_code": "EXCLUDE_POLICY_RATE",
+      "source_evidence": "",
+      "split_set": "FINAL_BLIND",
+      "target_tab": "검증 제외",
+      "top_level_result": "EXCLUDE_FROM_KOSIS"
+    },
+    {
+      "applied_rule": "SOURCE_MULTI_PERIOD_SAME_VALUE",
+      "claim_id": "A01947_29",
+      "final_reason": "MULTI_PERIOD_SPLIT_REQUIRED",
+      "original_reason": "INDICATOR_REFINEMENT_REQUIRED",
+      "result_code": "MOVE_MULTI_PERIOD_SPLIT",
+      "source_evidence": "0%",
+      "split_set": "RULE_DISCOVERY",
+      "target_tab": "복수 Claim 분리",
+      "top_level_result": "MOVE_TO_RECOVERY"
+    },
+    {
+      "applied_rule": "NON_OBSERVED_FORECAST",
+      "claim_id": "A01947_5",
+      "final_reason": "NON_OBSERVED_FORECAST",
+      "original_reason": "INDICATOR_REFINEMENT_REQUIRED",
+      "result_code": "EXCLUDE_FORECAST",
+      "source_evidence": "",
+      "split_set": "RULE_DISCOVERY",
+      "target_tab": "검증 제외",
+      "top_level_result": "EXCLUDE_FROM_KOSIS"
+    },
+    {
+      "applied_rule": "NON_STATISTICAL_POLICY_RATE",
+      "claim_id": "A01986_11",
+      "final_reason": "NON_STATISTICAL_POLICY_RATE",
+      "original_reason": "INDICATOR_REFINEMENT_REQUIRED",
+      "result_code": "EXCLUDE_POLICY_RATE",
+      "source_evidence": "",
+      "split_set": "RULE_DISCOVERY",
+      "target_tab": "검증 제외",
+      "top_level_result": "EXCLUDE_FROM_KOSIS"
+    },
+    {
+      "applied_rule": "SOURCE_GROUNDED_DIRECT_VALUE",
+      "claim_id": "A02253_15",
+      "final_reason": "SOURCE_GROUNDED_DIRECT_VALUE",
+      "original_reason": "INDICATOR_REFINEMENT_REQUIRED",
+      "result_code": "KEEP_DIRECT_RECOVERED",
+      "source_evidence": "9.7%",
+      "split_set": "FINAL_BLIND",
+      "target_tab": "8.직접값",
+      "top_level_result": "KEEP_DIRECT_VALUE"
+    },
+    {
+      "applied_rule": "NON_OBSERVED_FORECAST",
+      "claim_id": "A02416_10",
+      "final_reason": "NON_OBSERVED_FORECAST",
+      "original_reason": "INDICATOR_REFINEMENT_REQUIRED",
+      "result_code": "EXCLUDE_FORECAST",
+      "source_evidence": "",
+      "split_set": "INTERMEDIATE_VALIDATION",
+      "target_tab": "검증 제외",
+      "top_level_result": "EXCLUDE_FROM_KOSIS"
+    },
+    {
+      "applied_rule": "NON_STATISTICAL_POLICY_RATE",
+      "claim_id": "A02494_17",
+      "final_reason": "NON_STATISTICAL_POLICY_RATE",
+      "original_reason": "INDICATOR_REFINEMENT_REQUIRED",
+      "result_code": "EXCLUDE_POLICY_RATE",
+      "source_evidence": "",
+      "split_set": "FINAL_BLIND",
+      "target_tab": "검증 제외",
+      "top_level_result": "EXCLUDE_FROM_KOSIS"
+    },
+    {
+      "applied_rule": "SOURCE_GROUNDED_DIRECT_VALUE",
+      "claim_id": "A02700_19",
+      "final_reason": "SOURCE_GROUNDED_DIRECT_VALUE",
+      "original_reason": "INDICATOR_REFINEMENT_REQUIRED",
+      "result_code": "KEEP_DIRECT_RECOVERED",
+      "source_evidence": "96.3%",
+      "split_set": "RULE_DISCOVERY",
+      "target_tab": "8.직접값",
+      "top_level_result": "KEEP_DIRECT_VALUE"
+    }
+  ],
+  "input_registry": "D:\\projects\\services\\archived\\clafact-auto\\.worktrees\\direct-value-indicator-refinement-18\\artifacts\\direct_value_indicator_refinement_18_20260828\\scope\\input_registry.jsonl",
+  "manifest_sha256": "456153330b3eb7b95b9a99d4cc3117c96669c8987d918140efa97c1290679ef6",
+  "run_claim_ids": [
+    "A00067_3",
+    "A00840_14",
+    "A01480_17",
+    "A01798_35",
+    "A02253_15",
+    "A02700_19"
+  ],
+  "run_count": 6,
+  "scope_count": 18
+}

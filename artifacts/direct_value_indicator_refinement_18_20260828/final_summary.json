@@ -1,0 +1,28 @@
+{
+  "catalog_query_attempted": 7,
+  "decision_counts": {
+    "EXCLUDE_FORECAST": 3,
+    "EXCLUDE_POLICY_RATE": 6,
+    "KEEP_DIRECT_RECOVERED": 6,
+    "MOVE_MULTI_PERIOD_SPLIT": 1,
+    "MOVE_SHARE": 2
+  },
+  "direct_official_complete_count": 0,
+  "direct_reason_counts": {
+    "KOSIS_CATALOG_UNAVAILABLE": 1,
+    "NO_EVIDENCE_COORDINATE_CANDIDATE": 3,
+    "NO_HARD_GUARD_CANDIDATE": 2
+  },
+  "direct_run_count": 6,
+  "direct_terminal_counts": {
+    "HOLD": 6
+  },
+  "input_registry": "D:\\projects\\services\\archived\\clafact-auto\\.worktrees\\direct-value-indicator-refinement-18\\artifacts\\direct_value_indicator_refinement_18_20260828\\scope\\input_registry.jsonl",
+  "manifest_sha256": "456153330b3eb7b95b9a99d4cc3117c96669c8987d918140efa97c1290679ef6",
+  "metadata_item_attempted": 80,
+  "metadata_period_attempted": 80,
+  "output_ledger": "D:\\projects\\services\\archived\\clafact-auto\\.worktrees\\direct-value-indicator-refinement-18\\deliverables\\CLAFACT_AUTO_8번_직접값_230건_지표구체화18재처리원장_20260828.csv",
+  "run_results": "D:\\projects\\services\\archived\\clafact-auto\\.worktrees\\direct-value-indicator-refinement-18\\artifacts\\direct_value_indicator_refinement_18_20260828\\live_run\\claim_verification_results.jsonl",
+  "scope_count": 18,
+  "source_ledger_count": 230
+}

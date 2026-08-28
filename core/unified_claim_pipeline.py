@@ -34,6 +34,7 @@ from core.source_sign_direction import (
     sign_direction_preverification_reason,
 )
 from core.source_observation_guard import observation_preverification_reason
+from core.source_indicator_refinement import apply_source_indicator_refinement
 from core.targeted_claim_splitter import discover_numeric_mentions
 from schemas.claim import ClaimSchema
 from schemas.claim_registry import ClaimRegistryRecord
@@ -147,6 +148,10 @@ def verify_registry_record(
         record = record.model_copy(update={"claim": guarded_claim})
         if guarded_claim.parse_status != "AUTO_OK":
             return [_verify_stored_claim(record, official_service)]
+        record = apply_source_indicator_refinement(
+            record,
+            target_expression=target_expression,
+        )
     observation_reason = observation_preverification_reason(record.claim)
     if (
         observation_reason is not None

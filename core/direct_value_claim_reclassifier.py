@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 from typing import Mapping
 
 from core.direct_value_verification_type import classify_direct_value_target
@@ -30,10 +31,13 @@ _MOVE_BY_TYPE = {
 _EXCLUSION_CODES = {
     "NON_OBSERVED_FORECAST": "EXCLUDE_FORECAST",
     "NON_STATISTICAL_POLICY_THRESHOLD": "EXCLUDE_POLICY_THRESHOLD",
+    "NON_STATISTICAL_POLICY_RATE": "EXCLUDE_POLICY_RATE",
     "NON_STATISTICAL_PRIVATE_TRANSACTION": "EXCLUDE_PRIVATE_TRANSACTION",
     "NON_STATISTICAL_PRODUCT_PRICE": "EXCLUDE_PRODUCT_PRICE",
 }
 
+
+_MULTI_PERIOD = re.compile(r"\b(?:19|20)\d{2}년\s*(?:과|와|,)\s*(?:19|20)\d{2}년")
 
 @dataclass(frozen=True, slots=True)
 class DirectValueReclassification:
@@ -74,6 +78,9 @@ def reclassify_direct_value_claim(row: Mapping[str, object]) -> DirectValueRecla
     excluded_reason = observation_preverification_reason(claim)
     if excluded_reason:
         return _decision(claim_id, "EXCLUDE_FROM_KOSIS", _EXCLUSION_CODES[excluded_reason], "검증 제외", excluded_reason, "", original_reason, excluded_reason, split_set)
+
+    if _MULTI_PERIOD.search(source):
+        return _decision(claim_id, "MOVE_TO_RECOVERY", "MOVE_MULTI_PERIOD_SPLIT", "복수 Claim 분리", "SOURCE_MULTI_PERIOD_SAME_VALUE", _text(row, "대상수치표현"), original_reason, "MULTI_PERIOD_SPLIT_REQUIRED", split_set)
 
     configured_move = _MOVE_BY_CALCULATION.get(calculation)
     if configured_move:

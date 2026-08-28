@@ -13,7 +13,7 @@ class DirectValueTypeDecision:
 
 
 _RATE_UNITS = {"%", "％", "퍼센트"}
-_SHARE = re.compile(r"(?:비중|구성비|점유율|차지|전체의\s*\d)")
+_SHARE = re.compile(r"(?:비중|구성비|점유율|차지|전체의\s*\d|(?:인구|수출)의\s*\d|%\s*(?:가|에)\s*(?:해당|\d+\s*세\s*이상))")
 _RECORD = re.compile(
     r"(?:역대|사상|최대|최소|최고|최저|고점|저점|처음|최초|"
     r"\d+년\s*만|\d+개월\s*만|통계\s*작성\s*이래)"
