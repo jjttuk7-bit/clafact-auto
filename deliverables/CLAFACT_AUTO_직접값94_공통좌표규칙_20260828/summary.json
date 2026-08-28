@@ -1,0 +1,80 @@
+{
+  "advanced_beyond_original_stage_count": 9,
+  "after_failure_stage_counts": {
+    "공식값 조회": 1,
+    "완료": 1,
+    "필수 조건 검사": 85,
+    "후보 의미 비교": 7
+  },
+  "after_reason_counts": {
+    "AMBIGUOUS_MARGIN": 7,
+    "AS_OF_UNAVAILABLE": 1,
+    "NO_EVIDENCE_COORDINATE_CANDIDATE": 31,
+    "NO_HARD_GUARD_CANDIDATE": 54,
+    "WITHIN_TOLERANCE": 1
+  },
+  "after_stage_summary": {
+    "catalog_pass_count": 94,
+    "coordinate_ready_count": 94,
+    "evidence_cell_pass_count": 2,
+    "failure_stage_counts": {
+      "공식값 조회": 1,
+      "완료": 1,
+      "필수 조건 검사": 85,
+      "후보 의미 비교": 7
+    },
+    "hard_guard_pass_count": 9,
+    "metadata_pass_count": 94,
+    "official_fetch_pass_count": 1,
+    "preverification_count": 0,
+    "scope_count": 94,
+    "semantic_pass_count": 94,
+    "strict_official_complete_count": 1,
+    "terminal_reason_counts": {
+      "AMBIGUOUS_MARGIN": 7,
+      "AS_OF_UNAVAILABLE": 1,
+      "NO_EVIDENCE_COORDINATE_CANDIDATE": 31,
+      "NO_HARD_GUARD_CANDIDATE": 54,
+      "WITHIN_TOLERANCE": 1
+    }
+  },
+  "all_claims_terminal": true,
+  "files": {
+    "after_evaluation_csv": "CLAFACT_AUTO_직접값94_재실행후_단계별평가표.csv",
+    "comparison_csv": "CLAFACT_AUTO_직접값94_공통좌표규칙_전후비교.csv",
+    "report": "CLAFACT_AUTO_직접값94_공통좌표규칙_결과보고서.txt"
+  },
+  "hashes": {
+    "after_evaluation": "e64ff571a6fc278395d51585b1d79420a49a4ea1fb97d88c66b3606eaae2d9d2",
+    "classification": "734999bf791feddbba0e76c3988bb01047469b316d2bd36be76442698e6e3e98",
+    "comparison": "848566701edcb7493dfff06b539cad3da01fd9bea95cee2b777b8ca5cc272845",
+    "coverage": "98631bcdc1a1179a97d06563802071fbd74d57254256590bfb85f165754e2a6c",
+    "live_results": "428d0a5921da5e9a21233254fbbb11b8a72b3d9d59297cf6dc2430866666eb37"
+  },
+  "input_coverage_complete": true,
+  "movement_counts": {
+    "공식판정완료": 1,
+    "다음단계진전": 8,
+    "동일단계": 85
+  },
+  "official_api_counts": {
+    "api_provenance_cells": 2,
+    "api_provenance_claims": 2,
+    "catalog_query_attempted": 188,
+    "catalog_query_empty": 0,
+    "catalog_query_failed": 59,
+    "catalog_query_succeeded_nonempty": 129,
+    "metadata_itm_attempted": 2259,
+    "metadata_itm_failed": 5,
+    "metadata_itm_succeeded": 2254,
+    "metadata_prd_attempted": 2254,
+    "metadata_prd_failed": 8,
+    "metadata_prd_succeeded": 2246,
+    "official_value_fetch_hold": 1,
+    "official_value_fetch_pass": 1,
+    "verified_publication_claims": 1
+  },
+  "operational_failure_count": 0,
+  "scope_count": 94,
+  "strict_official_complete_count": 1
+}

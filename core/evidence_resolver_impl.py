@@ -6,6 +6,7 @@ import re
 
 from core.claim_dimensions import dimension_member_values, normalized_dimension_members
 from core.member_code_mapper import resolve_member_code
+from core.region_aliases import normalize_national_region
 from core.unit_normalizer import compatible_units
 from schemas.candidate import KosisCandidateSchema
 from schemas.claim import ClaimSchema
@@ -133,7 +134,7 @@ def _axis_targets(claim: ClaimSchema, axis_name: str | None) -> set[str]:
     dimensions = claim.dimension or {}
     values = dimension_member_values(dimensions)
     if axis == "region":
-        region = "전국" if claim.region in {"한국", "대한민국", "전국"} else claim.region
+        region = normalize_national_region(claim.region)
         values = [region] if region else ["전국"]
     elif axis == "population":
         values = _dimension_values_for_axis(dimensions, "population")
@@ -321,6 +322,8 @@ def _resolve_dimension_codes(
 
 def _normalize(value: str | None) -> str:
     normalized = (value or "").replace(" ", "").replace("-", "").replace("~", "")
+    if normalized == "국내":
+        return "전국"
     return (normalized.replace("서울특별시", "서울").replace("부산광역시", "부산")
         .replace("대구광역시", "대구").replace("인천광역시", "인천")
         .replace("광주광역시", "광주").replace("대전광역시", "대전")

@@ -1,0 +1,27 @@
+{
+  "classification_sha256": "734999bf791feddbba0e76c3988bb01047469b316d2bd36be76442698e6e3e98",
+  "evaluation_input_sha256": "508379bee71489e7ffbe6f090b455e131b270ed4fe13321961569cc3da87398d",
+  "live_input_sha256": "658bd20c1d1523b65544281fe2be578a81f683aeb945130fb6a5a3ac5a58827d",
+  "primary_cause_counts": {
+    "CLAIM_STRUCTURE_ERROR": 7,
+    "DIMENSION_COORDINATE_GAP": 21,
+    "METADATA_GAP": 1,
+    "PERIOD_FREQUENCY_GAP": 24,
+    "REGION_COORDINATE_GAP": 4,
+    "SEMANTIC_COORDINATE_AMBIGUITY": 37
+  },
+  "registry_input_sha256": "478d20bc71092b847e1473a4b3078e6738bacb5dc9e3c52a977022a87f6b9698",
+  "rerun_registry_count": 94,
+  "rerun_registry_sha256": "ed35933385854ac4770c0942ec8b4dc0863f476468c26ed9297beddeb345882c",
+  "rule_family_counts": {
+    "EXACT_COORDINATE_REVIEW": 35,
+    "NO_AUTOMATIC_UNIT_CONVERSION": 2,
+    "OFFICIAL_DIMENSION_MEMBER": 21,
+    "OFFICIAL_METADATA_REFRESH": 1,
+    "OFFICIAL_PERIOD_NORMALIZATION": 24,
+    "OFFICIAL_REGION_ALIAS": 4,
+    "SOURCE_INDICATOR_VALUE_ROLE": 7
+  },
+  "scope_count": 94,
+  "scope_manifest_sha256": "1e205a1f98d2fc434730caf5352c394a24c7572da86275363b4e33f450ebb413"
+}

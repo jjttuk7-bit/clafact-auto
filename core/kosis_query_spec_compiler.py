@@ -6,6 +6,7 @@ import re
 from datetime import date
 
 from core.claim_dimensions import normalized_dimension_members
+from core.region_aliases import NATIONAL_REGION_ALIASES
 from schemas.claim import ClaimSchema
 from schemas.kosis_query_spec import KosisQuerySpecSchema
 
@@ -114,7 +115,7 @@ def _unit_scale(unit: str) -> float:
 
 
 def _geography(region: str | None, source: str) -> str:
-    if not region or region in {"전국", "대한민국", "한국"}:
+    if not region or region in NATIONAL_REGION_ALIASES:
         return "NATIONAL"
     if any(term in region for term in _LOCAL_TERMS):
         return "LOCAL"

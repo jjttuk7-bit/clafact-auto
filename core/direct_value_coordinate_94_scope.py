@@ -44,9 +44,11 @@ def build_coordinate_94_scope(
     rows: Iterable[Mapping[str, object]],
     *,
     expected_count: int = 94,
+    source_fallbacks: Mapping[str, str] | None = None,
 ) -> DirectValueCoordinate94Scope:
     selected: list[DirectValueCoordinate94Record] = []
     seen: set[str] = set()
+    fallback = source_fallbacks or {}
     for row in rows:
         if _text(row.get("최종실패단계")) != TARGET_FAILURE_STAGE:
             continue
@@ -54,7 +56,7 @@ def build_coordinate_94_scope(
         if not claim_id or claim_id in seen:
             raise ValueError(f"DIRECT_VALUE_COORDINATE_94_CLAIM_NOT_UNIQUE:{claim_id}")
         seen.add(claim_id)
-        source = _text(row.get("원문"))
+        source = _text(row.get("원문")) or _text(fallback.get(claim_id))
         if not source:
             raise ValueError(f"DIRECT_VALUE_COORDINATE_94_SOURCE_MISSING:{claim_id}")
         selected.append(DirectValueCoordinate94Record(

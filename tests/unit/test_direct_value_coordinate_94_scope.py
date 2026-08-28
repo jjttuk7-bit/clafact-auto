@@ -1,6 +1,10 @@
+import csv
+import json
+
 import pytest
 
 from core.direct_value_coordinate_94_scope import build_coordinate_94_scope
+from tools.build_direct_value_coordinate_94_scope import build_scope_artifact
 
 
 def _row(claim_id: str, *, stage: str = "필수 조건 검사") -> dict[str, str]:
@@ -45,3 +49,18 @@ def test_scope_rejects_missing_source_or_claim_id() -> None:
     with pytest.raises(ValueError, match="DIRECT_VALUE_COORDINATE_94_SOURCE_MISSING:C1"):
         build_coordinate_94_scope([missing_source], expected_count=1)
 
+
+def test_scope_tool_writes_auditable_manifest(tmp_path) -> None:
+    input_csv = tmp_path / "evaluation.csv"
+    with input_csv.open("w", encoding="utf-8-sig", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=list(_row("C1")))
+        writer.writeheader()
+        writer.writerow(_row("C1"))
+    output_json = tmp_path / "scope.json"
+
+    manifest = build_scope_artifact(input_csv, output_json, expected_count=1)
+
+    written = json.loads(output_json.read_text(encoding="utf-8"))
+    assert manifest["scope_count"] == 1
+    assert manifest["input_sha256"]
+    assert written["records"][0]["claim_id"] == "C1"

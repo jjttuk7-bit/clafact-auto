@@ -1,0 +1,76 @@
+{
+  "admission_route_counts": {
+    "KOSIS_PIPELINE_ELIGIBLE": 94
+  },
+  "all_claims_terminal": true,
+  "derived_claims": 94,
+  "input_coverage_complete": true,
+  "input_registry_records": 94,
+  "official_api_counts": {
+    "api_provenance_cells": 2,
+    "api_provenance_claims": 2,
+    "catalog_query_attempted": 188,
+    "catalog_query_empty": 0,
+    "catalog_query_failed": 59,
+    "catalog_query_succeeded_nonempty": 129,
+    "metadata_itm_attempted": 2259,
+    "metadata_itm_failed": 5,
+    "metadata_itm_succeeded": 2254,
+    "metadata_prd_attempted": 2254,
+    "metadata_prd_failed": 8,
+    "metadata_prd_succeeded": 2246,
+    "official_value_fetch_hold": 1,
+    "official_value_fetch_pass": 1,
+    "verified_publication_claims": 1
+  },
+  "official_resolution_count": 94,
+  "operational_failure_count": 0,
+  "recovery_action_counts": {
+    "DIRECT": 94
+  },
+  "registry_load_errors": [],
+  "stage_status_counts": {
+    "CALCULATION": {
+      "PASS": 1
+    },
+    "CATALOG_SEARCH": {
+      "PASS": 94
+    },
+    "CLAIM_PARSE": {
+      "PASS": 94
+    },
+    "EVIDENCE_CELL": {
+      "HOLD": 7,
+      "PASS": 2
+    },
+    "HARD_GUARD": {
+      "HOLD": 85,
+      "PASS": 9
+    },
+    "OFFICIAL_VALUE_FETCH": {
+      "HOLD": 1,
+      "PASS": 1
+    },
+    "SEMANTIC_MAPPING": {
+      "PASS": 94
+    },
+    "SEMANTIC_MATCH": {
+      "HOLD": 7,
+      "PASS": 2
+    },
+    "VERDICT": {
+      "PASS": 1
+    }
+  },
+  "terminal_reason_counts": {
+    "AMBIGUOUS_MARGIN": 7,
+    "AS_OF_UNAVAILABLE": 1,
+    "NO_EVIDENCE_COORDINATE_CANDIDATE": 31,
+    "NO_HARD_GUARD_CANDIDATE": 54,
+    "WITHIN_TOLERANCE": 1
+  },
+  "terminal_route_counts": {
+    "AUTO": 1,
+    "HOLD": 93
+  }
+}

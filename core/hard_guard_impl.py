@@ -3,6 +3,7 @@
 import re
 
 from core.claim_dimensions import normalized_dimension_members
+from core.region_aliases import NATIONAL_REGION_ALIASES
 from core.unit_normalizer import compatible_units
 from schemas.candidate import HardGuardResult
 
@@ -21,7 +22,7 @@ def apply_hard_guard(c, x):
     if _population(c, x): rejected += ["POPULATION_DIMENSION_CONFLICT"]
     if c.dimension and "sex" in c.dimension and not _has(x, "\uc131\ubcc4"):
         rejected += ["SEX_DIMENSION_REQUIRED"]
-    if c.region and c.region not in {"\uc804\uad6d", "\ub300\ud55c\ubbfc\uad6d", "\ud55c\uad6d"} and not any(
+    if c.region and c.region not in NATIONAL_REGION_ALIASES and not any(
         _has(x, term) for term in ("\uc2dc\ub3c4", "\uc9c0\uc5ed", "\ud589\uc815", "\uc74d\uba74")
     ):
         rejected += ["REGION_GRANULARITY_CONFLICT"]
