@@ -1,0 +1,384 @@
+{
+  "admission_route": "KOSIS_PIPELINE_ELIGIBLE",
+  "article_id": "A00202",
+  "claim": {
+    "calculation": "DIRECT_VALUE",
+    "claim_id": "claim_8aa30da67bf9f7e7",
+    "comparison": null,
+    "condition": null,
+    "dimension": null,
+    "frequency": "월",
+    "indicator": "실업률",
+    "parse_reason": null,
+    "parse_status": "AUTO_OK",
+    "population": "청년",
+    "region": null,
+    "source_hint": "KOSIS_PIPELINE_ELIGIBLE",
+    "source_sentence": "지난달 실업률은 3.8%로 2022년 1월(4.1%) 이후 가장 높았고, 청년 실업률은 5.9%로 6%에 육박했다.",
+    "time": "2024년 12월",
+    "unit": "%",
+    "value": 5.9
+  },
+  "claim_id": "claim_8aa30da67bf9f7e7",
+  "diagnostic_id": null,
+  "lineage_record": {
+    "child_claim_id": "claim_8aa30da67bf9f7e7",
+    "child_ordinal": 1,
+    "parent_claim_id": "claim_8aa30da67bf9f7e7",
+    "source_sentence": "지난달 실업률은 3.8%로 2022년 1월(4.1%) 이후 가장 높았고, 청년 실업률은 5.9%로 6%에 육박했다.",
+    "target_expression": "5.9%"
+  },
+  "official_resolution": {
+    "candidates": [
+      {
+        "binding_scope_terms": [
+          "15세 이상",
+          "15세 이상 전체"
+        ],
+        "core_item_ids": [
+          "T80"
+        ],
+        "core_item_names": [
+          "실업률"
+        ],
+        "dimension_ids": [
+          "B"
+        ],
+        "dimension_member_codes": {
+          "B": {
+            "계": "0",
+            "남자": "2",
+            "농가": "4",
+            "농가남자": "5",
+            "농가여자": "6",
+            "비농가": "7",
+            "비농가남자": "8",
+            "비농가여자": "9",
+            "여자": "3"
+          }
+        },
+        "dimension_members": {
+          "B": [
+            "계",
+            "남자",
+            "여자",
+            "농가",
+            "농가남자",
+            "농가여자",
+            "비농가",
+            "비농가남자",
+            "비농가여자"
+          ]
+        },
+        "dimension_names": [
+          "성별"
+        ],
+        "end_period": "2026.07",
+        "frequency": "월|분기|년",
+        "item_units": {
+          "T80": "%"
+        },
+        "metadata_status": "OFFICIAL_METADATA_READY",
+        "org_id": "101",
+        "period_ranges": {
+          "년": {
+            "end_period": "2025",
+            "start_period": "2000"
+          },
+          "분기": {
+            "end_period": "2026 2/4",
+            "start_period": "1999 3/4"
+          },
+          "월": {
+            "end_period": "2026.07",
+            "start_period": "1999.06"
+          }
+        },
+        "source_name": "「경제활동인구조사」",
+        "source_stat_id": "OFFICIAL_RECURRING_DOMAIN_BINDING",
+        "start_period": "1999 3/4",
+        "tbl_id": "DT_1DA7001S",
+        "tbl_name": "성별 경제활동인구 총괄",
+        "unit_names": [
+          "천명",
+          "%"
+        ]
+      }
+    ],
+    "catalog_diagnostics": {
+      "attempted_queries": 1,
+      "base_candidate_count": 1,
+      "candidate_count": 1,
+      "catalog_cache_hits": 1,
+      "empty_queries": 0,
+      "failed_queries": 0,
+      "hard_guard_best_candidate_count": 1,
+      "hard_guard_candidate_count": 1,
+      "hard_guard_min_reject_count": 0,
+      "hard_guard_passed_count": 1,
+      "local_candidate_count": 19,
+      "metadata_itm_attempted": 1,
+      "metadata_itm_failed": 0,
+      "metadata_itm_succeeded": 1,
+      "metadata_prd_attempted": 1,
+      "metadata_prd_failed": 0,
+      "metadata_prd_succeeded": 1,
+      "metadata_unavailable": 0,
+      "overlay_candidate_count": 0,
+      "overlay_skipped": 1
+    },
+    "concept": {
+      "canonical_name": "실업률",
+      "concept_id": "C000007",
+      "kosis_search_terms": [],
+      "matched_alias": "실업률",
+      "standard_key": "unemployment_rate",
+      "status": "MATCHED"
+    },
+    "official_author_evidence": null,
+    "verdict": {
+      "calculated_value": 3.8,
+      "calculation_version": "1.0",
+      "claim_id": "claim_8aa30da67bf9f7e7",
+      "claim_schema_version": "1.0",
+      "claim_value": 5.9,
+      "dataset_version": "unversioned",
+      "evidence_cells": [
+        {
+          "canonical_key": "ORG=101|TBL=DT_1DA7001S|ITM=T80|OBJ=B|MEMBER=계|PRD_SE=월|PRD_DE=2024-12",
+          "dimension_codes": {
+            "B": "0"
+          },
+          "dimension_members": {
+            "B": "계"
+          },
+          "itm_id": "T80",
+          "member_code": "계",
+          "obj_id": "B",
+          "org_id": "101",
+          "prd_de": "2024-12",
+          "prd_se": "월",
+          "status": "CONFIRMED",
+          "tbl_id": "DT_1DA7001S",
+          "unit": "%"
+        }
+      ],
+      "evidence_values": [
+        3.8
+      ],
+      "execution_trace": {
+        "calculation_version": "1.0",
+        "claim_id": "claim_8aa30da67bf9f7e7",
+        "claim_schema_version": "1.0",
+        "events": [
+          {
+            "output_ref": null,
+            "reason_code": null,
+            "stage": "CLAIM_PARSE",
+            "status": "PASS"
+          },
+          {
+            "output_ref": null,
+            "reason_code": null,
+            "stage": "SEMANTIC_MAPPING",
+            "status": "PASS"
+          },
+          {
+            "output_ref": null,
+            "reason_code": null,
+            "stage": "CATALOG_SEARCH",
+            "status": "PASS"
+          },
+          {
+            "output_ref": null,
+            "reason_code": null,
+            "stage": "HARD_GUARD",
+            "status": "PASS"
+          },
+          {
+            "output_ref": "margin=1.0",
+            "reason_code": null,
+            "stage": "SEMANTIC_MATCH",
+            "status": "PASS"
+          },
+          {
+            "output_ref": null,
+            "reason_code": null,
+            "stage": "EVIDENCE_CELL",
+            "status": "PASS"
+          },
+          {
+            "output_ref": null,
+            "reason_code": null,
+            "stage": "OFFICIAL_VALUE_FETCH",
+            "status": "PASS"
+          },
+          {
+            "output_ref": null,
+            "reason_code": null,
+            "stage": "CALCULATION",
+            "status": "PASS"
+          },
+          {
+            "output_ref": null,
+            "reason_code": null,
+            "stage": "VERDICT",
+            "status": "PASS"
+          }
+        ],
+        "kosis_catalog_version": "1.0",
+        "matching_version": "1.0",
+        "preprocess_version": "1.0",
+        "route_status": "AUTO",
+        "semantic_standard_version": "1.0"
+      },
+      "explanation": "Claim differs from the official calculation.",
+      "kosis_catalog_version": "1.0",
+      "matching_version": "1.0",
+      "official_value_provenance": [
+        {
+          "content_hash": "0c3d654f1db7e1532f0bbc30a5284469c949648883b0917215a4e98a9595e913",
+          "evidence_key": "ORG=101|TBL=DT_1DA7001S|ITM=T80|OBJ=B|MEMBER=계|PRD_SE=월|PRD_DE=2024-12",
+          "publication": {
+            "content_hash": "7f9823d28868f5e9a4dbf3fbe1dfa27a558237968c9495c716c8bda7389fec10",
+            "coverage_end_period": null,
+            "coverage_start_period": null,
+            "evidence_scope": "PERIOD",
+            "pub_date_text": "조사기준 월 익월",
+            "pub_period": "월",
+            "publication_method_url": "https://www.kostat.go.kr/board.es?act=list&mid=a10301010000&keyField=T&bid=210&keyWord=2024%EB%85%84+12%EC%9B%94+%EB%B0%8F+%EC%97%B0%EA%B0%84+%EA%B3%A0%EC%9A%A9%EB%8F%99%ED%96%A5",
+            "published_at": "2025-01-15",
+            "reference_period": "2024-12",
+            "retrieved_at": "2026-08-28T02:51:57.761826Z",
+            "source_url": "https://www.kostat.go.kr/board.es?mid=a10301010000&bid=210&act=view&list_no=434801&tag=&nPage=1&ref_bid=",
+            "status": "VERIFIED"
+          },
+          "retrieved_at": "2026-08-28T02:51:52.600884Z",
+          "source": "API",
+          "source_url": "https://kosis.kr/openapi/Param/statisticsParameterData.do?method=getList&orgId=101&tblId=DT_1DA7001S&itmId=T80&prdSe=M&startPrdDe=202412&endPrdDe=202412&objL1=0",
+          "value_last_changed_at": "2025-01-02"
+        }
+      ],
+      "preprocess_version": "1.0",
+      "reason_code": "OUTSIDE_TOLERANCE",
+      "record_comparison": null,
+      "route_status": "AUTO",
+      "semantic_standard_version": "1.0",
+      "verdict": "MISMATCH"
+    }
+  },
+  "parent_claim_id": "claim_8aa30da67bf9f7e7",
+  "reason_code": "OUTSIDE_TOLERANCE",
+  "recovery_action": "DIRECT",
+  "sentence_id": "23::claim_8aa30da67bf9f7e7",
+  "slot_audit": {
+    "eligible_for_official_search": true,
+    "entries": [
+      {
+        "required": true,
+        "slot": "indicator",
+        "status": "SOURCE",
+        "value": "실업률"
+      },
+      {
+        "required": true,
+        "slot": "value",
+        "status": "SOURCE",
+        "value": 5.9
+      },
+      {
+        "required": true,
+        "slot": "unit",
+        "status": "SOURCE",
+        "value": "%"
+      },
+      {
+        "required": true,
+        "slot": "time",
+        "status": "SOURCE",
+        "value": "2024년 12월"
+      },
+      {
+        "required": false,
+        "slot": "frequency",
+        "status": "SOURCE",
+        "value": "월"
+      },
+      {
+        "required": false,
+        "slot": "region",
+        "status": "NOT_APPLICABLE",
+        "value": null
+      },
+      {
+        "required": false,
+        "slot": "population",
+        "status": "SOURCE",
+        "value": "청년"
+      },
+      {
+        "required": false,
+        "slot": "dimension",
+        "status": "NOT_APPLICABLE",
+        "value": null
+      },
+      {
+        "required": false,
+        "slot": "comparison",
+        "status": "NOT_APPLICABLE",
+        "value": null
+      },
+      {
+        "required": true,
+        "slot": "calculation",
+        "status": "SOURCE",
+        "value": "DIRECT_VALUE"
+      },
+      {
+        "required": false,
+        "slot": "condition",
+        "status": "NOT_APPLICABLE",
+        "value": null
+      },
+      {
+        "required": false,
+        "slot": "source_hint",
+        "status": "SOURCE",
+        "value": "KOSIS_PIPELINE_ELIGIBLE"
+      }
+    ],
+    "reason_codes": []
+  },
+  "source_sentence": "지난달 실업률은 3.8%로 2022년 1월(4.1%) 이후 가장 높았고, 청년 실업률은 5.9%로 6%에 육박했다.",
+  "stage_results": [
+    {
+      "attempt": 1,
+      "child_claim_id": "claim_8aa30da67bf9f7e7",
+      "code_version": "admission-recovery-v3",
+      "data_version": "claim-schema-v1",
+      "finished_at": "2026-08-28T02:51:57.762825+00:00",
+      "input_hash": "e1e0a719e2ab3c3a2b0546500dd588a76d912d8cbdbad445fd9074afbb47343a",
+      "output_ref": "claim_8aa30da67bf9f7e7",
+      "parent_claim_id": "claim_8aa30da67bf9f7e7",
+      "reason_code": "SINGLE_CLAIM_OR_STORED_RESULT",
+      "stage": "CLAIM_SPLIT",
+      "started_at": "2026-08-28T02:51:57.762825+00:00",
+      "status": "SKIPPED"
+    },
+    {
+      "attempt": 1,
+      "child_claim_id": "claim_8aa30da67bf9f7e7",
+      "code_version": "admission-recovery-v3",
+      "data_version": "claim-schema-v1",
+      "finished_at": "2026-08-28T02:51:57.762825+00:00",
+      "input_hash": "e1e0a719e2ab3c3a2b0546500dd588a76d912d8cbdbad445fd9074afbb47343a",
+      "output_ref": "claim_8aa30da67bf9f7e7",
+      "parent_claim_id": "claim_8aa30da67bf9f7e7",
+      "reason_code": null,
+      "stage": "CLAIM_PARSE",
+      "started_at": "2026-08-28T02:51:57.762825+00:00",
+      "status": "PASS"
+    }
+  ],
+  "terminal_status": "AUTO"
+}

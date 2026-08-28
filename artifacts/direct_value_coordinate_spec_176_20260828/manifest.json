@@ -1,0 +1,47 @@
+{
+  "bundle_manifest_sha256": "e5654748938899742d691b2acfc4f5b331db343131a23c0b96ecff07b54d6ebb",
+  "code_manifest_sha256": "3a4991b5210f219b8e97fa02292459d74d1dc5c4ab8a6aff86ff8470d1b4d982",
+  "data_manifest_sha256": "2ba1d2e161556344f079b75d9c39b515c89498a41a412ff4c31d6d6ae8aa81d0",
+  "input_ledger": "deliverables/CLAFACT_AUTO_8번_직접값_230건_지표구체화18재처리원장_20260828.csv",
+  "input_ledger_sha256": "7097d1068e1c7cf72de202f1bd41b28d3c9c382ef9c0afa0a102f13eeeda9705",
+  "preverification": "artifacts/direct_value_coordinate_spec_176_20260828/preverification.jsonl",
+  "preverification_count": 45,
+  "query_spec_count": 176,
+  "query_specs": "artifacts/direct_value_coordinate_spec_176_20260828/query_specs.jsonl",
+  "readiness_counts": {
+    "COORDINATE_READY": 131,
+    "PRE_VERIFICATION": 45
+  },
+  "ready_count": 131,
+  "ready_registry": "artifacts/direct_value_coordinate_spec_176_20260828/ready_registry.jsonl",
+  "scope_count": 176,
+  "scope_manifest_sha256": "4760bb14c96fdc53827831c62fb6519b36a0d231afdfac922e7394bbbe30158f",
+  "scope_reason_counts": {
+    "AMBIGUOUS_MARGIN": 6,
+    "AS_OF_UNAVAILABLE": 6,
+    "CALCULATION_EVIDENCE_PLAN_UNRESOLVED": 1,
+    "CLAIM_PARSE_UNCERTAIN": 8,
+    "CONTEXT_TARGET_UNRESOLVED": 1,
+    "DIRECT_VALUE_CHANGE_TARGET_MISCLASSIFIED": 2,
+    "FETCH_FAILED": 11,
+    "INDICATOR_MEASURE_FAMILY_AMBIGUOUS": 2,
+    "INDICATOR_UNIT_MEASURE_MISMATCH": 6,
+    "KOSIS_CATALOG_UNAVAILABLE": 25,
+    "KOSIS_METADATA_UNAVAILABLE": 16,
+    "LOW_SEMANTIC_SCORE": 6,
+    "MISSING_REQUIRED_SLOTS:time": 4,
+    "NO_EVIDENCE_COORDINATE_CANDIDATE": 23,
+    "NO_HARD_GUARD_CANDIDATE": 35,
+    "PUBLICATION_FETCH_FAILED": 3,
+    "RELATIVE_TIME_UNRESOLVED": 2,
+    "TARGET_AMBIGUOUS_IN_SOURCE": 1,
+    "TARGET_NOT_FOUND_IN_SOURCE": 4,
+    "TARGET_VALUE_NOT_IN_SOURCE_SENTENCE": 13,
+    "목표 수치 1.9%와 기준 수치 2.1%는 명확하지만, 대명사 '이를'이 가리키는 구체적 지표가 문장에 명시되지 않음": 1
+  },
+  "split_counts": {
+    "FINAL_BLIND": 18,
+    "INTERMEDIATE_VALIDATION": 35,
+    "RULE_DISCOVERY": 123
+  }
+}

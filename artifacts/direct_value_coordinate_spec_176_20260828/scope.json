@@ -1,0 +1,1617 @@
+{
+  "manifest_sha256": "4760bb14c96fdc53827831c62fb6519b36a0d231afdfac922e7394bbbe30158f",
+  "reason_counts": {
+    "AMBIGUOUS_MARGIN": 6,
+    "AS_OF_UNAVAILABLE": 6,
+    "CALCULATION_EVIDENCE_PLAN_UNRESOLVED": 1,
+    "CLAIM_PARSE_UNCERTAIN": 8,
+    "CONTEXT_TARGET_UNRESOLVED": 1,
+    "DIRECT_VALUE_CHANGE_TARGET_MISCLASSIFIED": 2,
+    "FETCH_FAILED": 11,
+    "INDICATOR_MEASURE_FAMILY_AMBIGUOUS": 2,
+    "INDICATOR_UNIT_MEASURE_MISMATCH": 6,
+    "KOSIS_CATALOG_UNAVAILABLE": 25,
+    "KOSIS_METADATA_UNAVAILABLE": 16,
+    "LOW_SEMANTIC_SCORE": 6,
+    "MISSING_REQUIRED_SLOTS:time": 4,
+    "NO_EVIDENCE_COORDINATE_CANDIDATE": 23,
+    "NO_HARD_GUARD_CANDIDATE": 35,
+    "PUBLICATION_FETCH_FAILED": 3,
+    "RELATIVE_TIME_UNRESOLVED": 2,
+    "TARGET_AMBIGUOUS_IN_SOURCE": 1,
+    "TARGET_NOT_FOUND_IN_SOURCE": 4,
+    "TARGET_VALUE_NOT_IN_SOURCE_SENTENCE": 13,
+    "목표 수치 1.9%와 기준 수치 2.1%는 명확하지만, 대명사 '이를'이 가리키는 구체적 지표가 문장에 명시되지 않음": 1
+  },
+  "records": [
+    {
+      "article_id": "A00067",
+      "claim_id": "A00067_3",
+      "current_reason": "KOSIS_CATALOG_UNAVAILABLE",
+      "parent_claim_id": "A00067_3",
+      "source_sentence": "한국수입자동차협회(KAIDA)는 6일 지난해 수입 승용차 신규 등록 대수를 집계한 결과 테슬라 모델 Y가 지난해 모두 1만8717대가 팔리며 수입 승용차 가운데 최고 인기 모델로 꼽혔다고 밝혔다.",
+      "source_sentence_sha256": "dda88535c1ac033ee9be685698c7157d1ec077f6243e53c9d7b0b110d6f449cf",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A00070",
+      "claim_id": "A00070_8",
+      "current_reason": "FETCH_FAILED",
+      "parent_claim_id": "A00070_8",
+      "source_sentence": "7년 전인 2018년까지만 해도 대중 수출액과 대미 수출액 간 격차는 894억500만달러에 달했다.",
+      "source_sentence_sha256": "91eb5cc91918375d1d4a9ea74be49e73e80d4e2818fff1174450cf72c6d1d644",
+      "split_set": "INTERMEDIATE_VALIDATION"
+    },
+    {
+      "article_id": "A00268",
+      "claim_id": "A00268_14",
+      "current_reason": "LOW_SEMANTIC_SCORE",
+      "parent_claim_id": "A00268_14",
+      "source_sentence": "무역 수지도 518억 달러 흑자로 2021년 이후 3년 만에 흑자로 돌아섰다.",
+      "source_sentence_sha256": "da30147a9e288969064486cedc8cf872f252f07b48a05a970c36cf80dec907ab",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A00279",
+      "claim_id": "A00279_23",
+      "current_reason": "FETCH_FAILED",
+      "parent_claim_id": "A00279_23",
+      "source_sentence": "행정안전부는 2024년 주민등록 인구통계를 분석한 결과, 출생자 수가 24만2334명으로 202... 김희래 기자 법무부, 검찰, 고위공직자범죄수사처를 취재합니다.",
+      "source_sentence_sha256": "24ba380cedb058f571ab8d54304de292fb97f1e18c37665dbcaf12d75e2cbe60",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A00279",
+      "claim_id": "A00279_9",
+      "current_reason": "AS_OF_UNAVAILABLE",
+      "parent_claim_id": "A00279_9",
+      "source_sentence": "12월까지 같은 추세가 이어질 경우 작년 한해 출생아 수는 2023년(23만28명) 수준을 넘어서 2015년 이후 9년 만에 출생아 수가 반등하게 된다.",
+      "source_sentence_sha256": "9c2d68dd82d411fa763b396bc6356981d414d175c166116df10698eb21ab89cb",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A00292",
+      "claim_id": "A00292_6",
+      "current_reason": "AS_OF_UNAVAILABLE",
+      "parent_claim_id": "A00292_6",
+      "source_sentence": "통계청의 연간 통계는 아직 나오기 전이지만, 지난 3일 행정안전부의 주민등록 인구 통계에 따르면 작년 출생아 수는 24만2334명으로 9년 만에 처음으로 증가했다.",
+      "source_sentence_sha256": "244ac66a9796a02fa09615306f9df0804d445af64bd1990a617c97cd23137f80",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A00347",
+      "claim_id": "A00347_47",
+      "current_reason": "INDICATOR_MEASURE_FAMILY_AMBIGUOUS",
+      "parent_claim_id": "A00347_47",
+      "source_sentence": "2009년 금융 위기를 겪은 후 금융 위기로 발생한 국채를 2011년부터 축소시키고 있고, 2016년부터는 연간 신규국채 발행이 최대 GDP의 0.35%를 초과하지 못하도록 했다.",
+      "source_sentence_sha256": "c98379766305f5dfc4d6c9c749cd099fda1b62eb872f5641a9f2f0042a7de1f9",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A00353",
+      "claim_id": "A00353_11",
+      "current_reason": "NO_EVIDENCE_COORDINATE_CANDIDATE",
+      "parent_claim_id": "A00353_11",
+      "source_sentence": "지난해부터 8000만원 이상 법인차에 연두색 표지판을 부착하게 한 것도 고가 수입차 판매 감소를 이끈 요인으로 꼽힌다.",
+      "source_sentence_sha256": "b682e43b7f259a3f7750fd280f59dd20218593d4eb37cd4e085000e2a2936069",
+      "split_set": "INTERMEDIATE_VALIDATION"
+    },
+    {
+      "article_id": "A00489",
+      "claim_id": "A00489_18",
+      "current_reason": "NO_EVIDENCE_COORDINATE_CANDIDATE",
+      "parent_claim_id": "A00489_18",
+      "source_sentence": "이미 1월 무역수지는 18억9000만달러의 적자로 돌아섰다.",
+      "source_sentence_sha256": "038cb7fe0feb076aa2a6130e12158daaf5f5ca22a96bbf7e4f054d077fbf74b8",
+      "split_set": "INTERMEDIATE_VALIDATION"
+    },
+    {
+      "article_id": "A00658",
+      "claim_id": "A00658_11",
+      "current_reason": "NO_EVIDENCE_COORDINATE_CANDIDATE",
+      "parent_claim_id": "A00658_11",
+      "source_sentence": "작년 수입액은 1조3600억원어치 정도다.",
+      "source_sentence_sha256": "ea8d4f27cada3c8075295da0cd080663e97ea0877687abe7b51191bcc1b2cd8a",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A00672",
+      "claim_id": "A00672_9",
+      "current_reason": "NO_EVIDENCE_COORDINATE_CANDIDATE",
+      "parent_claim_id": "A00672_9",
+      "source_sentence": "작년 수입액은 1조3600억원어치 정도다.",
+      "source_sentence_sha256": "ea8d4f27cada3c8075295da0cd080663e97ea0877687abe7b51191bcc1b2cd8a",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A00709",
+      "claim_id": "A00709_11",
+      "current_reason": "KOSIS_METADATA_UNAVAILABLE",
+      "parent_claim_id": "A00709_11",
+      "source_sentence": "◇15년 뒤 생산연령인구 3000만명 아래로 하지만 올해부터는 90년대 초반생들도 이미 30세를 넘어 대부분 노동시장에 진출한 상태다.",
+      "source_sentence_sha256": "a853449c759a02f4bbbc086be891cfc19960d93da4e28c1d25b4f377a2054fe9",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A00736",
+      "claim_id": "A00736_7",
+      "current_reason": "AS_OF_UNAVAILABLE",
+      "parent_claim_id": "A00736_7",
+      "source_sentence": null,
+      "source_sentence_sha256": "f30ad1e41de775b08722e7cc716f24f115597c70ef867693d12a50a8433360a8",
+      "split_set": "FINAL_BLIND"
+    },
+    {
+      "article_id": "A00789",
+      "claim_id": "A00789_2",
+      "current_reason": "INDICATOR_UNIT_MEASURE_MISMATCH",
+      "parent_claim_id": "A00789_2",
+      "source_sentence": "HMG그룹은 지난 1월 경기 용인시 처인구 역북동 신대지구 도시개발사업 공동주택 용지를 1813억원에 매입했다.",
+      "source_sentence_sha256": "2c17599f755e792f383fc5137d8bbd835f903235b85cf52bcfc77e8845095aae",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A00840",
+      "claim_id": "A00840_14",
+      "current_reason": "NO_EVIDENCE_COORDINATE_CANDIDATE",
+      "parent_claim_id": "A00840_14",
+      "source_sentence": "생활물가지수는 지난해 10월(1.2%)을 저점으로 꾸준히 오름세를 보이고 있는데, 소비자들이 실제 체감하는 물가 수준이 높아지고 있음을 시사한다.",
+      "source_sentence_sha256": "285a6f25f7e045efff8da52d628c6d9524787d0fb4d33f61400f8e73f3193fa9",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A00872",
+      "claim_id": "A00872_2",
+      "current_reason": "NO_HARD_GUARD_CANDIDATE",
+      "parent_claim_id": "A00872_2",
+      "source_sentence": "9일 인천시에 따르면 지난달 기준 인천시 주민등록인구는 302만7854명으로 집계됐다.",
+      "source_sentence_sha256": "ca058fc0c5cc56d293c392e14aa528a12f78cff8181cac696b1b145fe4e8c86e",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A00922",
+      "claim_id": "A00922_5",
+      "current_reason": "NO_HARD_GUARD_CANDIDATE",
+      "parent_claim_id": "A00922_5",
+      "source_sentence": "청년층 쉬었음 인구가 50만명을 넘어선 것은 2003년 통계 작성 이래 최초다.",
+      "source_sentence_sha256": "0b359ab4a9472d5852c1bf9ee2429e2aa9f44d93fa40db7391992d4b7cbedddb",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A00970",
+      "claim_id": "A00970_20",
+      "current_reason": "NO_EVIDENCE_COORDINATE_CANDIDATE",
+      "parent_claim_id": "A00970_20",
+      "source_sentence": "지난달 ICT 무역 수지는 58억1000만달러 흑자를 기록했다.",
+      "source_sentence_sha256": "3dabce54285e494c67e38222ab5317978324d2eddedb681a4d52c97394b0a3be",
+      "split_set": "INTERMEDIATE_VALIDATION"
+    },
+    {
+      "article_id": "A01037",
+      "claim_id": "A01037_8",
+      "current_reason": "LOW_SEMANTIC_SCORE",
+      "parent_claim_id": "A01037_8",
+      "source_sentence": null,
+      "source_sentence_sha256": "dbc3d6d70cc611ee0391c077fcefc702a1e38a2a003354993ecc238624f629e2",
+      "split_set": "FINAL_BLIND"
+    },
+    {
+      "article_id": "A01149",
+      "claim_id": "A01149_18",
+      "current_reason": "NO_HARD_GUARD_CANDIDATE",
+      "parent_claim_id": "A01149_18",
+      "source_sentence": "지난해 대미수출액(약 61조3533억원)을 넘어서는 규모다.",
+      "source_sentence_sha256": "cf847c3741fd993482cbe1d85aec50a13097df5b8e9dd7c25f13587fa25b9f63",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01176",
+      "claim_id": "A01176_3",
+      "current_reason": "NO_HARD_GUARD_CANDIDATE",
+      "parent_claim_id": "A01176_3",
+      "source_sentence": null,
+      "source_sentence_sha256": "1a58fc37f1ad6c0f5d524623b846056338db21a8bcf5b1ca20ef72b089ee50f5",
+      "split_set": "FINAL_BLIND"
+    },
+    {
+      "article_id": "A01185",
+      "claim_id": "A01185_23",
+      "current_reason": "INDICATOR_UNIT_MEASURE_MISMATCH",
+      "parent_claim_id": "A01185_23",
+      "source_sentence": "올해 1월 기준 광공업생산지수(상승)와 취업지수(회복)를 제외한 8개 지표(서비스업생산지수, 소매판매액지수, 설비투자지수, 건설기성액, 수출액, 수입액, 기업경기실사지수, 소비자기대지수)가 하강 국면에 분포했다.",
+      "source_sentence_sha256": "387fe24192a212c3ce14d7885023a6c59b15107f245f0e55df9e92d86ff99672",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01324",
+      "claim_id": "A01324_6",
+      "current_reason": "NO_EVIDENCE_COORDINATE_CANDIDATE",
+      "parent_claim_id": "A01324_6",
+      "source_sentence": "키움증권의 지난해 국내 주식 위탁 매매 수수료 수입은 총 3697억원이다.",
+      "source_sentence_sha256": "34295f690dfe7b87b0c910c6c6d7d23df04365644fb0caceea71192b4c1ca996",
+      "split_set": "INTERMEDIATE_VALIDATION"
+    },
+    {
+      "article_id": "A01385",
+      "claim_id": "A01385_1",
+      "current_reason": "FETCH_FAILED",
+      "parent_claim_id": "A01385_1",
+      "source_sentence": "지난해 국내 농가 수가 97만4000가구로 집계됐다.",
+      "source_sentence_sha256": "1d36fe65e90c31021b970fb8bceed250f7bea6df0c9e7a5f3f4fbec60211b1ef",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01386",
+      "claim_id": "A01386_5",
+      "current_reason": "NO_EVIDENCE_COORDINATE_CANDIDATE",
+      "parent_claim_id": "A01386_5",
+      "source_sentence": null,
+      "source_sentence_sha256": "bad8de9925e03b0348cc1dc18fe2e5f4351e4e52943c0f7cc990566deebb1785",
+      "split_set": "FINAL_BLIND"
+    },
+    {
+      "article_id": "A01464",
+      "claim_id": "A01464_3",
+      "current_reason": "INDICATOR_UNIT_MEASURE_MISMATCH",
+      "parent_claim_id": "A01464_3",
+      "source_sentence": null,
+      "source_sentence_sha256": "6777eddb5f48b1b10fcb5debd63c8a79f54b89ad5deaad334e8fc369bd6498b2",
+      "split_set": "FINAL_BLIND"
+    },
+    {
+      "article_id": "A01480",
+      "claim_id": "A01480_17",
+      "current_reason": "NO_EVIDENCE_COORDINATE_CANDIDATE",
+      "parent_claim_id": "A01480_17",
+      "source_sentence": "순수출 성장 기여도는 올해 1분기 0.3%포인트로 집계됐다.",
+      "source_sentence_sha256": "d0b756844b783fb6ec87a570c8aaffc84bd1276c674a3f45f49d3d06b8ccf913",
+      "split_set": "INTERMEDIATE_VALIDATION"
+    },
+    {
+      "article_id": "A01539",
+      "claim_id": "A01539_16",
+      "current_reason": "NO_HARD_GUARD_CANDIDATE",
+      "parent_claim_id": "A01539_16",
+      "source_sentence": "3만달러를 넘은 2014년쯤에는 자동차·화학·정유(차화정)가 반도체와 함께 수출을 쌍끌이했다.",
+      "source_sentence_sha256": "a414c90b8303c2561cd8034acea487bee3733624f5c35c7a4de801aa88481084",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01641",
+      "claim_id": "A01641_18",
+      "current_reason": "NO_EVIDENCE_COORDINATE_CANDIDATE",
+      "parent_claim_id": "A01641_18",
+      "source_sentence": "지난해 기업들이 낸 법인세 수입(62조5000억원)과 맞먹는 수준이다.",
+      "source_sentence_sha256": "afbb178b2fc8e245e024deb677e73f903003b836a9a553a0da12a324ecebb839",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01693",
+      "claim_id": "A01693_1",
+      "current_reason": "KOSIS_METADATA_UNAVAILABLE",
+      "parent_claim_id": "A01693_1",
+      "source_sentence": "올해 1분기(1~3월) 성장률이 -0.2%로 뒷걸음질 쳤던 우리 경제가 세계 주요국 중 1분기에 성장이 가장 더뎠던 것으로 나타났다.",
+      "source_sentence_sha256": "bcf08512aa3e1f1e36a5a5623001cc1f1ddd02044dd875c2398591a20b2d4d4f",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01708",
+      "claim_id": "A01708_16",
+      "current_reason": "KOSIS_METADATA_UNAVAILABLE",
+      "parent_claim_id": "A01708_16",
+      "source_sentence": null,
+      "source_sentence_sha256": "8d3fee7f2da65e88b2b6e3d380c76315890b040aed7cf7e4d6a8c20ce92b3ac3",
+      "split_set": "FINAL_BLIND"
+    },
+    {
+      "article_id": "A01723",
+      "claim_id": "A01723_2",
+      "current_reason": "KOSIS_METADATA_UNAVAILABLE",
+      "parent_claim_id": "A01723_2",
+      "source_sentence": "2000년대 후반 잠재성장률이 4% 수준이었음을 고려하면, 20년 만에 반 토막 난 것이다.",
+      "source_sentence_sha256": "5e220689f47f5c272e6ae74e9b3efba0c8d2b9db109dbc4efe976416f99bfd64",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01723",
+      "claim_id": "A01723_6",
+      "current_reason": "LOW_SEMANTIC_SCORE",
+      "parent_claim_id": "A01723_6",
+      "source_sentence": "한국의 잠재성장률은 2007년까지만 해도 4.27%에 달했다.",
+      "source_sentence_sha256": "836de1751ecf76f7cf102b2a3ad457ea3d75db8f966fd3b08588be3a5616352c",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01752",
+      "claim_id": "A01752_5",
+      "current_reason": "AS_OF_UNAVAILABLE",
+      "parent_claim_id": "A01752_5",
+      "source_sentence": "60세 이상 취업자가 많은 보건·사회복지 분야를 중심으로 취업자가 늘면서 올해 1월부터 넉 달째 취업자 증가 폭이 10만명대를 유지했다.",
+      "source_sentence_sha256": "3dc0e62b026f78eac235bc2c23da5e5927048e0edb9a49dd38fc3f3eb3f3f233",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01762",
+      "claim_id": "A01762_4",
+      "current_reason": "NO_EVIDENCE_COORDINATE_CANDIDATE",
+      "parent_claim_id": "A01762_4",
+      "source_sentence": "한국의 1인당 GDP(국내총생산)는 지난해 기준 4926만원이다.",
+      "source_sentence_sha256": "948d7de3f35d31c733084b049ca3b60695eeeb822e37514cb3b2d62f94533c4c",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01798",
+      "claim_id": "A01798_35",
+      "current_reason": "NO_HARD_GUARD_CANDIDATE",
+      "parent_claim_id": "A01798_35",
+      "source_sentence": "올해 1~4월 우리나라는 스페인에 오징어를 2180톤 수출했는데, 작년 같은 기간에는 스페인에 수출한 오징어가 한 마리도 없었다.",
+      "source_sentence_sha256": "00ac90a93ae9cdddb29a483ac687c0e201183b63eedba682e30a511c4cdf66e9",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01894",
+      "claim_id": "A01894_4",
+      "current_reason": "NO_EVIDENCE_COORDINATE_CANDIDATE",
+      "parent_claim_id": "A01894_4",
+      "source_sentence": "저출산고령사회위원회에 따르면 2023년 기준 국내 치매 인구는 124만명이다.",
+      "source_sentence_sha256": "89c57b8174a50f0bb194e8bf80b9bfaf6caa0adace6445fbfbbd1a969b47cc51",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01927",
+      "claim_id": "A01927_15",
+      "current_reason": "PUBLICATION_FETCH_FAILED",
+      "parent_claim_id": "A01927_15",
+      "source_sentence": "이들보다 5년 정도 빠른 1980년대 후반이나 5년 늦은 1990년대 후반에는 연간 출생아 수가 각각 60만명대에 머물렀다.",
+      "source_sentence_sha256": "4048c955332f36669cedbc558761879d88b4be8932b7d7dd45f742330590d47a",
+      "split_set": "INTERMEDIATE_VALIDATION"
+    },
+    {
+      "article_id": "A01927",
+      "claim_id": "A01927_17",
+      "current_reason": "KOSIS_METADATA_UNAVAILABLE",
+      "parent_claim_id": "A01927_17",
+      "source_sentence": "홍석철 서울대 경제학부 교수는 “통상 신혼 부부들이 결혼 후 3년간 아이를 많이 낳는다는 점을 고려하면, 올해는 계속 출생아가 늘어나면서 연간 합계출산율이 무난히 0.8명을 넘길 수 있을 것”이라고 했다.",
+      "source_sentence_sha256": "f62846805b8ecad845777433dcd1b34ff52cffa069d3764f8de188dc04b3eed6",
+      "split_set": "INTERMEDIATE_VALIDATION"
+    },
+    {
+      "article_id": "A01953",
+      "claim_id": "A01953_8",
+      "current_reason": "NO_HARD_GUARD_CANDIDATE",
+      "parent_claim_id": "A01953_8",
+      "source_sentence": "이는 한국제약바이오협회가 집계한 지난해 기술 수출액(61억3300만달러)을 이미 넘어선 것이다.",
+      "source_sentence_sha256": "9d9942a18cbb3dc16e5a0ed2ae8bc4e467c1cd78ceb3832b724dc873ed4591d2",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A02022",
+      "claim_id": "A02022_15",
+      "current_reason": "KOSIS_METADATA_UNAVAILABLE",
+      "parent_claim_id": "A02022_15",
+      "source_sentence": "노동투입이 잠재성장률에 기여하는 정도도 2000년대 초반과 비슷한 30% 수준으로 낮아졌다.",
+      "source_sentence_sha256": "206a098e7469b4e5f79eff668546912c3782b672a44d23e45fdfe3fb87ab3869",
+      "split_set": "INTERMEDIATE_VALIDATION"
+    },
+    {
+      "article_id": "A02179",
+      "claim_id": "A02179_7",
+      "current_reason": "INDICATOR_MEASURE_FAMILY_AMBIGUOUS",
+      "parent_claim_id": "A02179_7",
+      "source_sentence": "특히 아랍에미리트는 2031년까지 GDP의 40%를 AI 산업에서 창출하겠다고 한다.",
+      "source_sentence_sha256": "fec0c86fffde903730d9f2540a1bb8079f56ccb6e631781de0dac34f15dfa5b3",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A02253",
+      "claim_id": "A02253_15",
+      "current_reason": "NO_HARD_GUARD_CANDIDATE",
+      "parent_claim_id": "A02253_15",
+      "source_sentence": null,
+      "source_sentence_sha256": "aa9b40c73ed53b07147e7632aec376df568d4c757fc68d894e5fcc9b32edfa2e",
+      "split_set": "FINAL_BLIND"
+    },
+    {
+      "article_id": "A02254",
+      "claim_id": "A02254_17",
+      "current_reason": "FETCH_FAILED",
+      "parent_claim_id": "A02254_17",
+      "source_sentence": null,
+      "source_sentence_sha256": "3db210bc95f18fb4bb7a0a75ba42a4632b071801746ff332a85976d494ac425f",
+      "split_set": "FINAL_BLIND"
+    },
+    {
+      "article_id": "A02385",
+      "claim_id": "A02385_22",
+      "current_reason": "INDICATOR_UNIT_MEASURE_MISMATCH",
+      "parent_claim_id": "A02385_22",
+      "source_sentence": "이재명 대통령이 취임 닷새 만인 지난달 9일 “라면 한 개에 2000원도 한다는데, 진짜냐”며 요주의 품목으로 라면을 콕 짚어 언급했지만, 라면을 포함한 가공식품 물가는 고공 행진하고 있다.",
+      "source_sentence_sha256": "a3b48a515a20c2d33e7e6680b33e345b3fa5bfaac952fac379899755feab7d45",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A02385",
+      "claim_id": "A02385_32",
+      "current_reason": "NO_HARD_GUARD_CANDIDATE",
+      "parent_claim_id": "A02385_32",
+      "source_sentence": "라면에 계란을 풀어 파는 외식 라면 물가도 지난달 4%나 뛰었다.",
+      "source_sentence_sha256": "c8b13553e28cce723b80e06267e81e86eec75ccfbd2d69c0a336c1c46c4418ad",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A02395",
+      "claim_id": "A02395_19",
+      "current_reason": "KOSIS_METADATA_UNAVAILABLE",
+      "parent_claim_id": "A02395_19",
+      "source_sentence": "2005년 인구조사에서는 남북 이산가족 유무를 물었는데 총 71만5968명의 국민이 “북한에 가족이나 친인척이 있다”고 답했다.",
+      "source_sentence_sha256": "172847717590a51bb4b56d6911dcf71adb4fc8fe003558ca5a80a9ad284c0a6e",
+      "split_set": "INTERMEDIATE_VALIDATION"
+    },
+    {
+      "article_id": "A02631",
+      "claim_id": "A02631_3",
+      "current_reason": "INDICATOR_UNIT_MEASURE_MISMATCH",
+      "parent_claim_id": "A02631_3",
+      "source_sentence": "보고서는 2019∼2024년 국가데이터처 소비자물가지수 분류 항목 중 의식주와 관련 있고 상승률이 높은 15개 항목(식료품, 수도 및 주거 관련 서비스, 음식 서비스 등)을 중점적으로 분석했다.",
+      "source_sentence_sha256": "ef32b49890163337eee4916bac453455c6cd9105da7d331687c6d25faa482c2d",
+      "split_set": "INTERMEDIATE_VALIDATION"
+    },
+    {
+      "article_id": "A02656",
+      "claim_id": "A02656_28",
+      "current_reason": "INDICATOR_UNIT_MEASURE_MISMATCH",
+      "parent_claim_id": "A02656_28",
+      "source_sentence": "이는 지난해 1인 가구 최저생계비(133만원)에 못 미치는 수준이다.",
+      "source_sentence_sha256": "903a62af13798475f3cbcc2de6eff0d494c5e1096d666c01c962a0a63b758bf4",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A02700",
+      "claim_id": "A02700_19",
+      "current_reason": "NO_EVIDENCE_COORDINATE_CANDIDATE",
+      "parent_claim_id": "A02700_19",
+      "source_sentence": "코로나 시기였던 2020년 인구주택총조사의 최종 응답률은 96.3%였다.",
+      "source_sentence_sha256": "68cdf52a7a0e83da184e07e5b3f2b1f160abb16300adf05b49b91e7279e3789f",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A00006",
+      "claim_id": "claim_0236b22fed29bb35",
+      "current_reason": "NO_HARD_GUARD_CANDIDATE",
+      "parent_claim_id": "A00006_11",
+      "source_sentence": "자동차 수출은 하반기 주요 완성차·부품업계 파업 등에 따른 일부 생산 차질 영향으로 전년도와 보합세인 708억 달러(-0.1%)를 기록하였으며, 2년 연속 700억 달러 이상의 호실적을 이어갔다.",
+      "source_sentence_sha256": "722ed5518fa28d93eda979053590061819d5a981d7029cc41af1312ab6103679",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A02421",
+      "claim_id": "claim_052eec638c4dabea",
+      "current_reason": "KOSIS_CATALOG_UNAVAILABLE",
+      "parent_claim_id": "A02421_4",
+      "source_sentence": "작년 연간 아이스크림 수출액은 9150만달러로 1억달러에 근접했다.",
+      "source_sentence_sha256": "dcb68991a0e68a17734d18787d03f6516b1cf5ac8eff30d7b039327d70e24793",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01578",
+      "claim_id": "claim_08456a7c943ec326",
+      "current_reason": "LOW_SEMANTIC_SCORE",
+      "parent_claim_id": "A01578_9",
+      "source_sentence": "이는 자산 총액이 최근 명목 GDP 확정치의 0.5%(올해는 11조6000억원) 이상인 경우 지정되는데, 올해 두나무와 한국앤컴퍼니가 새로 들어오면서 46곳이 됐다.",
+      "source_sentence_sha256": "ad9d2b04197a9b16c3618ca08137a5c9a1fb3390c4f23713a13a704828998e33",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A00202",
+      "claim_id": "claim_0a51bae8271add36",
+      "current_reason": "TARGET_NOT_FOUND_IN_SOURCE",
+      "parent_claim_id": "A00202_26",
+      "source_sentence": "증가폭이 2023년(32만7000명)의 절반 아래로 줄어, 코로나 거리 두기 여파로 취업자 수가 22만명 가까이 감소했던 2020년 이후 최악의 고용 성적표를 기록했다.",
+      "source_sentence_sha256": "de9e85453a2a7a2e0f43171b70f01ba5352f742ff58ec7ff33a4cf282dd80a9f",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01385",
+      "claim_id": "claim_0b82eca204ef02a6",
+      "current_reason": "KOSIS_CATALOG_UNAVAILABLE",
+      "parent_claim_id": "A01385_7",
+      "source_sentence": "농가 인구는 2003년 약 353만명에서 2013년 284만7000명으로 크게 감소했고, 지난해에는 간신히 200만명에 턱걸이할 정도로 가파르게 줄고 있다.",
+      "source_sentence_sha256": "81c8624009db82e07b8d0a472e80e80b42e0b8792877f93672a0e9f49fd85d6d",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A00749",
+      "claim_id": "claim_0d6482ba1fa9a6ab",
+      "current_reason": "NO_HARD_GUARD_CANDIDATE",
+      "parent_claim_id": "A00749_14",
+      "source_sentence": "1990년 64만9000명대였던 출생아 수가 1991년 70만9000명대로 뛰어오른 데 이어, 올해 33세인 1992년생은 출생아 수가 73만명대로 2차 에코 붐 세대 중에서도 가장 많았기 때문이다.",
+      "source_sentence_sha256": "6e0f3faf158a2e2cb9910fb11880acf99dfb0da093a21817c5de0344c6032bf4",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01927",
+      "claim_id": "claim_1014ae0c2e198bd3",
+      "current_reason": "FETCH_FAILED",
+      "parent_claim_id": "A01927_23",
+      "source_sentence": "2000년에 64만명이던 출생아 수는 2001년 56만명으로 줄더니 2002년부터 40만명대로 떨어졌다.",
+      "source_sentence_sha256": "205cb79c7a825154bebf50e3cbe6bef29b3da3addb48398ff5a0e42015f24383",
+      "split_set": "INTERMEDIATE_VALIDATION"
+    },
+    {
+      "article_id": "A01927",
+      "claim_id": "claim_12fae89412f5fe2b",
+      "current_reason": "DIRECT_VALUE_CHANGE_TARGET_MISCLASSIFIED",
+      "parent_claim_id": "A01927_23",
+      "source_sentence": "2000년에 64만명이던 출생아 수는 2001년 56만명으로 줄더니 2002년부터 40만명대로 떨어졌다.",
+      "source_sentence_sha256": "205cb79c7a825154bebf50e3cbe6bef29b3da3addb48398ff5a0e42015f24383",
+      "split_set": "INTERMEDIATE_VALIDATION"
+    },
+    {
+      "article_id": "A00070",
+      "claim_id": "claim_155c3f8814001494",
+      "current_reason": "NO_EVIDENCE_COORDINATE_CANDIDATE",
+      "parent_claim_id": "A00070_11",
+      "source_sentence": "대중 수출은 지난 2010년(1168억3800만달러)부터 1000억달러선을 넘어섰고, 2021년에는 1629억1300만달러까지 늘어났지만 이후 감소세가 눈에 띄었다.",
+      "source_sentence_sha256": "6a4946867755ab1311fe19c1e10084e3b4d1e7e73f426727be05cf275b41de7a",
+      "split_set": "INTERMEDIATE_VALIDATION"
+    },
+    {
+      "article_id": "A01924",
+      "claim_id": "claim_158a2ebc43efac19",
+      "current_reason": "FETCH_FAILED",
+      "parent_claim_id": "A01924_3",
+      "source_sentence": "28일 통계청이 발표한 ‘3월 인구동향’에 따르면, 지난 1분기(1~3월) 합계출산율은 0.82명으로 전년 동분기(0.77명) 대비 0.05명 증가했다.",
+      "source_sentence_sha256": "786d32d1440a09bea58da98f251acbaa62950c19550be55ff9074acc9c059718",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A02681",
+      "claim_id": "claim_16ca1f40e351972d",
+      "current_reason": "TARGET_VALUE_NOT_IN_SOURCE_SENTENCE",
+      "parent_claim_id": "A02681_3",
+      "source_sentence": "국가데이터처가 4일 발표한 '10월 소비자물가동향'에 따르면, 지난달 소비자물가지수는 117.42(2020년=100)로 전년 동월 대비 0.3% 올랐다.",
+      "source_sentence_sha256": "067b786c3f780eff119ecc79c1d5d6278b351d5d23d4edb2af27751c02ffafab",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A00489",
+      "claim_id": "claim_1aa98594f46770a7",
+      "current_reason": "NO_HARD_GUARD_CANDIDATE",
+      "parent_claim_id": "A00489_11",
+      "source_sentence": "작년 12월 수출은 633억달러로 전달보다 11.1%, 전년 같은 달보다 6.6% 뛰었다.",
+      "source_sentence_sha256": "a76506be5fe32af654243716bea2a5d7b1b37c5089a51ec97b07c1758f34bb27",
+      "split_set": "INTERMEDIATE_VALIDATION"
+    },
+    {
+      "article_id": "A02111",
+      "claim_id": "claim_1af97c42f8e79dcb",
+      "current_reason": "AMBIGUOUS_MARGIN",
+      "parent_claim_id": "A02111_6",
+      "source_sentence": "4월만 해도 690만6000명이었던 60세 이상 취업자는 지난달 704만9000명으로 처음으로 700만명을 넘었다.",
+      "source_sentence_sha256": "73c0f076f219d3f09623c72a6433e946127d5cb4652f43a37ac08ed49d6d6911",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A02111",
+      "claim_id": "claim_1c587cb4401c7eed",
+      "current_reason": "CONTEXT_TARGET_UNRESOLVED",
+      "parent_claim_id": "A02111_13",
+      "source_sentence": "고용률도 2011년 36.8%에서 지난달 48.3%로 불었다.",
+      "source_sentence_sha256": "521bfe719694ef7b88c2812d931c21a1718a5821e90e033745f4e4ff65e314f1",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A02647",
+      "claim_id": "claim_1e5abe391f401136",
+      "current_reason": "CLAIM_PARSE_UNCERTAIN",
+      "parent_claim_id": "A02647_16",
+      "source_sentence": "전년 동월 대비 비정규직이 늘어난 산업은 보건사회복지업(21만명), 운수창고업(3만9000명)이었고, 숙박음식업(-5만8000명), 건설업(-5만1000명), 도소매업(-4만1000명), 제조업(-3만2000명)은 감소했다.",
+      "source_sentence_sha256": "4799f74e6938e3ce3b63a11c73d5ca11131d3941f5d7631fda5c955094b03203",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A02096",
+      "claim_id": "claim_1ecdb544aa72ae01",
+      "current_reason": "CLAIM_PARSE_UNCERTAIN",
+      "parent_claim_id": "A02096_19",
+      "source_sentence": "20대 쉬었음 인구는 37만8000명으로 전년 동월 대비 1만2000명 늘었다.",
+      "source_sentence_sha256": "e7ba24eac18876623a2b6ae415cd2c01dc1b745c0ddc11d37e9038722384f6d1",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A02099",
+      "claim_id": "claim_22d76b35abe5866e",
+      "current_reason": "NO_HARD_GUARD_CANDIDATE",
+      "parent_claim_id": "A02099_6",
+      "source_sentence": "지난 1~10일 반도체 수출액은 36억2900만달러로 전년 동월 대비 22% 뛰었다.",
+      "source_sentence_sha256": "fa5d96d62f0357f1ec0f527efa7eaaa086e55b8f9f340500f8c0c82a97a4af0a",
+      "split_set": "INTERMEDIATE_VALIDATION"
+    },
+    {
+      "article_id": "A02633",
+      "claim_id": "claim_23417092da19f631",
+      "current_reason": "AS_OF_UNAVAILABLE",
+      "parent_claim_id": "A02633_6",
+      "source_sentence": "취업자 수 증가 폭은 올해 들어 5월(24만5000명)을 제외하고 매달 10만명대를 맴돌다가 9월 들어 크게 늘었다.",
+      "source_sentence_sha256": "6637f02d6b752ac343adb9a8a7e1c5368c61b438288062aaa0e33bb84cac26ba",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A00692",
+      "claim_id": "claim_297f5d4a6be813a9",
+      "current_reason": "KOSIS_CATALOG_UNAVAILABLE",
+      "parent_claim_id": "A00692_4",
+      "source_sentence": "작년 전체 자동차 부품 수출액은 총 225억4700만달러(약 32조4300억원)로, 이 중 대미 수출 비중(36.5％)이 가장 컸다.",
+      "source_sentence_sha256": "977a1b6bb94f709a6657ab74e654c3c7b4e1561da9c058bd5522ab7741356610",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A00514",
+      "claim_id": "claim_2ca7d994ac25a0f7",
+      "current_reason": "KOSIS_CATALOG_UNAVAILABLE",
+      "parent_claim_id": "A00514_8",
+      "source_sentence": "당시 대규모 추경을 편성해 2008년 4분기 –4.6%까지 추락한 한국 경제성장률을 2010년 6.3%로 ‘V자 반등’을 이뤄내는데 크게 역할을 했다는 평가를 받는다.",
+      "source_sentence_sha256": "838085999e865a06592e46ee57a9dcd73b4fdfb123cdc1f1c34752d4ff685193",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A02558",
+      "claim_id": "claim_2d1e921e3ec4a6fc",
+      "current_reason": "KOSIS_CATALOG_UNAVAILABLE",
+      "parent_claim_id": "A02558_21",
+      "source_sentence": "지난달 비경제활동인구 중 활동 상태를 ‘쉬었음’이라고 응답한 20대는 39만6000명으로 전년 동월 대비 2000명 늘었다.",
+      "source_sentence_sha256": "177ee743c2180b6f9166a529d01a4eedc2e0610389f47a2e0e9145fe723020db",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A00723",
+      "claim_id": "claim_2e73dcbf5b0f952d",
+      "current_reason": "NO_HARD_GUARD_CANDIDATE",
+      "parent_claim_id": "A00723_14",
+      "source_sentence": "여기에 지난달 건설업 취업자 수가 192만1000명을 기록해, 코로나 팬데믹 당시였던 2021년 이후 3년 만에 200만명 아래로 떨어졌다.",
+      "source_sentence_sha256": "70e9790afdf6f55b0e7a1c4272cba6af315ee314bbf94dc6604aa269caa65187",
+      "split_set": "INTERMEDIATE_VALIDATION"
+    },
+    {
+      "article_id": "A00760",
+      "claim_id": "claim_31c94718f1438b78",
+      "current_reason": "MISSING_REQUIRED_SLOTS:time",
+      "parent_claim_id": "A00760_3",
+      "source_sentence": "공정위는 자산총액이 전년도 명목 국내총생산(GDP)의 0.5% 이상(지난해는 10조4000억원)인 기업집단을 ‘상호출자제한 기업집단’으로, 자산 5조원 이상인 경우 ‘공시대상 기업집단’으로 지정한다.",
+      "source_sentence_sha256": "86755bfa59df01916aed240b400202cdb9c645c80fae1dc7afd5287487661c44",
+      "split_set": "INTERMEDIATE_VALIDATION"
+    },
+    {
+      "article_id": "A02202",
+      "claim_id": "claim_333ff0cee64de91c",
+      "current_reason": "TARGET_NOT_FOUND_IN_SOURCE",
+      "parent_claim_id": "A02202_2",
+      "source_sentence": "1인 가구는 2021년 700만 가구를 넘어선 지 3년 만에 800만 가구를 돌파했다.",
+      "source_sentence_sha256": "b4e8f0e70bf37b3f5aa3503a92ef67f31cbc6f28cd49b50e147c14d6aea47391",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A02558",
+      "claim_id": "claim_3375a461ad29e545",
+      "current_reason": "NO_HARD_GUARD_CANDIDATE",
+      "parent_claim_id": "A02558_11",
+      "source_sentence": "반면 국내 산업 중 가장 많은 인력을 고용하는 제조업은 지난달 취업자 수가 441만4000명으로 전년 동월 대비 8만3000명 줄었다.",
+      "source_sentence_sha256": "34a488e4f873ad3c2b3209d5b7bfc464d79de953903adbbdcf302879a5156bbd",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A02258",
+      "claim_id": "claim_33a229c35a60058a",
+      "current_reason": "KOSIS_CATALOG_UNAVAILABLE",
+      "parent_claim_id": "A02258_26",
+      "source_sentence": "올해 1분기 우리나라 성장률은 -0.2%로 역성장했는데, 설비 투자 성장률은 이보다 낮은 -0.4%였다.",
+      "source_sentence_sha256": "9106862a2472e76c82a7d9ffbc26e284ff5e61f6034e87b5c6c6d30f1e5369fd",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01709",
+      "claim_id": "claim_3548667ef4067f27",
+      "current_reason": "KOSIS_CATALOG_UNAVAILABLE",
+      "parent_claim_id": "A01709_31",
+      "source_sentence": "2023년 말 일반 정부 부채는 약 1217조원(GDP의 50.7%)이다.",
+      "source_sentence_sha256": "1a513e161ebf1f62aef5428b1b096a85d9f0acd78487cfd62b7f8b384bda45ed",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A02099",
+      "claim_id": "claim_3a279cee0bf7df85",
+      "current_reason": "RELATIVE_TIME_UNRESOLVED",
+      "parent_claim_id": "A02099_4",
+      "source_sentence": "이 기간 실제 일한 날을 뜻하는 조업일수를 고려한 일평균 수출액은 28억1000만달러로, 작년 같은 기간 조업일수를 고려한 일평균 수출액(24억5000만달러)보다 15.% 늘었다.",
+      "source_sentence_sha256": "33d02037bd24e3ca93767260b20357da1ed5da35ba999c635c83e036d6a625dc",
+      "split_set": "INTERMEDIATE_VALIDATION"
+    },
+    {
+      "article_id": "A00186",
+      "claim_id": "claim_3b4c57d9172bc1c9",
+      "current_reason": "TARGET_VALUE_NOT_IN_SOURCE_SENTENCE",
+      "parent_claim_id": "A00186_9",
+      "source_sentence": "한편, 지난해 현대차·기아 전체 수출 대수는 218만698대, 수출액은 533억6000만달러(약 78조원)로, 2년 연속 수출 200만대, 수출액 500억달러를 이어갔다.",
+      "source_sentence_sha256": "7cf93f3e1f90215194654577a3574d7548d572a5abe01514e51d9873f1f6f128",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01589",
+      "claim_id": "claim_3e2801049ee55e9d",
+      "current_reason": "TARGET_VALUE_NOT_IN_SOURCE_SENTENCE",
+      "parent_claim_id": "A01589_4",
+      "source_sentence": "2일 통계청이 발표한 ‘4월 소비자물가 동향’에 따르면, 지난달 소비자물가 지수는 116.38로 전년 동월 대비 2.1% 올랐다.",
+      "source_sentence_sha256": "d792e2cea37acaaeb52b3a00e2152e09c9b6b592b659457ae34f6b4f9b47e969",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A02633",
+      "claim_id": "claim_3e98d7f3646f6d9b",
+      "current_reason": "AS_OF_UNAVAILABLE",
+      "parent_claim_id": "A02633_4",
+      "source_sentence": "17일 국가데이터처가 발표한 ‘9월 고용동향’에 따르면 지난달 15세 이상 취업자는 2915만4000명으로 전년 동월 대비 31만2000명 증가했다.",
+      "source_sentence_sha256": "675601aa906d906bfa198b2c39fe09889bfb110f07dc00a8d1c8dd9af4774dc6",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01120",
+      "claim_id": "claim_41e97b8114d45aa9",
+      "current_reason": "KOSIS_CATALOG_UNAVAILABLE",
+      "parent_claim_id": "A01120_8",
+      "source_sentence": "지난해 우리나라 자동차 수출액(708억달러) 중에서 대미 수출액은 49%를 웃돌았다.",
+      "source_sentence_sha256": "51ed321d65ed9ab926b8172b72a0ba948bbcd8b7356700629b494f84b8f8cbb7",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A00231",
+      "claim_id": "claim_4292bd4861a1b423",
+      "current_reason": "TARGET_VALUE_NOT_IN_SOURCE_SENTENCE",
+      "parent_claim_id": "A00231_10",
+      "source_sentence": "지난 2022년 폴란드에 48대, 2023년 말레이시아에 18대를 수출하는 등 누적 수출액만 78억달러(약 11조3700억원)에 달한다.",
+      "source_sentence_sha256": "193078691e698aabb8a39580839ed80fdb8251e3fbb06314bc04eafbd485670e",
+      "split_set": "INTERMEDIATE_VALIDATION"
+    },
+    {
+      "article_id": "A01193",
+      "claim_id": "claim_4d7dc9ed0457a5f5",
+      "current_reason": "LOW_SEMANTIC_SCORE",
+      "parent_claim_id": "A01193_11",
+      "source_sentence": "같은 방식으로 비교했을 때 2023년까지만 해도 외국인과 노인 일자리 참여자 증가 규모는 11만8000명으로, 전체 취업자 증가 폭(32만7000명)보다 적었다.",
+      "source_sentence_sha256": "799a9479f7523bf5374fd005080ccfe6435625de6e380cbcaf1639cd00310bb4",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A02203",
+      "claim_id": "claim_4e7f395f77940f8f",
+      "current_reason": "KOSIS_CATALOG_UNAVAILABLE",
+      "parent_claim_id": "A02203_5",
+      "source_sentence": "생활 물가와 소비자물가 차이는 작년 상반기 0.6%포인트에서 하반기 0.1%포인트로 줄었다가 올해 1~5월 0.4%포인트로 다시 확대되는 추세다.",
+      "source_sentence_sha256": "2bde842fc3399a041a7ed85dcc796ec03318200045f7e487e1a737310042ca78",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A00735",
+      "claim_id": "claim_5095c98de43d1375",
+      "current_reason": "목표 수치 1.9%와 기준 수치 2.1%는 명확하지만, 대명사 '이를'이 가리키는 구체적 지표가 문장에 명시되지 않음",
+      "parent_claim_id": "A00735_6",
+      "source_sentence": "하지만 작년 8월 2.1%로 낮췄고, 수출 둔화세가 본격화한 작년 3분기(7~9월) 이후인 작년 11월에는 이를 1.9%로 내려잡았다.",
+      "source_sentence_sha256": "3d457c35eb6a5c09efa1db191532b7072380e5cda5202312651446c1031c3b52",
+      "split_set": "INTERMEDIATE_VALIDATION"
+    },
+    {
+      "article_id": "A02010",
+      "claim_id": "claim_51a6496f4aa68666",
+      "current_reason": "TARGET_VALUE_NOT_IN_SOURCE_SENTENCE",
+      "parent_claim_id": "A02010_4",
+      "source_sentence": "4일 통계청에 따르면 5월 소비자 물가 지수는 116.27(2020년을 100으로 본 상대적 지수)로 전년 동월 대비 1.9% 올랐다.",
+      "source_sentence_sha256": "c4b15a74443039e1bc64f1ea19f9fa091c4b1e4c3a5662f83829121621a08d06",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A02569",
+      "claim_id": "claim_51d22b2304b36c5e",
+      "current_reason": "CLAIM_PARSE_UNCERTAIN",
+      "parent_claim_id": "A02569_31",
+      "source_sentence": "특히 20대 쉬었음 인구는 39만6000명으로 전년 동월 대비 2000명 늘었다.",
+      "source_sentence_sha256": "bf990599f3ee9cb1c0192006017c88d14f750c855506e1f9fa2f925b5fe9ce13",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01737",
+      "claim_id": "claim_535e5c9e6674fa0e",
+      "current_reason": "FETCH_FAILED",
+      "parent_claim_id": "A01737_5",
+      "source_sentence": "지난 1월(13만5000명)부터 4개월 연속으로 취업자 증가폭이 10만명대를 기록한 것이다.",
+      "source_sentence_sha256": "45bbbda34eddeba5bef9cb8e9784fa0d6f2e618f4f4958c303028dfea206c627",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01539",
+      "claim_id": "claim_57da797b1c0ab29f",
+      "current_reason": "KOSIS_CATALOG_UNAVAILABLE",
+      "parent_claim_id": "A01539_13",
+      "source_sentence": "◇반도체로 2만불, 車로 3만불 시대… ‘4만불 엔진’은 안 보여 1만729달러(1994년)→2만162달러(2005년)→3만667달러(2014년). 한국 경제는 1인당 GDP가 1만달러 간격의 허들을 넘을 때마다 확실한 동력을 갖고 있었다.",
+      "source_sentence_sha256": "86fb38944a48dd63702bfc3bd6dbe42e05206a07681bedcad4ca69be147d6365",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01584",
+      "claim_id": "claim_5c09a68c75dde0e2",
+      "current_reason": "TARGET_VALUE_NOT_IN_SOURCE_SENTENCE",
+      "parent_claim_id": "A01584_3",
+      "source_sentence": "2일 통계청이 발표한 ‘4월 소비자물가 동향’에 따르면, 지난달 소비자물가 지수는 116.38로 전년 동월 대비 2.1% 올랐다.",
+      "source_sentence_sha256": "d792e2cea37acaaeb52b3a00e2152e09c9b6b592b659457ae34f6b4f9b47e969",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01565",
+      "claim_id": "claim_5f13c1222537880e",
+      "current_reason": "NO_HARD_GUARD_CANDIDATE",
+      "parent_claim_id": "A01565_13",
+      "source_sentence": "올해 두나무를 포함해 자산총액이 11조6000억원(최근 명목 GDP 확정치의 0.5%) 이상인 기업집단 46곳이 상호출자제한기업집단으로 지정됐다.",
+      "source_sentence_sha256": "0f933384331d804f8e0b1ebfa9789e70166b87b30b96e4076493f34e5a1586b4",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A02661",
+      "claim_id": "claim_5f58fe9138cdce63",
+      "current_reason": "NO_HARD_GUARD_CANDIDATE",
+      "parent_claim_id": "A02661_3",
+      "source_sentence": null,
+      "source_sentence_sha256": "0c8eebe0655a527489ccb780d6af9bcf7f628b868ad3bcc84ae14a12a69c4839",
+      "split_set": "FINAL_BLIND"
+    },
+    {
+      "article_id": "A00621",
+      "claim_id": "claim_67d855f110aaaca9",
+      "current_reason": "MISSING_REQUIRED_SLOTS:time",
+      "parent_claim_id": "A00621_5",
+      "source_sentence": "하지만 ‘양질의 일자리’로 꼽히는 제조업 분야 취업자 수는 5만6000명 줄어든 439만6000명으로 집계됐다.",
+      "source_sentence_sha256": "2c831150639ef9a5880e48630fb22add6164b862bd7ee8da2decd4964f42dfec",
+      "split_set": "INTERMEDIATE_VALIDATION"
+    },
+    {
+      "article_id": "A02701",
+      "claim_id": "claim_68783c5d74281af2",
+      "current_reason": "NO_HARD_GUARD_CANDIDATE",
+      "parent_claim_id": "A02701_3",
+      "source_sentence": null,
+      "source_sentence_sha256": "9a1514ad889c4e057f24b707f1990b449c0e94da7ec8a5c52cad3415e7b36b4c",
+      "split_set": "FINAL_BLIND"
+    },
+    {
+      "article_id": "A01798",
+      "claim_id": "claim_68f111412bb9df44",
+      "current_reason": "NO_HARD_GUARD_CANDIDATE",
+      "parent_claim_id": "A01798_9",
+      "source_sentence": "그런데 1~4월 고등어 수출량은 3만7888톤으로 전년 동월(1만4178톤) 대비 167%나 폭증했다.",
+      "source_sentence_sha256": "18599e0e2ce81660246261aa1f2c08056e787594f65d1f03cdedec894a9e25eb",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A00630",
+      "claim_id": "claim_696fd653e7921dfb",
+      "current_reason": "NO_HARD_GUARD_CANDIDATE",
+      "parent_claim_id": "A00630_16",
+      "source_sentence": null,
+      "source_sentence_sha256": "66d88340b7d680e509a14a43aefbf793930de45d90ae595b969f7d3c6f6d904e",
+      "split_set": "FINAL_BLIND"
+    },
+    {
+      "article_id": "A00185",
+      "claim_id": "claim_6b36a4392062740e",
+      "current_reason": "NO_EVIDENCE_COORDINATE_CANDIDATE",
+      "parent_claim_id": "A00185_3",
+      "source_sentence": "15일 한국수입자동차협회(KAIDA)에 따르면, 작년 수입 승용차 판매량은 26만3288대로 2023년 대비 2.9％ 줄었다.",
+      "source_sentence_sha256": "5bdb28e79b9209f938d42fc28a1817477bfcdf8513eafe72734018530432e815",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01528",
+      "claim_id": "claim_70931b90f2bda6d9",
+      "current_reason": "NO_HARD_GUARD_CANDIDATE",
+      "parent_claim_id": "A01528_6",
+      "source_sentence": "하지만 지난 1분기까지 4개 분기 연속 성장률이 0.1%를 밑돌자, 경기 부양에 추가 재정을 투입할 수 있다고 공식화한 것이다.",
+      "source_sentence_sha256": "fd0d84154497d5822f8ab830d0bd917240999fda86c76b14f7ad6b1158289567",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A02647",
+      "claim_id": "claim_7555330ed60c895a",
+      "current_reason": "NO_EVIDENCE_COORDINATE_CANDIDATE",
+      "parent_claim_id": "A02647_3",
+      "source_sentence": "국가데이터처가 22일 발표한 '2025년 8월 경제활동인구조사 근로형태별 부가조사'에 따르면, 지난 8월 기준 비정규직 근로자는 856만8000명으로 전년 동월 대비 11만 명 증가했다.",
+      "source_sentence_sha256": "f16fc4bc3d60e03b2436b35a50a5b22c2936af67f585a596c17939dee0a159f9",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01989",
+      "claim_id": "claim_7ad81eaa7dd92bd5",
+      "current_reason": "TARGET_VALUE_NOT_IN_SOURCE_SENTENCE",
+      "parent_claim_id": "A01989_15",
+      "source_sentence": "작년 대미 철강 수출액은 35억5000만달러(약 4조9000억원)였다.",
+      "source_sentence_sha256": "e926eb8bc7ec96ff2869af56349420ffdf63ac45c23e1ccf9d3a9fc7a5f86f91",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A02184",
+      "claim_id": "claim_7e26ca8b021dc775",
+      "current_reason": "NO_EVIDENCE_COORDINATE_CANDIDATE",
+      "parent_claim_id": "A02184_9",
+      "source_sentence": "작년에도 대졸 실업률(5.8%)이 고졸(5.1%)을 웃돌았고 올 들어서도 이런 상황이 이어지고 있다.",
+      "source_sentence_sha256": "0e928713e3ba1ee2526a4f049bdb105f697934cbe6005cf3657c7fab116d5ee7",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01584",
+      "claim_id": "claim_7e7c3ca7eabeece5",
+      "current_reason": "TARGET_AMBIGUOUS_IN_SOURCE",
+      "parent_claim_id": "A01584_4",
+      "source_sentence": "올해 들어 소비자물가는 지난 1월(2.2%)부터 2월(2.0%), 3월(2.1%), 그리고 4월까지 넉 달 연속으로 2%대를 유지하고 있다.",
+      "source_sentence_sha256": "c3f86f56501ec291801d5f8be1961fc5101fb4d42fc00d537d2295f5eb38c51a",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01737",
+      "claim_id": "claim_818db34e5f32e0ef",
+      "current_reason": "NO_HARD_GUARD_CANDIDATE",
+      "parent_claim_id": "A01737_15",
+      "source_sentence": "지난달 제조업 취업자는 439만7000명으로 전년 동월 대비 12만4000명 줄었다.",
+      "source_sentence_sha256": "511b59f8e6fc03478d51d4b3849a9c0a565db58451f7c2f12dd2928e1d41f028",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01190",
+      "claim_id": "claim_8553de442b750f6e",
+      "current_reason": "NO_HARD_GUARD_CANDIDATE",
+      "parent_claim_id": "A01190_5",
+      "source_sentence": "소비자물가는 작년 9월(1.6%)부터 12월(1.9%)까지 4개월간 1%대를 유지하다가, 올해 들어 지난 1월(2.2%)과 2월(2%)에 이어 세 달 연속으로 2%대를 기록했다.",
+      "source_sentence_sha256": "0a111ebc77f24b690235c4e484937b8063666f4e9cde5bc0b62891c9988c4462",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A00433",
+      "claim_id": "claim_863eebfa6f331bc6",
+      "current_reason": "NO_HARD_GUARD_CANDIDATE",
+      "parent_claim_id": "A00433_3",
+      "source_sentence": "2일 한국수입자동차협회(KAIDA)에 따르면, 지난해 국내에서 판매된 수입 SUV는 12만7754대로 집계돼 세단(12만6881대)보다 많았다.",
+      "source_sentence_sha256": "eb22c9701b0602e73e38451fb5aec351b7b7d75f624f6b1238c225d5ce4bd077",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01438",
+      "claim_id": "claim_86c3569ecb965994",
+      "current_reason": "KOSIS_CATALOG_UNAVAILABLE",
+      "parent_claim_id": "A01438_17",
+      "source_sentence": null,
+      "source_sentence_sha256": "ed64f3f5f3d22b451af2e7f91063f0f5b7cac0f4710e07b35950192b7fffc995",
+      "split_set": "FINAL_BLIND"
+    },
+    {
+      "article_id": "A01935",
+      "claim_id": "claim_876392cfe0983300",
+      "current_reason": "KOSIS_CATALOG_UNAVAILABLE",
+      "parent_claim_id": "A01935_13",
+      "source_sentence": "올해 내수의 성장률 기여도는 0.8%포인트, 순수출 성장률 기여도는 0%포인트 정도로 봤다.",
+      "source_sentence_sha256": "62fe1754cc9985f14f3b6cb042230227120543815a2867a9d53a8366e1eadfad",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A00202",
+      "claim_id": "claim_8aa30da67bf9f7e7",
+      "current_reason": "AMBIGUOUS_MARGIN",
+      "parent_claim_id": "A00202_23",
+      "source_sentence": "지난달 실업률은 3.8%로 2022년 1월(4.1%) 이후 가장 높았고, 청년 실업률은 5.9%로 6%에 육박했다.",
+      "source_sentence_sha256": "e1e0a719e2ab3c3a2b0546500dd588a76d912d8cbdbad445fd9074afbb47343a",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A02421",
+      "claim_id": "claim_8cae8d34eacd941c",
+      "current_reason": "NO_HARD_GUARD_CANDIDATE",
+      "parent_claim_id": "A02421_1",
+      "source_sentence": "농림축산식품부는 6일 올해 상반기 아이스크림 수출액이 6550만달러(894억원)를 기록했다고 밝혔다.",
+      "source_sentence_sha256": "6fb952f9863d6475c50cc45f10f5ef39bc5daa890ddc27b38c6df848d54edc1c",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A02617",
+      "claim_id": "claim_9560077fad71b3bd",
+      "current_reason": "TARGET_VALUE_NOT_IN_SOURCE_SENTENCE",
+      "parent_claim_id": "A02617_2",
+      "source_sentence": "9일 국회 보건복지위원회 소속 김선민(조국혁신당) 의원이 국가데이터처 자료를 분석한 결과 인구 감소 지역으로 지정된 전국 89개 시군구의 지난해 자살률은 인구 10만명당 36.3명이었다.",
+      "source_sentence_sha256": "1ea3212814e6ff6d2c6ff256e5c8804a76a4baee5d1306fe400b9ffff11a9c50",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01903",
+      "claim_id": "claim_98c3281f01004e9b",
+      "current_reason": "NO_EVIDENCE_COORDINATE_CANDIDATE",
+      "parent_claim_id": "A01903_6",
+      "source_sentence": "지난해 기준 65세 이상 연금 소득자의 월평균 연금 소득은 70~80만원 수준으로, 같은 해 1인 가구 월 최저 생계비(134만원)에 못 미친다는 설명이다.",
+      "source_sentence_sha256": "3c68e8a5e13be0d39c1f4e86a17816f464e2b3cd72c9f6387623e93140d2b653",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01455",
+      "claim_id": "claim_9db81e638a810385",
+      "current_reason": "TARGET_VALUE_NOT_IN_SOURCE_SENTENCE",
+      "parent_claim_id": "A01455_7",
+      "source_sentence": "1일 관세청은 이달 1~20일 대미 수출이 작년 같은 기간과 비교해 14.3% 급감한 61억8200만달러(약 8조7700억원)를 나타냈다고 밝혔다.",
+      "source_sentence_sha256": "6c57fa969cf346987d32d2d37232104236cd8c880fa413c4952379c25903c085",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A00838",
+      "claim_id": "claim_9e3fa367e9e40c46",
+      "current_reason": "KOSIS_METADATA_UNAVAILABLE",
+      "parent_claim_id": "A00838_3",
+      "source_sentence": "고용노동부가 사업체 5만여 곳을 대상으로 조사한 결과에 따르면 지난해 우리나라 근로자 월평균 명목임금은 407만9000원이고, 물가 수준을 고려한 실질임금은 월평균 357만3000원이다.",
+      "source_sentence_sha256": "67c1df4712e239d231b661e93ad1b084f196e427fbf2229e75c95aac09a646c2",
+      "split_set": "INTERMEDIATE_VALIDATION"
+    },
+    {
+      "article_id": "A01709",
+      "claim_id": "claim_a2739266c650400b",
+      "current_reason": "CLAIM_PARSE_UNCERTAIN",
+      "parent_claim_id": "A01709_28",
+      "source_sentence": "2023년 말 약 1127조원으로 국내총생산(GDP)의 46.9%다.",
+      "source_sentence_sha256": "242ce912e31cfa566a31dd77a08a6c9280869702ad087965ebcccb366fb93a61",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A02558",
+      "claim_id": "claim_a39c95dc02922b4e",
+      "current_reason": "NO_HARD_GUARD_CANDIDATE",
+      "parent_claim_id": "A02558_9",
+      "source_sentence": "고령 돌봄 수요 확대 등에 따라 지난달 보건·사회복지서비스업 취업자 수는 323만4000명으로 전년 동월 대비 21만6000명 증가했다.",
+      "source_sentence_sha256": "1784f2b8437be411cd430e12c499a70177d2a59f0f2b9179e447567726e6c778",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01385",
+      "claim_id": "claim_a3d2eacdeae596da",
+      "current_reason": "NO_HARD_GUARD_CANDIDATE",
+      "parent_claim_id": "A01385_5",
+      "source_sentence": "전국 농가 수는 1970년 약 248만3000가구였지만, 1984년 약 197만 3000가구로 처음 200만 가구 아래로 떨어진 뒤 2023년에는 100만 가구 선도 깨졌다.",
+      "source_sentence_sha256": "9f784e49db5da742a7f2d7eb4a3a04dff728ab532e6575f210fb88a8dff6fb37",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A00749",
+      "claim_id": "claim_a4c35c85011066cd",
+      "current_reason": "NO_HARD_GUARD_CANDIDATE",
+      "parent_claim_id": "A00749_24",
+      "source_sentence": "출생아 수는 1995년생(69만1226명)부터 60만명대로 내려앉고, 2001년생은 50만명대(55만9934명), 2002년생(49만6911명)부터는 40만명대로 줄어든다.",
+      "source_sentence_sha256": "464dd1355bd9e9178c05ff6df36c80dd29c60ed2344e116b0764b9bcc9936fde",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A02184",
+      "claim_id": "claim_a8ea1441d888bb96",
+      "current_reason": "FETCH_FAILED",
+      "parent_claim_id": "A02184_12",
+      "source_sentence": "작년까지만 해도 전문대 졸업자 실업률(4.8%)이 고졸 실업률(5.1%)보다 낮았다.",
+      "source_sentence_sha256": "1fab150ae67242d8e1ebfcc2c851d74db8c569009c82ec52367ae03a62d77a49",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01924",
+      "claim_id": "claim_a91758e1b4b33569",
+      "current_reason": "CALCULATION_EVIDENCE_PLAN_UNRESOLVED",
+      "parent_claim_id": "A01924_9",
+      "source_sentence": "분기별 출생아 수가 6만5000명을 넘어선 것 자체도 지난 2022년 1분기(6만8339명) 이후 3년 만이다.",
+      "source_sentence_sha256": "4785e10da04da2de8a9433994e9f15d3906ea36a5c5915a2262c2199c0552539",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A02375",
+      "claim_id": "claim_a9e9a18c31e048f0",
+      "current_reason": "TARGET_VALUE_NOT_IN_SOURCE_SENTENCE",
+      "parent_claim_id": "A02375_3",
+      "source_sentence": "2일 통계청이 발표한 ‘6월 소비자 물가 동향’에 따르면, 지난달 소비자물가 지수는 116.31(2020년=100)로 작년 동월 대비 2.2% 올랐다.",
+      "source_sentence_sha256": "ad0ef7b820d9d275eca70f25a7287629c65449c25e8d5ee0d45be3db27431532",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A00751",
+      "claim_id": "claim_ab7eebfc50678e82",
+      "current_reason": "CLAIM_PARSE_UNCERTAIN",
+      "parent_claim_id": "A00751_27",
+      "source_sentence": "실업률은 4% 수준이고, 작년 12월에는 일자리 25만개가 새로 만들어졌다.",
+      "source_sentence_sha256": "7e1f32deee4760a4998aa5254c140a4056c96e8159913ccb8ad1194be9e67b9f",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01385",
+      "claim_id": "claim_ac272991918f1c8e",
+      "current_reason": "NO_HARD_GUARD_CANDIDATE",
+      "parent_claim_id": "A01385_2",
+      "source_sentence": "국내 농가 수는 지난 2023년 99만9000가구를 기록하며 처음으로 100만 가구 아래로 떨어진 이후 하락세가 지속되고 있다.",
+      "source_sentence_sha256": "efd870c2ddb57ed61c6f43010a134479b63c83eb390dea48b6cfe5af433611f7",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A02385",
+      "claim_id": "claim_accf2f7d9058e976",
+      "current_reason": "KOSIS_CATALOG_UNAVAILABLE",
+      "parent_claim_id": "A02385_25",
+      "source_sentence": "통계청이 집계하는 가공식품 품목 73개 가운데 라면과 초콜릿(20.4%), 고추장(14.2%), 김치(14.2%), 빵(6.4%) 등 62개 가격이 올라 지난달 가공식품 물가는 4.6%나 뛰었다.",
+      "source_sentence_sha256": "c33c4650d3a6784db206556b187dc9d06bdb55affb8182edc6ba4a7d50562d4a",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A02638",
+      "claim_id": "claim_afe4998fc4e1a479",
+      "current_reason": "KOSIS_METADATA_UNAVAILABLE",
+      "parent_claim_id": "A02638_7",
+      "source_sentence": "지난달 20대 고용률은 60.7%로 전체 고용률(63.7%)보다 3%포인트 낮았다.",
+      "source_sentence_sha256": "6d6e4929a3481c572b41e3145d8b05343b1d4b116eedc2fc7d33de2fe7a6ce10",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01953",
+      "claim_id": "claim_b0c618819d2bd081",
+      "current_reason": "KOSIS_METADATA_UNAVAILABLE",
+      "parent_claim_id": "A01953_7",
+      "source_sentence": "키움증권은 올해 5월 19일 기준 국내 제약 바이오 기술 수출액이 62억달러(약 8조5500억원)에 달했다고 최근 밝혔다.",
+      "source_sentence_sha256": "2bdf7e055e7005600e2db1728da03384213846623f2c627e706c826efeffafa7",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A00353",
+      "claim_id": "claim_b256cf2d4da2d9f2",
+      "current_reason": "KOSIS_CATALOG_UNAVAILABLE",
+      "parent_claim_id": "A00353_3",
+      "source_sentence": "28일 한국수입자동차협회(KAIDA)에 따르면 작년 1~12월 1억원이 넘는 수입차는 총 6만2520대가 판매됐다.",
+      "source_sentence_sha256": "39396c5b1ca49cfc27f88cf4809408d755068d486c5f6e4b2814b5dfde00df99",
+      "split_set": "INTERMEDIATE_VALIDATION"
+    },
+    {
+      "article_id": "A00368",
+      "claim_id": "claim_b50c19825fa9649a",
+      "current_reason": "AMBIGUOUS_MARGIN",
+      "parent_claim_id": "A00368_5",
+      "source_sentence": "청년 고용률이 45% 아래로 떨어진 건 코로나가 한창 기승하던 2021년 5월(44.4%) 이후 43개월 만이다.",
+      "source_sentence_sha256": "a36b923ff4b4d93b7f03016c6d85de2a627e31ab994e7e93d6fac317f743c96b",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A00692",
+      "claim_id": "claim_b667efa0aa57cc9a",
+      "current_reason": "DIRECT_VALUE_CHANGE_TARGET_MISCLASSIFIED",
+      "parent_claim_id": "A00692_3",
+      "source_sentence": "대미 수출액은 2021년 69억1200만달러에서 2022년 80억3000만달러, 2023년 80억8700만달러로 늘어왔다.",
+      "source_sentence_sha256": "2574e023fcd0bf4c52df1750c63f6e15532e7f07ca35f3dc60e0ee572d4a30ad",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A00308",
+      "claim_id": "claim_b771764a1b4cbdfa",
+      "current_reason": "LOW_SEMANTIC_SCORE",
+      "parent_claim_id": "A00308_33",
+      "source_sentence": "1990년대까지 두 자릿수 성장률을 보였던 한국의 경제성장률은 2000년대 들어선 5%대, 2010년대엔 3%대, 2020년대 이후엔 2%대로 떨어지면서 피크 코리아 주장이 강해지고 있다.",
+      "source_sentence_sha256": "4672a0bc884932d50f8afe244fde2eac67054d400d93410d658268377572981e",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A00312",
+      "claim_id": "claim_bca90962953a18c9",
+      "current_reason": "KOSIS_METADATA_UNAVAILABLE",
+      "parent_claim_id": "A00312_11",
+      "source_sentence": null,
+      "source_sentence_sha256": "17e73278e25a7e695bb287be5c61e9bd25ff26eeaeeeab2f727c9e5ad74a9cd3",
+      "split_set": "FINAL_BLIND"
+    },
+    {
+      "article_id": "A01359",
+      "claim_id": "claim_bf069e7a5b2482e3",
+      "current_reason": "NO_HARD_GUARD_CANDIDATE",
+      "parent_claim_id": "A01359_7",
+      "source_sentence": "지난 1분기 25~34세 인구는 697만6000명으로, 작년 1분기(697만7000명)와 비슷했다.",
+      "source_sentence_sha256": "f0b31b5d5656369eb288d31e48550f854861031abc1dc5be51d2238336de750d",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A00308",
+      "claim_id": "claim_c15918a1987e652a",
+      "current_reason": "RELATIVE_TIME_UNRESOLVED",
+      "parent_claim_id": "A00308_3",
+      "source_sentence": "성장률이 3개 분기 연속으로 0.1% 이하를 기록한 것은 외환 위기 직격탄을 맞은 1997년 4분기(-0.6%), 1998년 1분기(-6.7%), 2분기(-0.8%) 이후 26년 만에 처음이다.",
+      "source_sentence_sha256": "f432102e7a60f93093cf61464f340b0cdf03c1115df91509a29ee4654452e60d",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01254",
+      "claim_id": "claim_c320d346f775fb73",
+      "current_reason": "TARGET_VALUE_NOT_IN_SOURCE_SENTENCE",
+      "parent_claim_id": "A01254_41",
+      "source_sentence": "작년 남성 일반 혼인율은 9.9건으로 그해 혼인 건수(22만2412건)를 15세 이상 남성 인구(2245만9000명)로 나눈 후 1000을 곱한 값이다.",
+      "source_sentence_sha256": "979bcf15be18065a75aad2877d916b4737936e7c10e968b20e8178dc01710095",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01822",
+      "claim_id": "claim_c598b89c89778fed",
+      "current_reason": "KOSIS_METADATA_UNAVAILABLE",
+      "parent_claim_id": "A01822_6",
+      "source_sentence": null,
+      "source_sentence_sha256": "6e1cf6669bcd96b779a43dea2ccb5c56bcff40258d40a17c3020c38bf13c143f",
+      "split_set": "FINAL_BLIND"
+    },
+    {
+      "article_id": "A01947",
+      "claim_id": "claim_c7cdbd6b0386dfbf",
+      "current_reason": "TARGET_VALUE_NOT_IN_SOURCE_SENTENCE",
+      "parent_claim_id": "A01947_22",
+      "source_sentence": "관세청은 5월 1~20일 대미(對美) 수출액이 작년 같은 기간보다 14.6% 급감한 52억5400만달러(약 7조2900억원)였다고 집계했다.",
+      "source_sentence_sha256": "ff3be9bb38f01194ebe74db98f35d4a8d598d99157d506e61e6210a0ddec97d6",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01565",
+      "claim_id": "claim_c91a83f4d40b12ab",
+      "current_reason": "NO_HARD_GUARD_CANDIDATE",
+      "parent_claim_id": "A01565_13",
+      "source_sentence": "올해 두나무를 포함해 자산총액이 11조6000억원(최근 명목 GDP 확정치의 0.5%) 이상인 기업집단 46곳이 상호출자제한기업집단으로 지정됐다.",
+      "source_sentence_sha256": "0f933384331d804f8e0b1ebfa9789e70166b87b30b96e4076493f34e5a1586b4",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01285",
+      "claim_id": "claim_cafe56bb76521bbb",
+      "current_reason": "NO_EVIDENCE_COORDINATE_CANDIDATE",
+      "parent_claim_id": "A01285_1",
+      "source_sentence": "지난달 청년 실업률이 7% 중반까지 치솟아 코로나 대유행으로 실업률이 10%까지 치솟았던 2021년 이후 4년 만에 가장 높았다.",
+      "source_sentence_sha256": "f0e430837cf9868264b9909d23b8915a30cd80fa2f6998fd49ac7122ed4a3d05",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A00195",
+      "claim_id": "claim_cbad041451547ab2",
+      "current_reason": "FETCH_FAILED",
+      "parent_claim_id": "A00195_11",
+      "source_sentence": "연간 경제성장률이 3~4%에 달하던 시절은 아련하고, 지금은 1% 성장률에 머물러 있다.",
+      "source_sentence_sha256": "96078fb2dd5e6b5d36428507a2e6f7fb904fd4aadf642453d56f640341169465",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A02022",
+      "claim_id": "claim_cc17969f6e1ae43c",
+      "current_reason": "KOSIS_CATALOG_UNAVAILABLE",
+      "parent_claim_id": "A02022_18",
+      "source_sentence": "우리나라 역시 GDP 대비 정부 부채 비율이 2000년부터 2023년까지 34.6%포인트 늘었는데, 고령화와 관련이 높은 사회수혜금(44.5%포인트), 사회보장현물(49.8%) 지출이 큰 영향을 끼쳤다.",
+      "source_sentence_sha256": "b55604b271a27ba2dfd51976da51882b863a2d9ce04300864e4df1cd9718ba10",
+      "split_set": "INTERMEDIATE_VALIDATION"
+    },
+    {
+      "article_id": "A02647",
+      "claim_id": "claim_cce2f043f3f0e786",
+      "current_reason": "NO_HARD_GUARD_CANDIDATE",
+      "parent_claim_id": "A02647_16",
+      "source_sentence": "전년 동월 대비 비정규직이 늘어난 산업은 보건사회복지업(21만명), 운수창고업(3만9000명)이었고, 숙박음식업(-5만8000명), 건설업(-5만1000명), 도소매업(-4만1000명), 제조업(-3만2000명)은 감소했다.",
+      "source_sentence_sha256": "4799f74e6938e3ce3b63a11c73d5ca11131d3941f5d7631fda5c955094b03203",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01111",
+      "claim_id": "claim_cd57273d71240241",
+      "current_reason": "TARGET_VALUE_NOT_IN_SOURCE_SENTENCE",
+      "parent_claim_id": "A01111_14",
+      "source_sentence": "통계청이 이날 처음으로 공개한 어머니 연령별 출산율 자료에 따르면, 지난 1월 30~34세 여성 1000명당 출생아 수를 뜻하는 30대 초반 출산율은 81.1명을 기록했다.",
+      "source_sentence_sha256": "2ebebcf3ee214d341936af9dde391fd7093083345eb757dfeb88c7090f81588a",
+      "split_set": "INTERMEDIATE_VALIDATION"
+    },
+    {
+      "article_id": "A00526",
+      "claim_id": "claim_cdacc78d98fd1e6b",
+      "current_reason": "KOSIS_METADATA_UNAVAILABLE",
+      "parent_claim_id": "A00526_14",
+      "source_sentence": null,
+      "source_sentence_sha256": "47779f7afc40029f523bf980edab5058744d778a2fa928e5ac27bb32629a75ea",
+      "split_set": "FINAL_BLIND"
+    },
+    {
+      "article_id": "A02564",
+      "claim_id": "claim_ce084f39d9613e94",
+      "current_reason": "KOSIS_CATALOG_UNAVAILABLE",
+      "parent_claim_id": "A02564_5",
+      "source_sentence": null,
+      "source_sentence_sha256": "ec952c889e99f700fb185e1fcf0693b11a76bc0dd4fd429184b917c879253745",
+      "split_set": "FINAL_BLIND"
+    },
+    {
+      "article_id": "A02680",
+      "claim_id": "claim_ce14765a78a0675e",
+      "current_reason": "KOSIS_CATALOG_UNAVAILABLE",
+      "parent_claim_id": "A02680_2",
+      "source_sentence": "3일 국가데이터처의 경제활동인구조사 마이크로데이터를 분석한 결과에 따르면, 지난 9월 기준 국내 부업자 수는 67만9367명으로 지난해 9월(65만5475명)보다 2만4000명가량 늘었다.",
+      "source_sentence_sha256": "fdce51fced082c95207f6ae4c7b5da00a83f2d67793a6b345dfff93ef341e448",
+      "split_set": "INTERMEDIATE_VALIDATION"
+    },
+    {
+      "article_id": "A00849",
+      "claim_id": "claim_d16538d7381cefb2",
+      "current_reason": "NO_EVIDENCE_COORDINATE_CANDIDATE",
+      "parent_claim_id": "A00849_11",
+      "source_sentence": "작년 1억원 이상 수입차에서 가장 인기 있는 모델 5개 중 SUV가 3개, 세단은 1개였다.",
+      "source_sentence_sha256": "72e0198da407dc4a285be79a91cf5686daeb2810839e128022f2a656fd12d1f7",
+      "split_set": "INTERMEDIATE_VALIDATION"
+    },
+    {
+      "article_id": "A00922",
+      "claim_id": "claim_d1831985171d074b",
+      "current_reason": "FETCH_FAILED",
+      "parent_claim_id": "A00922_4",
+      "source_sentence": "◇‘쉬었음’ 청년 50만명 넘어 12일 통계청은 ‘2월 고용 동향’에서 지난달 15~29세 청년층의 ‘쉬었음’ 인구가 50만4000명으로 전년 같은 달 대비 6만1000명 늘었다고 밝혔다.",
+      "source_sentence_sha256": "8d9940b20c6bddbaf389bf03745011bf1b6a74e623b6245f24848d95880bc695",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01480",
+      "claim_id": "claim_d3cfc35992f45b90",
+      "current_reason": "KOSIS_METADATA_UNAVAILABLE",
+      "parent_claim_id": "A01480_28",
+      "source_sentence": "비상 계엄 파문 이전인 작년... 3분기 연속 제로 성장… 현실이 된 '피크 코리아' -0.2%(2024년 2분기)→0.1%(3분기)→0.1%(4분기) 한국 경제성장률이 3개 분기 연속으로 0% 안팎을 기록했다.",
+      "source_sentence_sha256": "c370b5e9b7fb79ac88c2bbcf290a1641876dec6725d77fee4a04432258884385",
+      "split_set": "INTERMEDIATE_VALIDATION"
+    },
+    {
+      "article_id": "A00006",
+      "claim_id": "claim_d4c994a8c934e1ea",
+      "current_reason": "TARGET_NOT_FOUND_IN_SOURCE",
+      "parent_claim_id": "A00006_9",
+      "source_sentence": "◇반도체, 자동차가 이끌고 바이오, 농수산, 화장품 등도 고르게 증가 품목별로는 최대 수출품목인 반도체가 43.9% 증가한 1419억 달러를 기록, 2023년 11월 이후 14개월 연속 증가 흐름을 이어가면서 기존 최대 실적인 2022년 1292억 달러를 2년 만에 경신했다.",
+      "source_sentence_sha256": "9006003ec2b16249ce7ad3d8f396d12a903c1da0bbc7e7a52da66e92f2733b19",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A02647",
+      "claim_id": "claim_dfffd1ef43518eee",
+      "current_reason": "TARGET_NOT_FOUND_IN_SOURCE",
+      "parent_claim_id": "A02647_8",
+      "source_sentence": "성별로는 남자 비정규직이 365만 명으로 전년동월대비 3만 5000명 증가했다.",
+      "source_sentence_sha256": "b9c4c5e826b12676036eec4025904ef43a16b5a554ca0dc283896222f6693959",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01359",
+      "claim_id": "claim_e14952291591b135",
+      "current_reason": "KOSIS_CATALOG_UNAVAILABLE",
+      "parent_claim_id": "A01359_5",
+      "source_sentence": "25~34세 취업자는 코로나가 시작된 지난 2020년 2분기(-6만명)부터 2021년 1분기(-5만4000명)까지 줄다, 2021년 2분기(9만5000명)부터 작년 4분기(2000명)까지 늘었다.",
+      "source_sentence_sha256": "a0273bafb92daf8646bd86f5ed542a6b95079618b70d0e4890d753bcd02c6ac7",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A00751",
+      "claim_id": "claim_e2ed9bf16de852a0",
+      "current_reason": "NO_HARD_GUARD_CANDIDATE",
+      "parent_claim_id": "A00751_27",
+      "source_sentence": "실업률은 4% 수준이고, 작년 12월에는 일자리 25만개가 새로 만들어졌다.",
+      "source_sentence_sha256": "7e1f32deee4760a4998aa5254c140a4056c96e8159913ccb8ad1194be9e67b9f",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A02558",
+      "claim_id": "claim_e348805be97e11ca",
+      "current_reason": "NO_EVIDENCE_COORDINATE_CANDIDATE",
+      "parent_claim_id": "A02558_14",
+      "source_sentence": "지난달 건설업 취업자 수도 196만명으로 전년 동월 대비 9만7000명 감소하며 200만명을 밑돌았다.",
+      "source_sentence_sha256": "f9c466cfd1a3c994b63e0961be0adf8b16cc26bbd7d356b930b986a9723efc34",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A02416",
+      "claim_id": "claim_e42477f5b7337259",
+      "current_reason": "KOSIS_CATALOG_UNAVAILABLE",
+      "parent_claim_id": "A02416_14",
+      "source_sentence": "◇“추경은 급한 불 끄는 소화기… 내수 살릴 진짜 대책 필요\" 정부가 올해 두 번째 추가경정예산을 마련하고 4일 정부안보다 1조원 넘게 불어난 2차 추경이 국회 문턱을 넘었지만, 추경으로 인한 올해 성장률 상승 폭은 0.1~0.2%포인트에 그칠 것이란 관측이 나온다.",
+      "source_sentence_sha256": "b452023cbf5de27eadcf540f878b2354e478c806e65776eb58dd9d98d1cfe88c",
+      "split_set": "INTERMEDIATE_VALIDATION"
+    },
+    {
+      "article_id": "A02184",
+      "claim_id": "claim_e4383ee9b65c6c52",
+      "current_reason": "AMBIGUOUS_MARGIN",
+      "parent_claim_id": "A02184_12",
+      "source_sentence": "작년까지만 해도 전문대 졸업자 실업률(4.8%)이 고졸 실업률(5.1%)보다 낮았다.",
+      "source_sentence_sha256": "1fab150ae67242d8e1ebfcc2c851d74db8c569009c82ec52367ae03a62d77a49",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A02065",
+      "claim_id": "claim_e6dc0e8f203a746e",
+      "current_reason": "MISSING_REQUIRED_SLOTS:time",
+      "parent_claim_id": "A02065_4",
+      "source_sentence": null,
+      "source_sentence_sha256": "72db2fcb59bbf91f9d77f34aaf9df929098535c73b78b0b48d63b9470da130c8",
+      "split_set": "FINAL_BLIND"
+    },
+    {
+      "article_id": "A02184",
+      "claim_id": "claim_e8ddfd4375ff8253",
+      "current_reason": "NO_EVIDENCE_COORDINATE_CANDIDATE",
+      "parent_claim_id": "A02184_8",
+      "source_sentence": "지난 2003년부터 2022년까지 20년간 20대 후반의 실업률은 고졸이 대졸보다 높았는데, 지난 2023년부터 대졸 실업률(6.2%)이 고졸(5.2%)을 넘는 역전 현상이 발생했다.",
+      "source_sentence_sha256": "efb38ecaf7fe32768c42d42cfcb87663d0044f2274ea9ed4f0da89810da40fe5",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A00308",
+      "claim_id": "claim_e95466b1942a27e4",
+      "current_reason": "CLAIM_PARSE_UNCERTAIN",
+      "parent_claim_id": "A00308_6",
+      "source_sentence": "그나마 수출이 잘됐던 작년 1분기(1.3%) 덕에 2% 턱걸이를 했다.",
+      "source_sentence_sha256": "44a03518057397a801838418ccc83a01de38c385bb4f13af86483dcac6bfe2ca",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01410",
+      "claim_id": "claim_e9cc4c0de10264a9",
+      "current_reason": "KOSIS_CATALOG_UNAVAILABLE",
+      "parent_claim_id": "A01410_2",
+      "source_sentence": "한국무역협회는 올해 1분기 한국의 대미 무역수지 흑자가 133억8000만달러로 작년 동기(132억2000만달러)보다 소폭 웃돌았다고 19일 밝혔다.",
+      "source_sentence_sha256": "6c0ab07cf4ffd65b711146f55d027bbc88d1790172966a9ecd1c0dc67e1ed15d",
+      "split_set": "INTERMEDIATE_VALIDATION"
+    },
+    {
+      "article_id": "A02022",
+      "claim_id": "claim_eb64c1ce7e5abde3",
+      "current_reason": "AMBIGUOUS_MARGIN",
+      "parent_claim_id": "A02022_18",
+      "source_sentence": "우리나라 역시 GDP 대비 정부 부채 비율이 2000년부터 2023년까지 34.6%포인트 늘었는데, 고령화와 관련이 높은 사회수혜금(44.5%포인트), 사회보장현물(49.8%) 지출이 큰 영향을 끼쳤다.",
+      "source_sentence_sha256": "b55604b271a27ba2dfd51976da51882b863a2d9ce04300864e4df1cd9718ba10",
+      "split_set": "INTERMEDIATE_VALIDATION"
+    },
+    {
+      "article_id": "A01480",
+      "claim_id": "claim_ec3f120db14ef8f3",
+      "current_reason": "KOSIS_METADATA_UNAVAILABLE",
+      "parent_claim_id": "A01480_8",
+      "source_sentence": "2008년 금융 위기 때나 2020년 코로나 위기 때도 2개 분기 연속으로 0.1%를 하회하는 성장률을 기록했지만, 세 번째 분기에는 곧바로 1~2% 성장했었다.",
+      "source_sentence_sha256": "3b87c153adbb962c3956a65e3429c2ec69776cf2fd42b08a6633cf6cc0dfa420",
+      "split_set": "INTERMEDIATE_VALIDATION"
+    },
+    {
+      "article_id": "A00365",
+      "claim_id": "claim_ed030b7903aeff70",
+      "current_reason": "NO_HARD_GUARD_CANDIDATE",
+      "parent_claim_id": "A00365_2",
+      "source_sentence": "29일 농림축산식품부와 한국농수산식품유통공사(aT)에 따르면 지난해 떡류 수출액은 9140만달러(약 1313억원)로 1억달러에 근접했다.",
+      "source_sentence_sha256": "0288e86d33b30582734c8c6c42ae73d00ed568df732f30ff5ba586fbed7f463d",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A00760",
+      "claim_id": "claim_ee0939117abd240b",
+      "current_reason": "MISSING_REQUIRED_SLOTS:time",
+      "parent_claim_id": "A00760_3",
+      "source_sentence": "공정위는 자산총액이 전년도 명목 국내총생산(GDP)의 0.5% 이상(지난해는 10조4000억원)인 기업집단을 ‘상호출자제한 기업집단’으로, 자산 5조원 이상인 경우 ‘공시대상 기업집단’으로 지정한다.",
+      "source_sentence_sha256": "86755bfa59df01916aed240b400202cdb9c645c80fae1dc7afd5287487661c44",
+      "split_set": "INTERMEDIATE_VALIDATION"
+    },
+    {
+      "article_id": "A00298",
+      "claim_id": "claim_eecfa40878a00f16",
+      "current_reason": "PUBLICATION_FETCH_FAILED",
+      "parent_claim_id": "A00298_3",
+      "source_sentence": null,
+      "source_sentence_sha256": "76a4b37d0803d07701552c88170454591de43db4ba91c759c09a068df737e909",
+      "split_set": "FINAL_BLIND"
+    },
+    {
+      "article_id": "A02647",
+      "claim_id": "claim_ef7373759319caae",
+      "current_reason": "CLAIM_PARSE_UNCERTAIN",
+      "parent_claim_id": "A02647_11",
+      "source_sentence": "특히 60세 이상 비정규직 근로자는 304만4000명으로 전년 동월 대비 23만3000명 증가했다.",
+      "source_sentence_sha256": "93ef6a413d4ec5edb4b5447ebdc785ea2526655d895c804e9dde639c49f607aa",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A00185",
+      "claim_id": "claim_efe06326549a5d8e",
+      "current_reason": "KOSIS_CATALOG_UNAVAILABLE",
+      "parent_claim_id": "A00185_6",
+      "source_sentence": "당시 수입차 판매량은 1996년 1만315대, 1997년 8136대, 1998년 2075대로 2년 연속 줄었다.",
+      "source_sentence_sha256": "c33fece068feef658512f9b24b99a2913fec9568ce2647819ea301149a6956aa",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A02096",
+      "claim_id": "claim_f0965ec621cb18bf",
+      "current_reason": "PUBLICATION_FETCH_FAILED",
+      "parent_claim_id": "A02096_4",
+      "source_sentence": "보건업·사회복지서비스업(+23만3000명), 금융·보험업(+7만2000명) 등에서 취업자가 큰 폭으로 늘어나면서 취업자가 26만명 넘게 늘어난 작년 4월 이후 처음으로 취업자가 20만명 이상 불었다.",
+      "source_sentence_sha256": "4f27a0d64d06802a846646e530c54470d4ed49caae32853463cdf07cad6214a4",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A00922",
+      "claim_id": "claim_f22875b11c312f80",
+      "current_reason": "CLAIM_PARSE_UNCERTAIN",
+      "parent_claim_id": "A00922_9",
+      "source_sentence": "청년 취업자는 355만7000명으로 1년 새 23만5000명 줄었다.",
+      "source_sentence_sha256": "ced8a0c4a8e9f655cc9e4098963ae813d97fcc4faea36de1082556d5db99f60d",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01924",
+      "claim_id": "claim_f58fdfa21e8042e8",
+      "current_reason": "FETCH_FAILED",
+      "parent_claim_id": "A01924_10",
+      "source_sentence": "3월 출생아 수만 놓고 봐도 2만1041명으로 전년 동월 대비 6.8% 늘었는데, 3월 기준으로 지난 1993년 3월(8.9%) 이후 32년 만에 최대 상승폭이다.",
+      "source_sentence_sha256": "2dc216e2759a4ddb6fab87fd85b1a11bc51ead50fcd948ebcdbfe4642e1969fb",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01641",
+      "claim_id": "claim_f6144e9032ae4a7a",
+      "current_reason": "KOSIS_CATALOG_UNAVAILABLE",
+      "parent_claim_id": "A01641_17",
+      "source_sentence": "실제 근로소득세 수입은 2008년 15조6000억원에서 지난해 61조원으로 거의 4배로 늘었다.",
+      "source_sentence_sha256": "a330fb46fd8b905f46973829d7c788a871f89885e6c52c121b94900824509cea",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A00007",
+      "claim_id": "claim_f8916174d4816698",
+      "current_reason": "KOSIS_METADATA_UNAVAILABLE",
+      "parent_claim_id": "A00007_3",
+      "source_sentence": "보잉 737 맥스 여객기가 자카르타에서 추락한 사고로 189명이 사망한 사건이 발생한 2018년(전체 사망자 526명) 이후 가장 많다.",
+      "source_sentence_sha256": "187106e6296730be6599bb122009799c890ead0a3033e33501fbef702b8369c4",
+      "split_set": "INTERMEDIATE_VALIDATION"
+    },
+    {
+      "article_id": "A01935",
+      "claim_id": "claim_f92fc8467da2f9d7",
+      "current_reason": "NO_EVIDENCE_COORDINATE_CANDIDATE",
+      "parent_claim_id": "A01935_13",
+      "source_sentence": "올해 내수의 성장률 기여도는 0.8%포인트, 순수출 성장률 기여도는 0%포인트 정도로 봤다.",
+      "source_sentence_sha256": "62fe1754cc9985f14f3b6cb042230227120543815a2867a9d53a8366e1eadfad",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01193",
+      "claim_id": "claim_fa16759bc2782c6b",
+      "current_reason": "KOSIS_CATALOG_UNAVAILABLE",
+      "parent_claim_id": "A01193_11",
+      "source_sentence": "같은 방식으로 비교했을 때 2023년까지만 해도 외국인과 노인 일자리 참여자 증가 규모는 11만8000명으로, 전체 취업자 증가 폭(32만7000명)보다 적었다.",
+      "source_sentence_sha256": "799a9479f7523bf5374fd005080ccfe6435625de6e380cbcaf1639cd00310bb4",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A00186",
+      "claim_id": "claim_fa38cac3c10b0e85",
+      "current_reason": "NO_HARD_GUARD_CANDIDATE",
+      "parent_claim_id": "A00186_9",
+      "source_sentence": "한편, 지난해 현대차·기아 전체 수출 대수는 218만698대, 수출액은 533억6000만달러(약 78조원)로, 2년 연속 수출 200만대, 수출액 500억달러를 이어갔다.",
+      "source_sentence_sha256": "7cf93f3e1f90215194654577a3574d7548d572a5abe01514e51d9873f1f6f128",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A01103",
+      "claim_id": "claim_fd0b6a6685277a86",
+      "current_reason": "KOSIS_CATALOG_UNAVAILABLE",
+      "parent_claim_id": "A01103_18",
+      "source_sentence": "◇수입차 최대 수준 보조금 2025년형 ID.4의 가격은 ID.4 Pro Lite가 5299만원, ID.4 Pro가 5999만원으로 9만원 인상에 그쳤다.",
+      "source_sentence_sha256": "2d5d71e393b84c4f56e78d3b0af6b73b608a623d5859e57649d7ad3cb221668f",
+      "split_set": "RULE_DISCOVERY"
+    },
+    {
+      "article_id": "A02096",
+      "claim_id": "claim_ff5fabf31d5ab7af",
+      "current_reason": "AMBIGUOUS_MARGIN",
+      "parent_claim_id": "A02096_15",
+      "source_sentence": "하지만 사회 초년생인 청년층 고용률은 46.2%로 전년 동월 대비 0.7%포인트 감소했다.",
+      "source_sentence_sha256": "318a5ab9ccf5779969db54c6aa352b70db328da22c7c29d4148a354fbfc22839",
+      "split_set": "RULE_DISCOVERY"
+    }
+  ],
+  "split_counts": {
+    "FINAL_BLIND": 18,
+    "INTERMEDIATE_VALIDATION": 35,
+    "RULE_DISCOVERY": 123
+  }
+}

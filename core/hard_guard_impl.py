@@ -18,6 +18,7 @@ def apply_hard_guard(c, x):
     if _freq(c, x): rejected += ["FREQUENCY_CONFLICT"]
     if _unit(c, x): rejected += ["UNIT_CONFLICT"]
     if _age(c, x): rejected += ["AGE_DIMENSION_REQUIRED"]
+    if _population(c, x): rejected += ["POPULATION_DIMENSION_CONFLICT"]
     if c.dimension and "sex" in c.dimension and not _has(x, "\uc131\ubcc4"):
         rejected += ["SEX_DIMENSION_REQUIRED"]
     if c.region and c.region not in {"\uc804\uad6d", "\ub300\ud55c\ubbfc\uad6d", "\ud55c\uad6d"} and not any(
@@ -60,6 +61,25 @@ def _age(c, x):
             and "\uacbd\uc81c\ud65c\ub3d9\uc778\uad6c" in scope
         )
     )
+
+
+def _population(c, x):
+    if not c.population or "세" in c.population:
+        return False
+    population_key = _key(c.population)
+    if not any(marker in population_key for marker in ("청년", "고령", "노인", "아동", "청소년")):
+        return False
+    requested = _population_key(c.population)
+    if requested in {"", "계", "전체", "전국"}:
+        return False
+    official = {
+        _population_key(value)
+        for values in x.dimension_members.values()
+        for value in values
+    }
+    scope = _population_key(" ".join([x.tbl_name, *x.core_item_names, *x.binding_scope_terms]))
+    return not (requested in official or requested in scope)
+
 
 
 def _dim(c, x):
@@ -121,3 +141,7 @@ def _key(value):
         .replace("\ud569\uacc4", "\uacc4").replace("\ucd1d\uacc4", "\uacc4").replace("\uc804\uccb4", "\uacc4")
         .replace("\ub300\ud55c\ubbfc\uad6d", "\uc804\uad6d").replace("\ud55c\uad6d", "\uc804\uad6d")
     )
+
+
+def _population_key(value):
+    return _key(value).replace("인구", "").replace("층", "")

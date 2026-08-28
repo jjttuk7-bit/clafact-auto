@@ -1,0 +1,11 @@
+{
+  "after_row_sha256": "3edf7ded1adb0a018b74cc56bf9446123b6fd88cb491bc3f8430d797aac407e6",
+  "base_results_sha256": "d07567fa8e1eac99ad788495988ca3942956fa3b43b7caf487abbbe62a9cbe3d",
+  "before_row_path": "artifacts/direct_value_coordinate_spec_176_20260828/live_run/replaced_before_population_guard.json",
+  "before_row_sha256": "182ac969ca1277813ea206903ce7a096f9f3b31a4e23ad1925832132d74bc50d",
+  "final_results_sha256": "658bd20c1d1523b65544281fe2be578a81f683aeb945130fb6a5a3ac5a58827d",
+  "final_row_count": 132,
+  "reason": "POPULATION_DIMENSION_CONFLICT_GUARD",
+  "retry_claim_id": "claim_8aa30da67bf9f7e7",
+  "retry_results_sha256": "5bcc2b729dd139955b41eea36adac1036d2ee75a2264e971e3b8af6833bfaf93"
+}

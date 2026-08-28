@@ -107,3 +107,29 @@ def test_target_grounding_allows_source_whitespace_inside_expression() -> None:
     assert direct_value_child_preverification_reason(
         claim, target_expression="480억달러"
     ) is None
+
+def test_blocks_youth_rate_when_target_lost_population_dimension() -> None:
+    source = "지난달 실업률은 3.8%였고, 청년 실업률은 5.9%로 나타났다."
+    claim = _claim(source, indicator="실업률", value=5.9, unit="%")
+
+    assert direct_value_child_preverification_reason(
+        claim, target_expression="5.9%"
+    ) == "SOURCE_TARGET_DIMENSION_MISSING:청년"
+
+
+def test_blocks_change_amount_with_threshold_word_before_change_predicate() -> None:
+    source = "취업자가 20만명 이상 불었다."
+    claim = _claim(source, value=200_000)
+
+    assert direct_value_child_preverification_reason(
+        claim, target_expression="20만명"
+    ) == "DIRECT_VALUE_CHANGE_TARGET_MISCLASSIFIED"
+
+
+def test_plain_level_with_bulgwa_is_not_misread_as_change_amount() -> None:
+    source = "취업자는 20만명 불과했다."
+    claim = _claim(source, value=200_000)
+
+    assert direct_value_child_preverification_reason(
+        claim, target_expression="20만명"
+    ) is None

@@ -278,3 +278,39 @@ def test_hard_guard_allows_direct_value_query_when_item_metadata_and_frequency_a
 
     assert result.passed is True
     assert result.reject_codes == []
+
+
+def test_hard_guard_rejects_non_age_population_missing_from_official_scope() -> None:
+    youth_claim = claim(
+        source_sentence="청년 실업률은 5.9%였다.",
+        indicator="실업률",
+        population="청년",
+        region="전국",
+    )
+    total_only = candidate(
+        tbl_name="경제활동인구 총괄",
+        core_item_names=["실업률"],
+        dimension_names=["성별"],
+        dimension_members={"B": ["계"]},
+    )
+
+    assert apply_hard_guard(youth_claim, total_only).reject_codes == [
+        "POPULATION_DIMENSION_CONFLICT"
+    ]
+
+
+def test_hard_guard_accepts_non_age_population_confirmed_by_official_scope() -> None:
+    youth_claim = claim(
+        source_sentence="청년 실업률은 5.9%였다.",
+        indicator="실업률",
+        population="청년",
+        region="전국",
+    )
+    youth_table = candidate(
+        tbl_name="청년층 실업률",
+        core_item_names=["실업률"],
+        dimension_names=["연령계층별"],
+        dimension_members={"G": ["청년층"]},
+    )
+
+    assert apply_hard_guard(youth_claim, youth_table).passed is True

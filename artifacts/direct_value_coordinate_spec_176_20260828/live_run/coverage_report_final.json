@@ -1,0 +1,87 @@
+{
+  "admission_route_counts": {
+    "CONTEXT_REQUIRED": 5,
+    "KOSIS_PIPELINE_ELIGIBLE": 127
+  },
+  "all_claims_terminal": false,
+  "derived_claims": 132,
+  "input_coverage_complete": true,
+  "input_registry_records": 132,
+  "official_api_counts": {
+    "api_provenance_cells": 24,
+    "api_provenance_claims": 24,
+    "catalog_query_attempted": 219,
+    "catalog_query_empty": 0,
+    "catalog_query_failed": 62,
+    "catalog_query_succeeded_nonempty": 157,
+    "metadata_itm_attempted": 2685,
+    "metadata_itm_failed": 29,
+    "metadata_itm_succeeded": 2656,
+    "metadata_prd_attempted": 2654,
+    "metadata_prd_failed": 18,
+    "metadata_prd_succeeded": 2636,
+    "official_value_fetch_hold": 21,
+    "official_value_fetch_pass": 6,
+    "verified_publication_claims": 11
+  },
+  "official_resolution_count": 125,
+  "operational_failure_count": 2,
+  "recovery_action_counts": {
+    "DIRECT": 125,
+    "NO_RECOVERY": 7
+  },
+  "registry_load_errors": [],
+  "stage_status_counts": {
+    "CALCULATION": {
+      "PASS": 6
+    },
+    "CATALOG_SEARCH": {
+      "PASS": 125
+    },
+    "CLAIM_PARSE": {
+      "PASS": 125
+    },
+    "EVIDENCE_CELL": {
+      "HOLD": 4,
+      "PASS": 27
+    },
+    "HARD_GUARD": {
+      "HOLD": 94,
+      "PASS": 31
+    },
+    "OFFICIAL_VALUE_FETCH": {
+      "HOLD": 21,
+      "PASS": 6
+    },
+    "SEMANTIC_MAPPING": {
+      "PASS": 125
+    },
+    "SEMANTIC_MATCH": {
+      "HOLD": 4,
+      "PASS": 27
+    },
+    "VERDICT": {
+      "PASS": 6
+    }
+  },
+  "terminal_reason_counts": {
+    "AMBIGUOUS_MARGIN": 1,
+    "AS_OF_UNAVAILABLE": 16,
+    "CONTEXT_TARGET_UNRESOLVED": 2,
+    "FETCH_FAILED": 3,
+    "KOSIS_CATALOG_UNAVAILABLE": 2,
+    "LOW_SEMANTIC_SCORE": 3,
+    "NO_EVIDENCE_COORDINATE_CANDIDATE": 38,
+    "NO_HARD_GUARD_CANDIDATE": 56,
+    "OUTSIDE_TOLERANCE": 2,
+    "PUBLICATION_FETCH_FAILED": 2,
+    "RELATIVE_TIME_UNRESOLVED": 2,
+    "TARGET_VALUE_NOT_IN_SOURCE_SENTENCE": 1,
+    "WITHIN_TOLERANCE": 4
+  },
+  "terminal_route_counts": {
+    "AUTO": 6,
+    "HOLD": 121,
+    "HUMAN_REVIEW": 5
+  }
+}
