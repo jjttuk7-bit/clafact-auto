@@ -12,3 +12,9 @@ def test_converts_official_thousand_people_to_article_ten_thousand_people() -> N
     assert compatible_units("만 명", "천명") is True
     assert compatible_units("만명", "명") is True
     assert convert_value(2_390, "천명", "만 명") == 239
+
+
+def test_generic_index_unit_matches_one_official_basis() -> None:
+    assert compatible_units("지수", "2020=100") is True
+    assert compatible_units("지수", "지수(2020년=100)") is True
+    assert compatible_units("지수(2015년=100)", "지수(2020년=100)") is False

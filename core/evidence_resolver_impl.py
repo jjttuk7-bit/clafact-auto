@@ -111,7 +111,14 @@ def _resolve_dimensions(claim: ClaimSchema, candidate: KosisCandidateSchema) -> 
             contained = [
                 member for member in members
                 if (official := _normalize(member))
-                and any(target and target in official for target in targets)
+                and any(
+                    target
+                    and (
+                        target in official
+                        or (axis and axis.startswith("custom:") and official in target)
+                    )
+                    for target in targets
+                )
             ]
             if len(contained) == 1:
                 matches = contained
@@ -136,6 +143,16 @@ def _axis_targets(claim: ClaimSchema, axis_name: str | None) -> set[str]:
     if axis == "region":
         region = normalize_national_region(claim.region)
         values = [region] if region else ["전국"]
+    elif axis == "country":
+        named = normalized_dimension_members(dimensions)
+        values = [
+            value
+            for key, members in named.items()
+            if _normalize(key) in {"trade_partner", "교역상대국", "상대국", "국가"}
+            for value in members
+        ]
+        if not values and claim.region:
+            values = [claim.region]
     elif axis == "population":
         values = _dimension_values_for_axis(dimensions, "population")
         if not values and claim.population:
@@ -146,6 +163,8 @@ def _axis_targets(claim: ClaimSchema, axis_name: str | None) -> set[str]:
             values = [claim.population]
     elif axis:
         values = dimension_member_values(dimensions) if set(dimensions) == {"raw"} else _dimension_values_for_axis(dimensions, axis)
+        if axis.startswith("custom:") and not values and claim.indicator:
+            values = [claim.indicator]
     return {_normalize(value) for value in values if _normalize(value)}
 
 
@@ -153,6 +172,7 @@ def _axis_kind(axis_name: str | None) -> str | None:
     normalized = _normalize(axis_name)
     aliases = {
         "region": ("지역", "시도", "시군구", "행정구역"),
+        "country": ("국가", "country"),
         "gender": ("성별", "남녀", "gender", "sex"),
         "age": ("연령", "나이", "age"),
         "industry": ("산업", "업종", "직종", "industry"),

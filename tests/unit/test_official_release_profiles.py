@@ -4,7 +4,7 @@ from core.kosis_publication import _press_release_board_id, _press_release_queri
 def test_birth_survey_uses_registered_kostat_release_profile() -> None:
     assert _press_release_board_id("인구동향조사") == "204"
     assert _press_release_queries("인구동향조사", "2024-12") == [
-        "2024년 12월 인구동향"
+        "2024년 12월 및 4분기 인구동향"
     ]
 
 

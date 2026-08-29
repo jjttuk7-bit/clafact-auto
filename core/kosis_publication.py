@@ -38,6 +38,9 @@ _KOSTAT_RELEASE_PROFILES = {
     "인구동향조사": ("204", "인구동향"),
     "소비자물가조사": ("213", "소비자물가동향"),
 }
+_KOSTAT_TABLE_RELEASE_STATS = {
+    "DT_1B8000G": "인구동향조사",
+}
 _VIEW_LINK = re.compile(
     r"href=[\"'](?P<href>[^\"']*board\.es\?[^\"']*act=view[^\"']*)[\"'][^>]*>(?P<title>.*?)</a>",
     re.IGNORECASE | re.DOTALL,
@@ -139,6 +142,7 @@ class KosisPublicationLookup:
                 pub_period = _text(merged.get("pubPeriod"))
                 method = _text(merged.get("publictMth"))
                 stats_name = _text(merged.get("statsNm"))
+                release_stats_name = _KOSTAT_TABLE_RELEASE_STATS.get(table_id, stats_name)
                 conflict = merged.get("_publication_conflict") is True
                 published_at = None if conflict else _parse_exact_date(pub_date_text)
                 if period and not conflict:
@@ -146,7 +150,7 @@ class KosisPublicationLookup:
                     if release is not None:
                         return replace(release, reference_period=period)
                     release = _KostatPressReleaseSearch(self._opener, self._timeout_seconds).find(
-                        stats_name, period, pub_period, pub_date_text
+                        release_stats_name, period, pub_period, pub_date_text
                     )
                     if release is not None:
                         return replace(release, reference_period=period)
@@ -297,8 +301,11 @@ def _press_release_board_id(stats_name: str) -> str:
 
 
 def _official_release_period(stats_name: str, period: str) -> str:
-    """Map a quarterly employment aggregate to its final monthly release."""
-    if _normalized_text(stats_name) == _normalized_text("경제활동인구조사"):
+    """Map quarterly aggregates to the month of their official release family."""
+    if _normalized_text(stats_name) in {
+        _normalized_text("경제활동인구조사"),
+        _normalized_text("인구동향조사"),
+    }:
         normalized = period.replace("-", "").upper()
         if match := re.fullmatch(r"(\d{4})Q([1-4])", normalized):
             return f"{match.group(1)}{int(match.group(2)) * 3:02d}"
@@ -316,6 +323,14 @@ def _press_release_queries(stats_name: str, period: str) -> list[str]:
             if month == 12:
                 return [f"{year}년 12월 및 연간 고용동향"]
             return [f"{year}년 {month}월 고용동향"]
+    if _normalized_text(stats_name) == _normalized_text("인구동향조사"):
+        if re.fullmatch(r"\d{4}", normalized_period):
+            return [f"{normalized_period}년 12월 및 4분기 인구동향"]
+        if re.fullmatch(r"\d{6}", normalized_period):
+            year, month = normalized_period[:4], int(normalized_period[4:])
+            if month in {3, 6, 9, 12}:
+                return [f"{year}년 {month}월 및 {month // 3}분기 인구동향"]
+            return [f"{year}년 {month}월 인구동향"]
     return [f"{_period_label(period)} {_press_release_title(stats_name)}"]
 
 

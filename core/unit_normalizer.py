@@ -20,6 +20,7 @@ _SCALE = {
     "달러": 1.0,
     "천달러": 1_000.0,
     "만달러": 10_000.0,
+    "백만달러": 1_000_000.0,
     "억달러": 100_000_000.0,
     "십억달러": 1_000_000_000.0,
     "개": 1.0,
@@ -30,7 +31,7 @@ _FAMILY = {
     "가구": "HOUSEHOLD", "천가구": "HOUSEHOLD", "만가구": "HOUSEHOLD",
     "원": "KRW", "천원": "KRW", "만원": "KRW", "백만원": "KRW",
     "억원": "KRW", "십억원": "KRW", "조원": "KRW",
-    "달러": "USD", "천달러": "USD", "만달러": "USD", "억달러": "USD",
+    "달러": "USD", "천달러": "USD", "만달러": "USD", "백만달러": "USD", "억달러": "USD",
     "십억달러": "USD",
     "개": "COUNT", "곳": "COUNT",
 }
@@ -51,6 +52,8 @@ _ALIASES = {
 
 def _normalized(unit: str) -> str:
     raw = unit.strip().casefold()
+    if re.sub(r"\s+", "", raw) == "지수":
+        return "index:*"
     if match := re.search(r"(?P<year>\d{4})\s*년?\s*=\s*100", raw):
         return f"index:{match.group('year')}=100"
     compact = re.sub(r"\s+", "", raw)
@@ -60,7 +63,9 @@ def _normalized(unit: str) -> str:
 def compatible_units(left: str, right: str) -> bool:
     left, right = _normalized(left), _normalized(right)
     return left == right or (
-        left in _SCALE and right in _SCALE and _FAMILY[left] == _FAMILY[right]
+        (left == "index:*" and right.startswith("index:"))
+        or (right == "index:*" and left.startswith("index:"))
+        or (left in _SCALE and right in _SCALE and _FAMILY[left] == _FAMILY[right])
     )
 
 

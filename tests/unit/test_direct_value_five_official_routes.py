@@ -82,6 +82,48 @@ def test_monthly_age_employment_rate_binding_keeps_age_dynamic() -> None:
     assert [item.tbl_id for item in selected] == ["DT_1DA7002S"]
 
 
+def test_monthly_age_unemployment_rate_binding_keeps_age_dynamic() -> None:
+    claim = ClaimSchema(
+        claim_id="UNEMP-RATE-YOUTH",
+        source_sentence="2024년 12월 청년 실업률은 5.9%였다.",
+        indicator="실업률", value=5.9, unit="%", time="2024년 12월",
+        frequency="월", population="청년",
+        calculation="DIRECT_VALUE", parse_status="AUTO_OK",
+    )
+    selected = apply_catalog_binding(
+        claim, _concept("unemployment_rate", "실업률"),
+        [_candidate("DT_OTHER", "T80", "실업률"), _candidate("DT_1DA7002S", "T80", "실업률")],
+    )
+
+    assert [item.tbl_id for item in selected] == ["DT_1DA7002S"]
+
+
+def test_explicit_korea_quarterly_growth_uses_official_gdp_growth_table() -> None:
+    claim = ClaimSchema(
+        claim_id="GDP-GROWTH-KR",
+        source_sentence="2025년 1분기 우리나라 경제성장률은 -0.2%였다.",
+        indicator="경제성장률", value=-0.2, unit="%", time="2025년 1분기",
+        frequency="분기", region="대한민국",
+        calculation="DIRECT_VALUE", parse_status="AUTO_OK",
+    )
+    target = KosisCandidateSchema(
+        org_id="101", tbl_id="DT_2OEEO001", tbl_name="GDP 성장률(실질)",
+        core_item_ids=["T1"], core_item_names=["GDP 성장률"],
+        unit_names=["%"], item_units={"T1": "%"}, frequency="분기|년",
+        dimension_members={"A": ["대한민국", "미국"]},
+        dimension_member_codes={"A": {"대한민국": "1005", "미국": "2030"}},
+        metadata_status="OFFICIAL_METADATA_READY",
+    )
+
+    selected = apply_catalog_binding(
+        claim, _concept("economic_growth_rate", "경제성장률"),
+        [_candidate("DT_2KAA905", "T1", "경제성장률"), target],
+    )
+
+    assert [item.tbl_id for item in selected] == ["DT_2OEEO001"]
+    assert selected[0].dimension_member_codes["A"] == {"대한민국": "1005"}
+
+
 def test_quarterly_education_unemployment_binding_selects_age_education_table() -> None:
     claim = ClaimSchema(
         claim_id="UNEMP-EDU", source_sentence="2025년 1분기 30대 고졸 실업률은 4.2%였다.",

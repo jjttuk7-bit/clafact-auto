@@ -8,12 +8,15 @@ the value must be stated in the trusted, period-specific publication itself.
 from __future__ import annotations
 
 import hashlib
+import io
 import re
 from datetime import date, datetime, timezone
 from html import unescape
 from typing import Any, Callable
 from urllib.parse import urljoin, urlparse
 from urllib.request import Request, urlopen
+
+from pypdf import PdfReader
 
 from core.kosis_openapi_transport import create_kosis_tls_context
 from core.official_release_table import extract_hwpx_tables, resolve_direct_value
@@ -178,6 +181,20 @@ class OfficialPublicationClaimVerifier:
             )
             if value is not None:
                 matches.append((value, attachment_url, raw))
+        for attachment_url in _official_pdf_links(page_raw, page_url):
+            try:
+                request = Request(
+                    attachment_url,
+                    headers={"Accept": "application/pdf", "User-Agent": "CLAFACT-AUTO/0.1"},
+                )
+                with self._opener(request, timeout=self._timeout_seconds) as response:
+                    raw = response.read()
+                text = _pdf_text(raw)
+            except (OSError, RuntimeError, TypeError, ValueError):
+                continue
+            value = _resolve_pdf_direct_value(claim, text, reference_period=reference_period)
+            if value is not None:
+                matches.append((value, attachment_url, raw))
         if len({value for value, _url, _raw in matches}) != 1:
             return None
         return matches[0]
@@ -309,6 +326,108 @@ def _normalized(value: str) -> str:
     return re.sub(r"[^0-9A-Za-z가-힣%]", "", value).casefold()
 
 
+
+def _official_pdf_links(page_raw: bytes, page_url: str) -> list[str]:
+    page = page_raw.decode("utf-8", errors="replace")
+    links: list[str] = []
+    for match in _HWPX_LINK.finditer(page):
+        href = unescape(match.group("href"))
+        label = _document_text(match.group("label").encode("utf-8"))
+        if ".pdf" not in (href + " " + label).casefold():
+            continue
+        url = urljoin(page_url, href)
+        if _trusted(url) and url not in links:
+            links.append(url)
+    return links
+
+
+def _pdf_text(raw: bytes) -> str:
+    try:
+        reader = PdfReader(io.BytesIO(raw))
+        return "\n".join(page.extract_text() or "" for page in reader.pages)
+    except Exception:
+        return ""
+
+
+def _resolve_pdf_direct_value(claim: ClaimSchema, text: str, *, reference_period: str) -> float | None:
+    if not text or not _document_has_period(text, reference_period):
+        return None
+    indicator = _normalized(claim.indicator or "")
+    if len(indicator) < 2:
+        return None
+    compact = re.sub(r"\s+", "", text).casefold()
+    number = r"[+-]?\d+(?:,\d{3})*(?:\.\d+)?(?:(?:조|억|만|천|백)\d*(?:,\d{3})*(?:\.\d+)?)*(?:조|억|만|천|백)?"
+    values: list[float] = []
+    for match in re.finditer(
+        rf"(?={re.escape(indicator)}(?:는|은|이|가|:)?(?P<value>{number})(?P<tail>.{{0,24}}))", compact
+    ):
+        if not _pdf_dimension_context_matches(claim, compact, match.start()):
+            continue
+        if not _pdf_unit_context_matches(claim.unit or "", match.group("tail"), indicator):
+            continue
+        parsed = _scaled_number(match.group("value"))
+        if parsed is not None:
+            values.append(parsed)
+    return values[0] if values else None
+
+
+def _pdf_dimension_context_matches(claim: ClaimSchema, compact: str, start: int) -> bool:
+    age = _claim_age_token(claim)
+    if age is None:
+        return True
+    left = max(compact.rfind(mark, 0, start) for mark in ".!?。") + 1
+    right_candidates = [compact.find(mark, start) for mark in ".!?。"]
+    right_candidates = [position for position in right_candidates if position >= 0]
+    right = min(right_candidates) if right_candidates else len(compact)
+    return age in compact[left:right]
+
+
+def _claim_age_token(claim: ClaimSchema) -> str | None:
+    values = [str(claim.population or ""), str(claim.indicator or "")]
+    if isinstance(claim.dimension, dict):
+        values.extend(str(value or "") for value in claim.dimension.values())
+    text = " ".join(values)
+    if match := re.search(r"(?<!\d)(\d{1,2})\s*대", text):
+        return f"{match.group(1)}대"
+    if match := re.search(r"(?<!\d)(\d{1,2})\s*세\s*(이상|이하)", text):
+        return f"{match.group(1)}세{match.group(2)}"
+    return None
+
+def _pdf_unit_context_matches(unit: str, tail: str, indicator: str) -> bool:
+    compact_unit = _normalized(unit)
+    prefix = r"^(?:[(:\[])?"
+    if "지수" in compact_unit or "지수" in indicator:
+        return re.match(prefix + r"20\d{2}(?:년)?=100", tail) is not None
+    if "%" in compact_unit or "퍼센트" in compact_unit:
+        return re.match(prefix + r"(?:%|％|퍼센트)", tail) is not None
+    if "달러" in compact_unit or "usd" in compact_unit:
+        return re.match(prefix + r"(?:십억|억|만|천)?(?:달러|usd)", tail) is not None
+    if "원" in compact_unit:
+        return re.match(prefix + r"(?:조|억|만|천)?원", tail) is not None
+    if "명" in compact_unit:
+        return re.match(prefix + r"(?:천|만)?명", tail) is not None
+    if "가구" in compact_unit:
+        return re.match(prefix + r"(?:천|만)?가구", tail) is not None
+    if "건" in compact_unit:
+        return re.match(prefix + r"(?:천|만)?건", tail) is not None
+    return False
+
+
+def _scaled_number(value: str) -> float | None:
+    text = value.replace(",", "").replace("−", "-")
+    try:
+        if not any(marker in text for marker in "조억만천백"):
+            return float(text)
+        total = 0.0
+        cursor = 0
+        for match in re.finditer(r"([+-]?\d+(?:\.\d+)?)(조|억|만|천|백)", text):
+            total += float(match.group(1)) * {"조": 1e12, "억": 1e8, "만": 1e4, "천": 1e3, "백": 1e2}[match.group(2)]
+            cursor = match.end()
+        if cursor < len(text):
+            total += float(text[cursor:])
+        return total
+    except ValueError:
+        return None
 
 def _official_hwpx_links(page_raw: bytes, page_url: str) -> list[str]:
     page = page_raw.decode("utf-8", errors="replace")

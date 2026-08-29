@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import hashlib
 import json
+import re
 from typing import Mapping
 
 from core.source_numeric_inventory import inventory_numeric_mentions
@@ -107,8 +108,6 @@ def merge_target_grounding(
     enrichment = dict(record.slot_enrichment or {})
     enrichment.update(grounding.slot_enrichment_patch)
     return record.model_copy(update={"slot_enrichment": enrichment})
-
-
 def merge_target_grounding_patch(
     record: ClaimRegistryRecord,
     patch_row: Mapping[str, object],
@@ -188,14 +187,24 @@ def repair_exact_target_grounding(record: ClaimRegistryRecord) -> ClaimRegistryR
     if len(matching) != 1:
         return record
     mention = matching[0]
+    target_start = mention.start
+    target_end = mention.end
+    target_expression = mention.expression
+    claim_basis = re.search(r"(\d{4})년?\s*[=＝]\s*100", claim.unit or "")
+    if claim_basis:
+        suffix = claim.source_sentence[target_end:]
+        source_basis = re.match(r"\s*\(\s*(\d{4})년?\s*[=＝]\s*100\s*\)", suffix)
+        if source_basis and source_basis.group(1) == claim_basis.group(1):
+            target_end += source_basis.end()
+            target_expression = claim.source_sentence[target_start:target_end]
     enrichment.update({
         "target_link_status": "SOURCE_GROUNDED",
         "target_link_reason_code": "SOURCE_TARGET_EXACT_MATCH_REPAIRED",
         "target_link_version": "1.1",
-        "target_numeric_expression": mention.expression,
+        "target_numeric_expression": target_expression,
         "target_numeric_mention_id": mention.mention_id,
         "target_numeric_role": assignment.role,
-        "target_numeric_start": mention.start,
-        "target_numeric_end": mention.end,
+        "target_numeric_start": target_start,
+        "target_numeric_end": target_end,
     })
     return record.model_copy(update={"slot_enrichment": enrichment})

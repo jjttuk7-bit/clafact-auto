@@ -59,7 +59,7 @@ def classify_numeric_roles(
     claim_unit: str,
     indicator: str,
 ) -> NumericRoleClassification:
-    prepared = [(_numeric_values(m.expression), _detected_unit(m.expression)) for m in mentions]
+    prepared = [(_numeric_values(m.expression), _detected_unit_in_context(source_sentence, m, indicator)) for m in mentions]
     preliminary: dict[int, tuple[str, str, str, str]] = {}
 
     for index, mention in enumerate(mentions):
@@ -172,8 +172,26 @@ def _parse_scaled_number(raw: str) -> float:
     return sign * total
 
 
+
+def _detected_unit_in_context(source: str, mention: SourceNumericMention, indicator: str = "") -> str:
+    unit = _detected_unit(mention.expression)
+    if unit:
+        return unit
+    after = source[mention.end:min(len(source), mention.end + 30)]
+    if re.match(r"\s*\(\s*\d{4}년?\s*[=＝]\s*100\s*\)", after):
+        return "index"
+    before = re.sub(r"\s+", "", source[max(0, mention.start - 40):mention.start])
+    compact_indicator = re.sub(r"\s+", "", indicator or "")
+    if "지수" in compact_indicator and re.search(
+        re.escape(compact_indicator) + r"(?:는|은|이|가|:)$", before
+    ):
+        return "index"
+    return ""
+
 def _detected_unit(expression: str) -> str:
     compact = expression.replace(" ", "").casefold()
+    if re.search(r"\(\d{4}년?\s*[=＝]\s*100\)", compact):
+        return "index"
     aliases = (("%포인트", "%p"), ("％포인트", "%p"), ("퍼센트포인트", "%p"), ("%p", "%p"), ("％p", "%p"), ("%", "%"), ("％", "%"), ("달러", "달러"), ("유로", "유로"), ("억원", "원"), ("만원", "원"), ("조원", "원"), ("원", "원"), ("천명", "명"), ("만명", "명"), ("명", "명"), ("개월", "개월"), ("분기", "분기"), ("가구", "가구"), ("채널", "개"), ("곳", "곳"), ("개", "개"), ("대", "대"), ("년", "년"), ("월", "월"), ("일", "일"), ("달", "달"), ("주", "주"), ("시간", "시간"), ("위", "위"), ("배", "배"), ("호", "호"), ("건", "건"), ("톤", "톤"), ("t", "t"), ("ha", "ha"), ("엔", "엔"))
     for suffix, unit in aliases:
         if compact.endswith(suffix):
@@ -185,7 +203,13 @@ def _claim_base_value(value: float | None, unit: str) -> tuple[float | None, str
     if value is None:
         return None, ""
     compact = (unit or "").replace(" ", "").casefold()
-    aliases = {"%포인트": "%p", "퍼센트포인트": "%p", "%p": "%p", "십억달러": "달러", "천불": "달러", "usd": "달러"}
+    if compact.startswith("지수"):
+        return float(value), "index"
+    if compact in {"billionusd", "billiondollars", "십억usd"}:
+        return float(value) * 1e9, "달러"
+    if "/" in compact:
+        compact = compact.split("/", 1)[0]
+    aliases = {"%포인트": "%p", "퍼센트포인트": "%p", "%p": "%p", "십억달러": "달러", "천불": "달러", "usd": "달러", "미국달러": "달러"}
     scale = 1.0
     for prefix, factor in (("십억", 1e9), ("조", 1e12), ("억", 1e8), ("만", 1e4), ("천", 1e3)):
         if compact.startswith(prefix) and len(compact) > len(prefix):

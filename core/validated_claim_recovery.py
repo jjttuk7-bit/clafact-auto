@@ -44,7 +44,11 @@ def recover_validated_claim(
             "parse_reason": role_conflict,
         })
     grounding_text = source_value_text if source_value_text is not None else (None if was_auto else recovered.source_sentence)
-    if grounding_text is not None and not _source_supports_claim_value(recovered, grounding_text):
+    if (
+        grounding_text is not None
+        and not _source_supports_claim_value(recovered, grounding_text)
+        and not _plain_index_target_is_source_grounded(recovered, source_value_text)
+    ):
         return recovered.model_copy(update={"parse_status": "HOLD", "parse_reason": "TARGET_VALUE_NOT_IN_SOURCE_SENTENCE"})
     if source_value_text is not None:
         existing_type = str((recovered.comparison or {}).get("type", "")).strip().upper()
@@ -220,6 +224,27 @@ _UNIT_BOUNDARY_PREFIXES = (
 _INDEX_BASIS = re.compile(r"(?P<year>\d{4})(?:\ub144)?[=\uff1d]100", re.IGNORECASE)
 
 
+def _plain_index_target_is_source_grounded(claim, source_value_text: str | None) -> bool:
+    if source_value_text is None or claim.value is None:
+        return False
+    _scale, base = _unit_scale_and_base(claim.unit or "")
+    if base != "지수":
+        return False
+    target = re.sub(r"[\s,]", "", source_value_text)
+    try:
+        if not _numbers_equal(float(target), float(claim.value)):
+            return False
+    except ValueError:
+        return False
+    indicator = re.sub(r"\s+", "", claim.indicator or "")
+    source = re.sub(r"[\s,]", "", claim.source_sentence)
+    if "지수" not in indicator:
+        return False
+    pattern = re.compile(
+        re.escape(indicator) + r"(?:는|은|이|가|:)" + re.escape(target) + r"(?![\d.])"
+    )
+    return len(pattern.findall(source)) == 1
+
 def _source_supports_claim_value(claim, source_text: str) -> bool:
     if claim.value is None or not claim.unit:
         return False
@@ -231,6 +256,12 @@ def _source_supports_claim_value(claim, source_text: str) -> bool:
         unit_tail = compact_source[match.end():]
         if _index_basis_matches(claim.unit, unit_tail) and _numbers_equal(number, expected):
             return True
+        if (
+            claim_base == "지수"
+            and _numbers_equal(number, expected)
+            and _index_value_follows_indicator(claim.indicator, compact_source, match.start())
+        ):
+            return True
         for end in range(1, min(len(unit_tail), 24) + 1):
             expression_scale, expression_base = _unit_scale_and_base(unit_tail[:end])
             if expression_base != claim_base:
@@ -240,6 +271,15 @@ def _source_supports_claim_value(claim, source_text: str) -> bool:
                 return True
     return False
 
+
+def _index_value_follows_indicator(indicator: str | None, source: str, value_start: int) -> bool:
+    compact_indicator = re.sub(r"\s+", "", indicator or "")
+    if "지수" not in compact_indicator:
+        return False
+    before = source[max(0, value_start - 50):value_start]
+    return re.search(
+        re.escape(compact_indicator) + r"(?:는|은|이|가|:)$", before
+    ) is not None
 
 def _numbers_equal(actual: float, expected: float) -> bool:
     return abs(actual - expected) <= max(1e-9, abs(expected) * 1e-9)
@@ -255,7 +295,7 @@ def _unit_is_bounded(unit_tail: str, unit_end: int) -> bool:
 
 
 def _index_basis_matches(unit: str, unit_tail: str) -> bool:
-    claim_basis = _INDEX_BASIS.fullmatch(unit.replace(" ", ""))
+    claim_basis = _INDEX_BASIS.search(unit.replace(" ", ""))
     if claim_basis is None:
         return False
     source_basis = _INDEX_BASIS.search(unit_tail)
@@ -289,10 +329,21 @@ def _parse_small_group(raw: str) -> float:
 def _unit_scale_and_base(unit: str) -> tuple[float, str]:
     compact = unit.replace(" ", "").strip().casefold()
     compact = {"\u33ca": "ha", "\ud37c\uc13c\ud2b8\ud3ec\uc778\ud2b8": "%\ud3ec\uc778\ud2b8", "%p": "%\ud3ec\uc778\ud2b8"}.get(compact, compact)
+    if _INDEX_BASIS.search(compact):
+        return 1.0, "index"
+    if compact in {"billionusd", "bnusd"}:
+        return 1e9, "usd"
+    if "/" in compact:
+        compact = compact.split("/", 1)[0]
     if compact in {"usd100m", "100musd"}:
         return 1e8, "usd"
     for prefix, scale in (("\uc870", 1e12), ("\uc5b5", 1e8), ("\ub9cc", 1e4), ("\ucc9c", 1e3)):
         if compact.startswith(prefix) and len(compact) > len(prefix):
             base = compact[len(prefix):]
             return scale, {"\ub2ec\ub7ec": "usd", "\ud5e5\ud0c0\ub974": "ha"}.get(base, base)
-    return 1.0, {"\ub2ec\ub7ec": "usd", "\ud5e5\ud0c0\ub974": "ha"}.get(compact, compact)
+    return 1.0, {
+        "\ub2ec\ub7ec": "usd",
+        "\ubbf8\uad6d\ub2ec\ub7ec": "usd",
+        "usd": "usd",
+        "\ud5e5\ud0c0\ub974": "ha",
+    }.get(compact, compact)

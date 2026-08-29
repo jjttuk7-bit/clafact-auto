@@ -389,3 +389,46 @@ def test_quarterly_employment_release_uses_last_month_official_release() -> None
     assert result.status == "VERIFIED"
     assert result.published_at == date(2025, 4, 9)
     assert any("keyWord=2025%EB%85%84+3%EC%9B%94+%EA%B3%A0%EC%9A%A9%EB%8F%99%ED%96%A5" in url for url in seen)
+
+def test_population_release_queries_use_actual_month_quarter_titles() -> None:
+    assert publication._press_release_queries("인구동향조사", "2024-12") == [
+        "2024년 12월 및 4분기 인구동향"
+    ]
+    assert publication._press_release_queries("인구동향조사", "2025-03") == [
+        "2025년 3월 및 1분기 인구동향"
+    ]
+
+
+def test_annual_population_release_uses_december_fourth_quarter_title() -> None:
+    assert publication._press_release_queries("인구동향조사", "2024") == [
+        "2024년 12월 및 4분기 인구동향"
+    ]
+
+
+def test_population_table_uses_release_family_when_stats_name_differs() -> None:
+    explanation = (
+        '[{"statsNm":"인구동태건수 및 동태율 추이","pubDate":"조사기준 년 익년",'
+        '"publictMth":"언론(보도자료), 전산망(인터넷)"}]'
+    ).encode("utf-8")
+    search_page = (
+        '<a href="javascript:addSearchParam(\'/board.es?mid=a10301010000&bid=204&act=view&list_no=435204\');">'
+        '<span>2024년 12월 및 4분기 인구동향</span></a>'
+    ).encode("utf-8")
+    release_page = (
+        '<h1>2024년 12월 및 4분기 인구동향</h1><p>게시일 2025-02-26</p>'
+    ).encode("utf-8")
+
+    def opener(request, *, timeout):
+        if "statisticsExplData" in request.full_url:
+            return Response(explanation)
+        if "act=list" in request.full_url:
+            return Response(search_page)
+        return Response(release_page)
+
+    result = KosisPublicationLookup("secret", opener=opener, retries=1).fetch(
+        "101", "DT_1B8000G", period="2024"
+    )
+
+    assert result.status == "VERIFIED"
+    assert result.published_at == date(2025, 2, 26)
+    assert result.reference_period == "2024"

@@ -111,7 +111,7 @@ def _applies(binding, claim, concept):
 def _strings(value): return [str(item) for item in value] if isinstance(value, list) else []
 def _has_age_scope(claim):
     values = [claim.population or "", *(claim.dimension or {}).values()]
-    return any(re.search(r"\d+\s*(?:대|세)|청년층|고령층", str(value)) for value in values)
+    return any(re.search(r"\d+\s*(?:대|세)|청년(?:층)?|고령층", str(value)) for value in values)
 def _has_education_scope(claim):
     dimensions = claim.dimension or {}
     text = " ".join([*map(str, dimensions.keys()), *map(str, dimensions.values()), str(claim.population or "")])
